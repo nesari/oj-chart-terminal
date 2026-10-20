@@ -351,6 +351,19 @@ async function startProvider(payload) {
   }
 }
 
+/* F6.1: platform window chrome. Windows/Linux keep the frameless TV-Desktop
+   shell (custom buttons in the tab strip). macOS keeps its native traffic
+   lights — frameless macOS windows lose the standard close/minimize
+   affordances and cannot be moved by the usual titlebar gestures — so there
+   we use frame:true + hiddenInset and the renderer hides the custom buttons
+   while reserving the traffic-light gap. */
+function windowChrome() {
+  if (process.platform === 'darwin') {
+    return { frame: true, titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 12, y: 14 } };
+  }
+  return { frame: false };
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1600,
@@ -365,8 +378,9 @@ function createWindow() {
        title bar — the tab strip IS the topmost bar and carries the window
        buttons at its right end (plus a drag surface over its empty area).
        frame:false removes the OS chrome; the integrated controls + drag
-       regions are built in the renderer (tab strip / login bar). */
-    frame: false,
+       regions are built in the renderer (tab strip / login bar). F6.1: macOS
+       uses native traffic lights via windowChrome(). */
+    ...windowChrome(),
     backgroundColor: '#131722',
     show: false,
     icon: APP_ICON,
@@ -496,8 +510,9 @@ ipcMain.handle('tabs:undock', (e, p) => {
       minHeight: 680,
       /* ROUND125: detached windows wear the same TV-Desktop shell — no OS
          chrome, the tab strip carries the window buttons (and the drag
-         surface) exactly like the host window. */
-      frame: false,
+         surface) exactly like the host window. F6.1: macOS keeps its native
+         traffic lights via windowChrome(). */
+      ...windowChrome(),
       backgroundColor: '#131722',
       show: false,
       icon: APP_ICON,

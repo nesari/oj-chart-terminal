@@ -6,6 +6,7 @@ A lightweight TradingView-style charting terminal for Windows, built with Electr
 
 - Windows 10/11 (primary target — real MT5 trading requires the Windows-only `MetaTrader5` Python package)
 - macOS / Linux is supported for **demo mode** via `run.sh`; real MT5 data still needs Windows because the `MetaTrader5` pip package is Windows-only.
+- macOS keeps the native traffic-light window controls (`titleBarStyle: 'hiddenInset'`); Windows and Linux use the frameless shell whose minimize/maximize/close buttons live at the right end of the tab strip.
 - Node.js LTS (https://nodejs.org)
 - Python 3.8+ (`python`/`python3` must be available in PATH)
 - For real MT5 data: MetaTrader 5 terminal installed + `pip install MetaTrader5 websockets`

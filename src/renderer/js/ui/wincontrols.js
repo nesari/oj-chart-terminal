@@ -38,6 +38,12 @@ function wire(root) {
 
 const WinControls = {
   init() {
+    /* F6.1: macOS boots with native traffic lights (main.js windowChrome),
+       so the custom Windows-style buttons are hidden by CSS (.mac) and the
+       strip reserves room for the lights on the left. */
+    try {
+      if (/Macintosh|Mac OS X/.test(navigator.userAgent || '')) document.documentElement.classList.add('mac');
+    } catch (e) {}
     if (!window.mt5Win) return; // test harness / no preload — keep the OS frame behaviour
     document.querySelectorAll('.win-controls').forEach(wire);
 

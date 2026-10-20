@@ -438,6 +438,12 @@ body.solo #right-tabs .rt-btn[data-tab="trade"] { display: none; }
    strip's drag region so it drags the window like the rest of the bar. */
 .strip-spacer { flex: 1 1 auto; min-width: 12px; align-self: stretch; }
 .win-controls { display: flex; align-items: stretch; flex: 0 0 auto; align-self: stretch; }
+/* F6.1: macOS uses the native traffic lights (titleBarStyle: hiddenInset) —
+   hide the custom buttons and reserve the top-left gap so the first tab and
+   the login bar never slide under them. */
+.mac .win-controls { display: none; }
+.mac #tab-strip { padding-left: 78px; }
+.mac #login-titlebar { padding-left: 78px; }
 .wc-btn {
   position: relative;
   width: 46px; height: 100%; padding: 0;
