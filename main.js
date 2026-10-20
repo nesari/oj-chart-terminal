@@ -1,7 +1,7 @@
 const { app, BrowserWindow, Menu, Notification, ipcMain, dialog, clipboard, nativeImage, safeStorage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const net = require('node:net'); // Node TCP client — Electron's net module has no connect()
 
 const PORT = 8777;
@@ -218,7 +218,17 @@ async function waitPort(port, attempts) {
   return false;
 }
 
-function pyExe() { return process.platform === 'win32' ? 'python' : 'python3'; }
+/* Python 3 detection. On Windows the official installer exposes either
+   `python` (PATH tick) or the `py -3` launcher (Microsoft Store installs
+   often only have the latter), so probe the candidates once at first use
+   instead of assuming `python` exists. The probe itself lives in
+   platform/electron/python-detect.js so it stays unit-testable. */
+const { pythonCandidates, probePython, pythonMissingHelp } = require('./src/platform/electron/python-detect.js');
+let _pyCmd = null;
+function pyExe() {
+  if (!_pyCmd) _pyCmd = probePython(spawnSync) || pythonCandidates()[0];
+  return _pyCmd;
+}
 
 function providerLog(msg) {
   mlogEvent(/missing|failed|[Ee]rror|No module|Traceback|exited/i.test(msg) ? 'error' : 'info', 'provider', msg);
@@ -294,16 +304,19 @@ async function startProvider(payload) {
     if (payload && payload.tickInterval) {
       args.push('--tick-interval', String(payload.tickInterval));
     }
-    const exe = pyExe();
+    const py = pyExe();
+    const exe = py.cmd;
+    const exeArgs = py.pre.concat(args);
+    const exeLabel = [exe].concat(py.pre).join(' ');
     provErrTail = '';
     let spawnFail = null;
     let exitedCode = null;
     try {
       const childEnv = Object.assign({}, process.env);
       if (mode === 'mt5') childEnv.OJCHART_MT5_PASSWORD = String((payload && payload.password) || '');
-      providerProc = spawn(exe, args, { cwd: __dirname, windowsHide: true, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
+      providerProc = spawn(exe, exeArgs, { cwd: __dirname, windowsHide: true, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
     } catch (e) {
-      return { ok: false, error: 'Python not found (' + exe + '). Install Python 3.8+ and make sure it is in PATH.' };
+      return { ok: false, error: pythonMissingHelp() };
     }
     providerProc.on('error', (e) => { spawnFail = e.message; providerLog('Provider spawn error: ' + e.message); });
     providerProc.stderr.on('data', (d) => { noteStderr(d); providerLog(scrubPath(String(d).split('\n')[0].slice(0, 140))); });
@@ -327,7 +340,7 @@ async function startProvider(payload) {
       })
     ]);
     if (up !== 'up') {
-      if (spawnFail) return { ok: false, error: 'Python not found (' + exe + '): ' + spawnFail };
+      if (spawnFail) return { ok: false, error: pythonMissingHelp() + ' (' + exeLabel + ': ' + spawnFail + ')' };
       if (exitedCode !== null && exitedCode !== 0) return { ok: false, error: providerErrText(exitedCode) };
       return { ok: false, error: 'Data provider did not start. Check that Python is installed and run: pip install websockets' + (mode === 'mt5' ? ' MetaTrader5' : '') };
     }
