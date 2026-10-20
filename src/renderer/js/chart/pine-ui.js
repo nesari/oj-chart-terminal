@@ -197,7 +197,7 @@ function loadDefaultStyle(scriptId) {
   } catch (e) { return null; }
 }
 function saveDefaultStyle(scriptId, style) {
-  try { localStorage.setItem(styleDefKey(scriptId), JSON.stringify(style || {})); } catch (e) {}
+  try { localStorage.setItem(styleDefKey(scriptId), JSON.stringify(style || {})); } catch (e) { Log.warn('pine', 'default style save failed', e) }
 }
 
 /* ROUND170 (phase 1c: live ticks + dynamic symbols for cross-symbol).
@@ -1127,7 +1127,7 @@ function applyVisibility(pane, inst) {
   const st = state(pane, inst.id);
   if (!st) return;
   const on = inst.visible !== false;
-  for (const { s } of st.adapter.series) { try { s.applyOptions({ visible: on }); } catch (e) {} }
+  for (const { s } of st.adapter.series) { try { s.applyOptions({ visible: on }); } catch (e) { Log.debug('pine', 'series visibility apply failed', e) } }
 }
 
 /* ------------------------------ legend rows --------------------------- */
@@ -2351,7 +2351,7 @@ let stratMarksOn = true;
 function initMarkers() {
   try {
     if (Manager) Manager.strategyMarkers = (pane) => PineUI.strategyMarkers(pane);
-  } catch (e) {}
+  } catch (e) { Log.debug('pine', 'marker init failed', e) }
 }
 
 export { PineUI };

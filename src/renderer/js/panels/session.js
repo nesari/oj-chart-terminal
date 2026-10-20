@@ -40,6 +40,7 @@ import { UI } from '../drawing/ui.js';
 import { Replay } from './replay.js';
 import { DAY, stitchBars, insertDayGaps, windowSec } from '../../../core/session-math.js';
 import { TZ } from '../../../core/timezone.js';
+import { Log } from '../../../core/logger.js';
 
 const K_CFG = 'mt5_rp_session';
 const GAP_BARS = 3;          // whitespace slots between day regions
@@ -324,7 +325,7 @@ function applySeries(pane) {
   if (!S.on || !pane || !pane.series || !pane.bars || !pane.bars.length) return;
   const style = pane.style || 'candles';
   if (style === 'renko') return;   // renko path drew bricks without gaps
-  try { setSeriesWithGaps(pane, pane.bars); } catch (e) {}
+  try { setSeriesWithGaps(pane, pane.bars); } catch (e) { Log.warn('session', 'session series apply failed', e) }
 }
 
 /* ---------- per-pane apply ---------- */
@@ -334,7 +335,7 @@ function applyPane(pane, compact) {
   pane._olderDone = true;      // the stitched history is finite by design
   let ok = true;
   try { setSeriesWithGaps(pane, compact); } catch (e) { ok = false; }
-  if (!ok) { try { Manager.setPaneData(pane, compact); } catch (e) {} }
+  if (!ok) { try { Manager.setPaneData(pane, compact); } catch (e) { Log.warn('session', 'session series fallback failed', e) } }
   /* BUG-007 invariant: pane.bars only AFTER the series accepted the data */
   pane.bars = compact;
   pane.barTimes = compact.map((b) => b.time);
@@ -421,7 +422,7 @@ SessionRange.apply = function (cfg) {
   if (dTo - dFrom > 400) { UI.toast('Custom Session: range too long (max ~400 days)', 'warn'); return; }
   const norm = { hFrom, hTo, mFrom, mTo, dFrom, dTo };
   S.cfg = norm;
-  try { U.lsSet(K_CFG, norm); } catch (e) {}
+  try { U.lsSet(K_CFG, norm); } catch (e) { Log.warn('session', 'session config save failed', e) }
   if (Replay.isActive()) Replay.stop();     // replay re-anchors on the stitched bars
   S.on = true;
   const btn = document.getElementById('session-btn');
@@ -524,7 +525,7 @@ SessionRange.init = function () {
       })();
     },
   };
-  try { const c = U.lsGet(K_CFG, null); if (c && isFinite(c.hFrom)) S.cfg = c; } catch (e) {}
+  try { const c = U.lsGet(K_CFG, null); if (c && isFinite(c.hFrom)) S.cfg = c; } catch (e) { Log.warn('session', 'session config load failed', e) }
 };
 
 export { SessionRange };

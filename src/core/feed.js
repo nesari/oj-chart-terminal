@@ -126,7 +126,7 @@ function Feed(url) {
         this._rejectPendingForSocket(ws);
         if (!settled) finish(reject, new Error('closed'));
         try { Log && Log[was ? 'warn' : 'debug']('feed', was ? 'feed connection closed' : 'feed closed before connect'); } catch (e) {}
-        for (const f of this.onClose) { try { f(); } catch (e) {} }
+        for (const f of this.onClose) { try { f(); } catch (e) { Log.debug('feed', 'close hook failed', e) } }
       };
       ws.onerror = () => {};
       ws.onmessage = (ev) => {
@@ -165,7 +165,7 @@ function Feed(url) {
         this._pingAt = 0;
         try { ws.close(); } catch (e) {}
       }
-    } catch (e) {}
+    } catch (e) { Log.warn('feed', 'stall watchdog tick failed', e) }
   };
 
   Feed.prototype.startStallWatchdog = function () {
@@ -186,7 +186,7 @@ function Feed(url) {
       } catch (e) {
         this._pending.delete(req_id);
         reject(e);
-        try { ws.close(); } catch (er) {}
+        try { ws.close(); } catch (e) { Log.debug('feed', 'socket close after send failure failed', e) }
         return;
       }
       /* ROUND86C: the bars branch keyed on 'bars' but the request type is
@@ -213,7 +213,7 @@ function Feed(url) {
     for (const [rid, p] of this._pending) {
       if (p.ws !== ws) continue;
       this._pending.delete(rid);
-      try { p.reject(new Error('feed connection closed')); } catch (e) {}
+      try { p.reject(new Error('feed connection closed')); } catch (e) { Log.debug('feed', 'pending request reject failed', e) }
     }
   };
 
@@ -366,7 +366,7 @@ function Feed(url) {
     this.connected = false;
     if (ws) {
       this._rejectPendingForSocket(ws);
-      try { ws.close(); } catch (e) {}
+      try { ws.close(); } catch (e) { Log.debug('feed', 'feed destroy close failed', e) }
     }
   };
 

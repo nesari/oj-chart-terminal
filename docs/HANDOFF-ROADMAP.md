@@ -353,7 +353,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 [x] F3.3  حذف فایل‌های یک‌بارمصرف             (P2)
 [x] F3.4  تفکیک CHANGELOG                     (P2)
 [x] F4.1  حذف console.*                       (P3)
-[ ] F4.2  تریاژ catchهای خالی                 (P3)
+[x] F4.2  تریاژ catchهای خالی                 (P3)
 [ ] F4.3  شکستن ۴ فایل غول                    (P3)
 [ ] F6.1  macOS                                (P3)
 [ ] F6.2  Linux                                (P3)

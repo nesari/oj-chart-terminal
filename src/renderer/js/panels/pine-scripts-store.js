@@ -15,6 +15,7 @@ import { libTitleOf, matchCandidate } from '../../../core/pine/library.js';
    dialog — isStrategySource is the single source of truth next to the
    compiler's declMeta (first body statement opens strategy(). */
 import { isStrategySource } from '../../../core/pine/compile.js';
+import { Log } from '../../../core/logger.js';
 
 const KEY = 'mt5_pine_scripts';
 
@@ -167,7 +168,7 @@ const Store = {
         }
         if (title) out.push({ title, name: s.name, id: s.id, source: s.source, stamp });
       }
-    } catch (e) {}
+    } catch (e) { Log.warn('pine', 'library catalog scan failed', e) }
     return out;
   },
   /** resolve `user/lib/version` to a saved library source (compile seam) */

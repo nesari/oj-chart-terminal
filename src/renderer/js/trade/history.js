@@ -41,6 +41,7 @@ import { Trade } from './state.js';
 import { TradeRoute } from './route.js';
 import { TZ } from '../../../core/timezone.js';
 import { Manager } from '../chart/manager.js';
+import { Log } from '../../../core/logger.js';
 
 const K_ON = 'mt5_th_on';
 const REAPPLY_MS = 2000;    // re-apply cadence (attach prims on new panes etc.)
@@ -174,7 +175,7 @@ const TradeHistory = {
   _ver: 0,                // bumped on every deals change (cache invalidation)
 
   init() {
-    try { this.on = localStorage.getItem(K_ON) !== '0'; } catch (e) {}
+    try { this.on = localStorage.getItem(K_ON) !== '0'; } catch (e) { Log.debug('trade', 'history pref load failed', e) }
     this._openSig = '';
     /* a state-poll change (position opened/closed) usually means a new deal */
     Trade.onChange.push(() => {
@@ -208,7 +209,7 @@ const TradeHistory = {
 
   toggle() {
     this.on = !this.on;
-    try { localStorage.setItem(K_ON, this.on ? '1' : '0'); } catch (e) {}
+    try { localStorage.setItem(K_ON, this.on ? '1' : '0'); } catch (e) { Log.warn('trade', 'history pref save failed', e) }
     if (this._tip) this._tip.style.display = 'none'; /* no frozen hover box */
     this._dirty = true;
     this.applyAll();
@@ -590,7 +591,7 @@ const TradeHistory = {
 
   applyAll() {
     for (const pane of App.panes) {
-      try { this.applyPane(pane); } catch (e) {}
+      try { this.applyPane(pane); } catch (e) { Log.debug('trade', 'history overlay apply failed', e) }
     }
   },
 

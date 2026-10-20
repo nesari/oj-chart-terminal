@@ -38,6 +38,7 @@ import { App } from '../../../core/state.js';
 import { U } from '../core/util.js';
 import { Trade, OT_NAME } from './state.js';
 import { TradeRoute } from './route.js';
+import { Log } from '../../../core/logger.js';
 
 const K_CFG = 'mt5_tralert_cfg';
 const K_NLOG = 'mt5_trnotify_log';
@@ -112,16 +113,16 @@ const TradeAlerts = {
       try {
         if (o && Number(o.orderType) >= 2 && d && d.order)
           this._recentPend.set(Number(d.order), { at: Date.now() });
-      } catch (e) {}
+      } catch (e) { Log.debug('alerts', 'pending-order tracking failed', e) }
       return d;
     });
     /* structure diff after every state poll */
-    Trade.onChange.push(() => { try { this._diff(); } catch (e) {} });
+    Trade.onChange.push(() => { try { this._diff(); } catch (e) { Log.debug('alerts', 'alert state diff failed', e) } });
     /* ROUND129: the daily purge — run once at boot, then re-check on the
        30-min interval (the gate keeps the actual sweep to once per day;
        _logEvent re-checks before every store so a throttled interval can
        never let the list grow unbounded) */
-    try { this.purgeNlog(); } catch (e) {}
+    try { this.purgeNlog(); } catch (e) { Log.debug('alerts', 'alert log purge failed', e) }
     if (!this._purgeTimer) {
       this._purgeTimer = setInterval(() => {
         try { this.purgeNlog(); } catch (e) {}
@@ -130,7 +131,7 @@ const TradeAlerts = {
     /* SL/TP touch monitor on the live tick stream.
        NOTE: App.onTickHooks is copied into the feed EARLY in boot, so a
        hook registered later must attach to the feed directly as well. */
-    const hook = (sym) => { try { this._onTick(sym); } catch (e) {} };
+    const hook = (sym) => { try { this._onTick(sym); } catch (e) { Log.debug('alerts', 'alert tick handling failed', e) } };
     (App.onTickHooks = App.onTickHooks || []).push(hook);
     if (App.feed && App.feed.onTick && !App.feed.onTick.includes(hook)) App.feed.onTick.push(hook);
   },

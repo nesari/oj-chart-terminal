@@ -12,6 +12,7 @@ import { icon } from '../ui/icons.js';
 import { PineUI } from '../chart/pine-ui.js';
 import { tradeGroups, tradesCsv, filterReport, paginate, excursionSpikes, runupDrawdown, tradesAnalysis, perfSummary } from '../../../core/pine/stdlib/strategy.js';
 import { GoToDate } from '../panels/gotodate.js';
+import { Log } from '../../../core/logger.js';
 
 const Tester = {};
 
@@ -852,7 +853,7 @@ function downloadCsv(rep) {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 500);
-  } catch (e) {}
+  } catch (e) { Log.warn('panel', 'CSV export failed', e) }
 }
 
 Tester.refresh = function () {

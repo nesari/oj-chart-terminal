@@ -75,7 +75,7 @@ export function installElectronHost() {
       box.appendChild(t);
       setTimeout(() => { try { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; } catch (e) {} }, 5200);
       setTimeout(() => { try { t.remove(); } catch (e) {} }, 5600);
-    } catch (e) {}
+    } catch (e) { Log.warn('error', 'crash toast failed', e) }
   };
 
   window.addEventListener('error', (ev) => {

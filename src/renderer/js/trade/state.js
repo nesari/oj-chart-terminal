@@ -65,13 +65,13 @@ const Trade = {
 
   setPlTag(v) {
     this.plTag = !!v;
-    try { localStorage.setItem(K_PLTAG, this.plTag ? '1' : '0'); } catch (e) {}
+    try { localStorage.setItem(K_PLTAG, this.plTag ? '1' : '0'); } catch (e) { Log.warn('trade', 'P/L tag pref save failed', e) }
     for (const f of this.onChange) { try { f(); } catch (er) {} }
   },
 
   setVolTag(v) {
     this.volTag = !!v;
-    try { localStorage.setItem(K_VOLTAG, this.volTag ? '1' : '0'); } catch (e) {}
+    try { localStorage.setItem(K_VOLTAG, this.volTag ? '1' : '0'); } catch (e) { Log.warn('trade', 'volume tag pref save failed', e) }
     for (const f of this.onChange) { try { f(); } catch (er) {} }
   },
 
@@ -85,8 +85,8 @@ const Trade = {
   /* ---------- lifecycle ---------- */
   init() {
     if (this._pollTimer) return;
-    try { this.plTag = localStorage.getItem(K_PLTAG) !== '0'; } catch (e) {}
-    try { this.volTag = localStorage.getItem(K_VOLTAG) !== '0'; } catch (e) {}
+    try { this.plTag = localStorage.getItem(K_PLTAG) !== '0'; } catch (e) { Log.debug('trade', 'P/L tag pref load failed', e) }
+    try { this.volTag = localStorage.getItem(K_VOLTAG) !== '0'; } catch (e) { Log.debug('trade', 'volume tag pref load failed', e) }
     this._pollTimer = setInterval(() => { this.refresh(); }, POLL_MS);
     /* every provider tick refreshes the quote map the live P/L uses */
     App.feed.onTick.push((sym, price, time, vol, bid, ask) => {

@@ -143,7 +143,7 @@ const DEFAULTS = {
       }
       /* round 32: indicator sub-panes wear the same skin (colors/crosshair/
          scales) and re-fit their geometry */
-      if (Manager.applySubPaneSettings) { try { Manager.applySubPaneSettings(pane); } catch (e) {} }
+      if (Manager.applySubPaneSettings) { try { Manager.applySubPaneSettings(pane); } catch (e) { Log.debug('chart', 'sub-pane settings apply failed', e) } }
       /* price scale placement */
       const scaleId = c.scalesPlacement === 'left' ? 'left' : 'right';
       if ((pane._scaleId || 'right') !== scaleId) {
@@ -161,7 +161,7 @@ const DEFAULTS = {
       if (Manager.updateLegendTitle) Manager.updateLegendTitle(pane);
       if (Manager.updateLegend) Manager.updateLegend(pane, null);
       if (Manager.updateCountdowns) Manager.updateCountdowns();
-    } catch (e) {}
+    } catch (e) { Log.debug('chart', 'settings apply failed', e) }
   };
 
   Settings.set = function (key, val, opts) {
@@ -176,7 +176,7 @@ const DEFAULTS = {
     if (opts && opts.noApply) return;
     /* special-cases first */
     if (key === 'precision') {
-      for (const p of App.panes) { try { Manager.applySeriesFormat(p); } catch (e) {} }
+      for (const p of App.panes) { try { Manager.applySeriesFormat(p); } catch (e) { Log.debug('chart', 'precision format reapply failed', e) } }
       return;
     }
     if (key === 'dayOfWeek') { Manager.applyTimezone(); return; }
@@ -617,7 +617,7 @@ const DEFAULTS = {
         try {
           const mode = (Theme && Theme.mode) || 'dark';
           if (Theme && Theme.chartDefaults) Object.assign(d, Theme.chartDefaults(mode));
-        } catch (e) {}
+        } catch (e) { Log.debug('chart', 'theme factory defaults failed', e) }
         return d;
       }
       const sel = document.createElement('select');

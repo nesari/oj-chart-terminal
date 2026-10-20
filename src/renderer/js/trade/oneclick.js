@@ -107,6 +107,7 @@ import { UI } from '../drawing/ui.js';
 import { icon } from '../ui/icons.js';
 import { Trade, OT, OT_NAME } from './state.js';
 import { TradeRoute } from './route.js';
+import { Log } from '../../../core/logger.js';
 
 const K = {
   min: 'mt5_oct_min',        // minimized (global, persisted)
@@ -1368,9 +1369,9 @@ const OneClick = {
   _posSaveFor(sym, pos) {
     if (!sym) return;
     this._posBySym[sym] = pos ? { fx: pos.fx, fy: pos.fy } : null;
-    try { U.lsSet(K.posMap, JSON.stringify(this._posBySym)); } catch (e) {}
+    try { U.lsSet(K.posMap, JSON.stringify(this._posBySym)); } catch (e) { Log.warn('trade', 'one-click position map save failed', e) }
     /* keep the legacy key mirrored (older builds / tests read it) */
-    if (pos) { try { U.lsSet(K.pos, JSON.stringify(pos)); } catch (e) {} }
+    if (pos) { try { U.lsSet(K.pos, JSON.stringify(pos)); } catch (e) { Log.warn('trade', 'one-click position save failed', e) } }
   },
 
   _position(st) {

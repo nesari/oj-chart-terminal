@@ -49,7 +49,7 @@ function paintPaneForced(pane) {
   try {
     pane._pineGen = (pane._pineGen || 0) + 1;
     const set = pane._pineAdapters;
-    if (set) for (const ad of set) { try { ad.frame(true); } catch (e) {} }
+    if (set) for (const ad of set) { try { ad.frame(true); } catch (e) { Log.debug('pine', 'adapter frame broadcast failed', e) } }
   } finally {
     pane._pinePaintForced = false;
   }
@@ -181,7 +181,7 @@ class PineRenderAdapter {
     if (!pc) return;
     // shared across instances: removed when the LAST instance detaches
     const remaining = (this.pane.pineScripts || []).filter((i) => i.id !== this.inst.id);
-    if (!remaining.length) { try { pc.bg.remove(); pc.fg.remove(); } catch (e) {} this.pane._pineCanvases = null; }
+    if (!remaining.length) { try { pc.bg.remove(); pc.fg.remove(); } catch (e) { Log.debug('pine', 'pine canvas teardown failed', e) } this.pane._pineCanvases = null; }
   }
 
   /* ROUND155: per-adapter dashboard divs; the shared layer dies with the
@@ -224,7 +224,7 @@ class PineRenderAdapter {
     try {
       const lr = pane.chart.timeScale().getVisibleLogicalRange();
       if (lr) chart.timeScale().setVisibleLogicalRange({ from: lr.from, to: lr.to });
-    } catch (e) {}
+    } catch (e) { Log.debug('pine', 'adapter range restore failed', e) }
     Manager.layoutSubPanes(pane);
     this.sub = sub;
     return sub;
@@ -390,7 +390,7 @@ class PineRenderAdapter {
       && this._hlinesBuilt === (rt.out.hlines && rt.out.hlines.length > 0);
     if (same) return;
     const chart = this.sub ? this.sub.chart : this.pane.chart;
-    for (const { s } of this.series) { try { chart.removeSeries(s); } catch (e) {} }
+    for (const { s } of this.series) { try { chart.removeSeries(s); } catch (e) { Log.debug('pine', 'adapter series teardown failed', e) } }
     this.series = [];
     const plOwner = this.priceLineOwner;
     if (plOwner) { try { plOwner.removePriceLine && this.priceLines.forEach((pl) => plOwner.removePriceLine(pl)); } catch (e) {} }

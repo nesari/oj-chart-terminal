@@ -353,7 +353,7 @@ const LWC = window.LightweightCharts;
       const mkHist = (Manager.tradeHistoryMarkers ? Manager.tradeHistoryMarkers(pane) : []);
       const mkStrat = (Manager.strategyMarkers ? Manager.strategyMarkers(pane) : []);
       if (pane.series.setMarkers) pane.series.setMarkers(mkBase.concat(mkHist, mkStrat));
-    } catch (e) {}
+    } catch (e) { Log.debug('chart', 'pane markers apply failed', e) }
   }
   Manager.applyPaneMarkers = applyPaneMarkers;
 
@@ -1512,7 +1512,7 @@ const LWC = window.LightweightCharts;
        and reconnects all funnel through loadBars, and each must rebuild the
        stitched series instead of fetching plain provider bars. */
     if (App.sessionHook && App.sessionHook.active && App.sessionHook.active()) {
-      try { App.sessionHook.loadPane(pane); } catch (e) {}
+      try { App.sessionHook.loadPane(pane); } catch (e) { Log.warn('chart', 'session restore for pane failed', e) }
       return;
     }
     /* ROUND80 (perf on TF switch): kick the Pine lower-TF (M1) prefetch NOW,
@@ -1520,7 +1520,7 @@ const LWC = window.LightweightCharts;
        request.security_lower_tf (786 Zones) used to wait for BOTH round-trips
        back-to-back before their first bar ran. Fire-and-forget: runFull's own
        ensureM1Cache stays the authority and reuses whatever landed. */
-    try { Manager.prefetchPine && Manager.prefetchPine(pane); } catch (e) {}
+    try { Manager.prefetchPine && Manager.prefetchPine(pane); } catch (e) { Log.debug('pine', 'pine prefetch failed', e) }
     pane.loading = true;
     pane._loadStartedAt = Date.now(); // F4/R26: stuck-loading watchdog anchor
     setPaneLoading(pane, true);
@@ -2650,7 +2650,7 @@ const LWC = window.LightweightCharts;
     try {
       const lr = src.chart.timeScale().getVisibleLogicalRange();
       if (lr) syncTimeTo(src, lr);
-    } catch (e) {}
+    } catch (e) { Log.debug('chart', 'time sync init failed', e) }
   };
 
   /* ROUND121: the third parameter is the chart-TABS restore path — an EXPLICIT

@@ -31,6 +31,7 @@ import { RightPanel } from '../ui/rightpanel.js';
 import { icon } from '../ui/icons.js';
 import { Trade, OT } from './state.js';
 import { TradeRoute } from './route.js';
+import { Log } from '../../../core/logger.js';
 
 const K = {
   vol: 'mt5_tr_volume', slOn: 'mt5_tr_slon', tpOn: 'mt5_tr_tpon',
@@ -349,7 +350,7 @@ const TradeTicket = {
   _clearPreview() {
     const pv = this._prev;
     if (!pv) return;
-    for (const l of pv.lines) { try { pv.pane.series.removePriceLine(l); } catch (e) {} }
+    for (const l of pv.lines) { try { pv.pane.series.removePriceLine(l); } catch (e) { Log.debug('trade', 'ticket preview line cleanup failed', e) } }
     this._prev = null;
   },
 
@@ -817,7 +818,7 @@ const TradeTicket = {
      (the demo stub that used to own Toolbar.openOrderTicket is overridden
      in app.js — this is the TV-style entry point from the price axis) */
   openTicket(pane, presetPrice, preset) {
-    try { RightPanel.showTab('trade'); } catch (e) {}
+    try { RightPanel.showTab('trade'); } catch (e) { Log.debug('trade', 'trade panel open failed', e) }
     if (pane && pane.symbol) this._sym = pane.symbol; // ticket targets the clicked chart
     if (preset && preset.type) {
       this.els.type.value = preset.type;

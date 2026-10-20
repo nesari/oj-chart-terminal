@@ -28,7 +28,7 @@ let mode = 'demo';
   function hasApi() { return window.electronAPI && window.electronAPI.accountsLoad; }
   async function persist() {
     if (!hasApi()) return;
-    try { await window.electronAPI.accountsSave(ACC); } catch (e) {}
+    try { await window.electronAPI.accountsSave(ACC); } catch (e) { Log.warn('auth', 'account list save failed', e) }
   }
 
   /* ---------- login screen ---------- */
@@ -86,7 +86,7 @@ let mode = 'demo';
     try { /* server picked in-app for a session that isn't remembered */
       const sw = sessionStorage.getItem('mt5_srv_switch');
       if (sw) { document.getElementById('mt5-server').value = sw; sessionStorage.removeItem('mt5_srv_switch'); }
-    } catch (e) {}
+    } catch (e) { Log.warn('auth', 'login init failed', e) }
 
     document.getElementById('login-connect').addEventListener('click', connect);
     document.addEventListener('keydown', (e) => {
@@ -230,7 +230,7 @@ let mode = 'demo';
     try {
       let id = null;
       try { if (window.mt5Tabs && window.mt5Tabs.providerIdentity) id = await window.mt5Tabs.providerIdentity(); } catch (e) {}
-      if (hasApi()) { try { ACC = await window.electronAPI.accountsLoad(); } catch (e) {} }
+      if (hasApi()) { try { ACC = await window.electronAPI.accountsLoad(); } catch (e) { Log.warn('auth', 'account list load failed', e) } }
       let a = null;
       if (id && id.mode === 'mt5') {
         a = ACC.accounts.find((z) => z.mode === 'mt5' && String(z.login) === String(id.login) &&

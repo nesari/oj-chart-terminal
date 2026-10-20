@@ -85,7 +85,7 @@ function boot() {
        order surfaces would also double-fire against one provider. Charts,
        indicators, drawings, alerts, watchlist stay fully functional. */
     const SOLO_MODE = /solo=[\w-]+/.test(location.hash || '');
-    if (SOLO_MODE) { try { document.body.classList.add('solo'); } catch (e) {} }
+    if (SOLO_MODE) { try { document.body.classList.add('solo'); } catch (e) { Log.debug('app', 'solo shell class failed', e) } }
 
     /* ROUND125 (user request): TradingView-Desktop window shell — the OS
        title bar no longer exists (main.js boots frame:false), so these are
@@ -195,7 +195,7 @@ function boot() {
       TradeRoute.init();
       /* the persisted Demo/Live switch is global — a detached window adopts
          a mode flip made in the main window (silent, no toast) */
-      setInterval(() => { try { TradeRoute.refreshMode(); } catch (e) {} }, 2500);
+      setInterval(() => { try { TradeRoute.refreshMode(); } catch (e) { Log.debug('trade', 'trade mode refresh failed', e) } }, 2500);
     }
     GoToDate.init();
     SessionRange.init();
@@ -235,7 +235,7 @@ function boot() {
     // the provider re-measured the broker timezone offset (login/bars/tick):
     // every time display (axis, crosshair, data window, clock) must re-render
     App.feed.onBrokerOff.push(() => {
-      try { Manager.applyTimezone(); } catch (e) {}
+      try { Manager.applyTimezone(); } catch (e) { Log.warn('chart', 'timezone apply failed', e) }
     });
 
     // Alt bypasses Magnet Mode while held (TV behaviour); reset on window blur
@@ -384,7 +384,7 @@ function boot() {
     });
 
     window.addEventListener('beforeunload', () => {
-      try { App.feed.close(); } catch (e) {}
+      try { App.feed.close(); } catch (e) { Log.debug('feed', 'feed close on unload failed', e) }
     });
 
     // expose for tests / debugging — the SANCTIONED debug facade: everything

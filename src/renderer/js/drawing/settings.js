@@ -28,6 +28,7 @@ import { App } from '../../../core/state.js';
 import { TOOLS, EMOJI_CATS } from './tools.js';
 import { Toolbar } from '../chart/toolbar.js';
 import { UI } from './ui.js';
+import { Log } from '../../../core/logger.js';
 
 /* ================= interval visibility ================= */
   const VIS_DEFS = [
@@ -621,7 +622,7 @@ import { UI } from './ui.js';
       const o = JSON.parse(JSON.stringify(d.opts));
       delete o.vis;
       delete o.text; // round 20: the annotation text never carries to new drawings
-      try { U.lsSet('mt5_tool_last_' + type, o); } catch (e) {}
+      try { U.lsSet('mt5_tool_last_' + type, o); } catch (e) { Log.warn('drawing', 'last tool pref save failed', e) }
     }
     function close(commit) {
       document.removeEventListener('keydown', onKey);
@@ -1241,7 +1242,7 @@ import { UI } from './ui.js';
           const rr = pane.root.getBoundingClientRect();
           pos = { x: rr.left + (mnx + mxx) / 2 + 28, y: rr.top + mny - 16 };
         }
-      } catch (e) {}
+      } catch (e) { Log.debug('drawing', 'settings placement failed', e) }
       if (!pos) {
         const ar = (document.getElementById('charts-area') || document.body).getBoundingClientRect();
         pos = { x: ar.left + ar.width / 2 - 230, y: ar.top + 90 };

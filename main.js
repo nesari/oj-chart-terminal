@@ -223,13 +223,13 @@ function pyExe() { return process.platform === 'win32' ? 'python' : 'python3'; }
 function providerLog(msg) {
   mlogEvent(/missing|failed|[Ee]rror|No module|Traceback|exited/i.test(msg) ? 'error' : 'info', 'provider', msg);
   if (mainWindow && !mainWindow.isDestroyed()) {
-    try { mainWindow.webContents.send('provider-log', String(msg).slice(0, 600)); } catch (e) {}
+    try { mainWindow.webContents.send('provider-log', String(msg).slice(0, 600)); } catch (e) { mlogEvent('debug', 'ipc', 'provider log forward failed') }
   }
 }
 
 function stopProvider() {
   if (providerProc) {
-    try { providerProc.kill(); } catch (e) {}
+    try { providerProc.kill(); } catch (e) { mlogEvent('warn', 'ipc', 'provider kill failed', { error: String(e && e.message || e) }) }
     providerProc = null;
   }
   providerIdent = null;
@@ -572,7 +572,7 @@ ipcMain.on('win:minimize', (e) => {
 ipcMain.on('win:maximize', (e) => {
   const w = BrowserWindow.fromWebContents(e.sender);
   if (!w || w.isDestroyed()) return;
-  try { if (w.isMaximized()) w.unmaximize(); else w.maximize(); } catch (err) {}
+  try { if (w.isMaximized()) w.unmaximize(); else w.maximize(); } catch (e) { mlogEvent('warn', 'ipc', 'maximize toggle failed', { error: String(e && e.message || e) }) }
 });
 ipcMain.on('win:close', (e) => {
   const w = BrowserWindow.fromWebContents(e.sender);
@@ -621,7 +621,7 @@ function accountsFile() { return path.join(app.getPath('userData'), 'mt5-account
 
 function loadAccounts() {
   let data = { accounts: [], last: '' };
-  try { data = JSON.parse(fs.readFileSync(accountsFile(), 'utf8')); } catch (e) {}
+  try { data = JSON.parse(fs.readFileSync(accountsFile(), 'utf8')); } catch (e) { mlogEvent('warn', 'auth', 'accounts file unreadable', { error: String(e && e.message || e) }) }
   const enc = safeStorage.isEncryptionAvailable();
   for (const a of (data.accounts || [])) {
     if (a.pw) {
@@ -640,7 +640,7 @@ function saveAccounts(data) {
                 login: String(a.login || ''), server: String(a.server || ''),
                 path: String(a.path || ''), label: String(a.label || ''), ts: a.ts || 0, pw: '' };
     if (a.pw && enc) {
-      try { o.pw = safeStorage.encryptString(String(a.pw)).toString('base64'); } catch (e) {} // never store plaintext
+      try { o.pw = safeStorage.encryptString(String(a.pw)).toString('base64'); } catch (e) { mlogEvent('warn', 'auth', 'account password encrypt failed', { error: String(e && e.message || e) }) } // never store plaintext
     }
     out.accounts.push(o);
   }
@@ -671,7 +671,7 @@ ipcMain.on('notify', (e, p) => {
     const t = vStr(String((p && p.title) == null ? '' : p.title), 120);
     const b = vStr(String((p && p.body) == null ? '' : p.body), 500);
     if (Notification.isSupported()) new Notification({ title: t || 'OJ Chart', body: b || '', icon: ALERT_ICON, silent: false }).show();
-  } catch (err) {}
+  } catch (e) { mlogEvent('warn', 'alerts', 'notification display failed', { error: String(e && e.message || e) }) }
 });
 
 /* chart snapshot: save the PNG behind a data URL with a Save-As dialog */
@@ -741,7 +741,7 @@ function hardenPermissions(session) {
     /* Returning true ALLOWS the permission (electron.d.ts) — so deny everything.
        If a permission is ever needed, build an explicit allow-list instead. */
     session.setPermissionCheckHandler(() => false);
-  } catch (e) {}
+  } catch (e) { mlogEvent('warn', 'security', 'permission handler setup failed', { error: String(e && e.message || e) }) }
 }
 
 /* ===== ROUND126 (security): global webContents safety net =====

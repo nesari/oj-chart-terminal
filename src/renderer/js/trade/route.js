@@ -29,6 +29,7 @@
 import { U } from '../core/util.js';
 import { UI } from '../drawing/ui.js';
 import { Trade } from './state.js';
+import { Log } from '../../../core/logger.js';
 
 const K_MODE = 'mt5_trade_mode';
 
@@ -43,7 +44,7 @@ const TradeRoute = {
 
   init() {
     let m = 'live';
-    try { m = U.lsGet(K_MODE, 'live'); } catch (e) {}
+    try { m = U.lsGet(K_MODE, 'live'); } catch (e) { Log.debug('trade', 'route mode load failed', e) }
     this.mode = m === 'demo' ? 'demo' : 'live';
     this._wireUI();
     this._paintUI();
@@ -71,7 +72,7 @@ const TradeRoute = {
     const m = mode === 'demo' ? 'demo' : 'live';
     if (m === this.mode) return;
     this.mode = m;
-    try { U.lsSet(K_MODE, m); } catch (e) {}
+    try { U.lsSet(K_MODE, m); } catch (e) { Log.warn('trade', 'route mode save failed', e) }
     this._paintUI();
     for (const f of this.onChange) { try { f(); } catch (e) {} }
     if (!silent) {

@@ -393,7 +393,7 @@ const HIT = 7;
        (called from Manager.destroyPanes; a missing method is simply not
        called, so older teardown paths stay compatible). */
     destroy() {
-      try { if (this._onWinUp) { window.removeEventListener('mouseup', this._onWinUp); } } catch (e) {}
+      try { if (this._onWinUp) { window.removeEventListener('mouseup', this._onWinUp); } } catch (e) { Log.debug('drawing', 'window listener cleanup failed', e) }
       this._onWinUp = null;
     }
 
@@ -443,7 +443,7 @@ const HIT = 7;
           ? new WheelEvent('wheel', Object.assign({ deltaX: 0, deltaY: 0, deltaMode: 0 }, opts))
           : new MouseEvent(type, opts);
         el.dispatchEvent(ev);
-      } catch (e) {}
+      } catch (e) { Log.debug('drawing', 'virtual event dispatch failed', e) }
     }
     /* TV: wheel over the price scale zooms it vertically. The lib's own price-axis
        gesture is inert in this build, so the zoom is done with scale margins
@@ -452,7 +452,7 @@ const HIT = 7;
       try {
         const m = this.pane.chart.priceScale('right').options().scaleMargins;
         if (m && isFinite(m.top) && isFinite(m.bottom)) return { top: m.top, bottom: m.bottom };
-      } catch (e) {}
+      } catch (e) { Log.debug('drawing', 'scale margin read failed', e) }
       return { top: 0.2, bottom: 0.15 };
     }
     _applyMargins(t, b) {
@@ -1292,7 +1292,7 @@ const HIT = 7;
       if (!App.stayDraw) App.tool = null;
       if (UI.onToolDone) UI.onToolDone();
       if (!valid) return;
-      try { if (def.afterFinish) def.afterFinish(d); } catch (e) {}
+      try { if (def.afterFinish) def.afterFinish(d); } catch (e) { Log.debug('drawing', 'tool finish hook failed', e) }
       App.drawings.add(this.pane.symbol, d);
       /* ROUND243 (TV parity): creation never pushed an undo step (freehand
          did, engine.js:599) — Ctrl+Z left a fresh trend/channel/fork on the

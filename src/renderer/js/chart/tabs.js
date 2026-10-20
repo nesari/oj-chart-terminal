@@ -78,6 +78,7 @@ import { Manager } from './manager.js';
 import { Toolbar } from './toolbar.js';
 import { UI } from '../drawing/ui.js';
 import { icon } from '../ui/icons.js';
+import { Log } from '../../../core/logger.js';
 
 const K = { key: 'mt5_tabs', v: 1 };
 
@@ -161,7 +162,7 @@ const Tabs = {
           this.activeId = this.list[0].id;
         }
         this._persist();
-      } catch (e) {}
+      } catch (e) { Log.warn('chart', 'tab state restore failed', e) }
       this.render();
     };
 
@@ -184,7 +185,7 @@ const Tabs = {
             this.activeId = rec.id;
             this._restore(rec);
             this._persist();
-          } catch (e) {}
+          } catch (e) { Log.warn('chart', 'tab strip restore failed', e) }
           this.render();
         })
         .catch(() => { try { bootStrip(); } catch (e) {} });
@@ -278,8 +279,8 @@ const Tabs = {
        it (Chrome) — its per-solo store is dropped so stale keys never
        accumulate; the dock-back promotion already retired the key itself. */
     window.addEventListener('beforeunload', () => {
-      try { this.capture(); } catch (e) {}
-      if (SOLO_ID) { try { localStorage.removeItem(STORE_KEY); } catch (e) {} }
+      try { this.capture(); } catch (e) { Log.debug('chart', 'tab capture on unload failed', e) }
+      if (SOLO_ID) { try { localStorage.removeItem(STORE_KEY); } catch (e) { Log.debug('chart', 'solo tab state clear failed', e) } }
     });
 
     this.render();
@@ -505,7 +506,7 @@ const Tabs = {
         this.capture();
         this.renderTitles();
       });
-    } catch (e) {}
+    } catch (e) { Log.debug('chart', 'symbol picker open failed', e) }
   },
 
   create(symbol) {
@@ -831,7 +832,7 @@ const Tabs = {
       catch (e) { return 'demo'; }
     })();
     let r = null;
-    try { r = await window.mt5Tabs.undock({ soloId, mode, rec }); } catch (e) {}
+    try { r = await window.mt5Tabs.undock({ soloId, mode, rec }); } catch (e) { Log.warn('chart', 'undock request failed', e) }
     if (!r || !r.ok) {
       /* rollback: the window did not open — put the tab back exactly where it was */
       try { localStorage.removeItem('mt5_tab_solo_' + soloId); } catch (e) {}
@@ -870,7 +871,7 @@ const Tabs = {
     rec._docking = true;   // dimmed while in flight (CSS)
     this.render();
     let r = null;
-    try { r = await window.mt5Tabs.dockback({ soloId: SOLO_ID, rec: copy }); } catch (e) {}
+    try { r = await window.mt5Tabs.dockback({ soloId: SOLO_ID, rec: copy }); } catch (e) { Log.warn('chart', 'dock-back request failed', e) }
     if (!r || !r.ok) {
       /* no host alive: promote this window — its whole strip becomes the
          app's tab strip (mt5_tabs) and the solo key is retired */
@@ -910,7 +911,7 @@ const Tabs = {
         if (k && k.indexOf('mt5_tab_dockback_') === 0) keys.push(k);
       }
       for (const k of keys) { try { localStorage.removeItem(k); } catch (e) {} }
-    } catch (e) {}
+    } catch (e) { Log.warn('chart', 'dock handoff cleanup failed', e) }
     this.capture();
     delete rec._docking;
     this.list.push(rec);
@@ -918,7 +919,7 @@ const Tabs = {
     this._restore(this.list.find((t) => t.id === rec.id));
     this._persist();
     this.render();
-    try { await window.mt5Tabs.dockAck({ soloId, ids: [rec.id] }); } catch (e) {}
+    try { await window.mt5Tabs.dockAck({ soloId, ids: [rec.id] }); } catch (e) { Log.debug('chart', 'dock ack failed', e) }
   },
 
   /* SOLO side: the host confirmed the handoff — drop the acked records and

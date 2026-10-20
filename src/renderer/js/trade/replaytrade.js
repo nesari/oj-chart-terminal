@@ -55,6 +55,7 @@ import {
   mround, clampVol, demoProfit, demoMargin, baseUsdRate,
   pendingTriggered, barStopsHit, priceStopsHit, stopsCheck,
 } from '../../../core/demo-math.js';
+import { Log } from '../../../core/logger.js';
 
 const HIT_PX = 9;
 const SYNC_MS = 700;
@@ -137,7 +138,7 @@ function nowT() {
 function loadCfg() {
   const def = { deposit: 10000, leverage: 100, spreadPts: 0, stopOutPct: 50, volume: 0.10 };
   let c = null;
-  try { c = U.lsGet(K_CFG, null); } catch (e) {}
+  try { c = U.lsGet(K_CFG, null); } catch (e) { Log.warn('trade', 'replay config load failed', e) }
   D.cfg = Object.assign(def, c && typeof c === 'object' ? c : {});
   D.cfg.deposit = num(D.cfg.deposit, 10000, 1, 1e9);
   D.cfg.leverage = num(D.cfg.leverage, 100, 1, 100000);
@@ -152,7 +153,7 @@ function num(v, def, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 function saveCfg() {
-  try { U.lsSet(K_CFG, D.cfg); } catch (e) {}
+  try { U.lsSet(K_CFG, D.cfg); } catch (e) { Log.warn('trade', 'replay config save failed', e) }
 }
 
 /* ---------- ROUND112 account snapshot persistence ----------
@@ -229,7 +230,7 @@ function saveAcct() {
       }));
       D._shadowBal = mergedBal;
       if (mergedSeq > D.seq) D.seq = mergedSeq;
-    } catch (e) {}
+    } catch (e) { Log.warn('trade', 'replay account save failed', e) }
   }, 400);
 }
 
@@ -666,7 +667,7 @@ const ReplayTrade = {
   init() {
     if (this._syncTimer) return;
     loadCfg();
-    this._syncTimer = setInterval(() => { try { this.sync(); } catch (e) {} }, SYNC_MS);
+    this._syncTimer = setInterval(() => { try { this.sync(); } catch (e) { Log.debug('trade', 'replay sync failed', e) } }, SYNC_MS);
     setInterval(() => { try { this._updateTitles(); } catch (e) {} }, 900);
     setInterval(() => { try { this._updateLive(); } catch (e) {} }, 500);
     /* ROUND112: when Bar Replay is OFF the live tick stream drives the demo
@@ -681,7 +682,7 @@ const ReplayTrade = {
         if (now - D._lastEval < LIVE_EVAL_MS) return;
         D._lastEval = now;
         evaluate();
-      } catch (e) {}
+      } catch (e) { Log.warn('trade', 'replay init step failed', e) }
     }, 120);
     document.addEventListener('mousemove', this._onMove.bind(this), true);
     document.addEventListener('mouseup', this._onUp.bind(this), true);

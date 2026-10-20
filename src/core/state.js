@@ -11,6 +11,7 @@
 
 import { ENV } from './env.js';
 import { debounce } from './util.js';
+import { Log } from './logger.js';
 
 const TF = [
     { id: 'S1', sec: 1, label: '1s', group: 'Seconds' },
@@ -433,7 +434,7 @@ const TF = [
   (function loadCustomTfs() {
     const saved = ENV.storage.get('mt5_custom_tfs', []);
     for (const c of (saved || []).slice(0, 30)) {
-      try { if (c && c.n > 0 && UNIT_SEC[c.unit]) registerTf(makeCustomTf(c.n, c.unit)); } catch (e) {}
+      try { if (c && c.n > 0 && UNIT_SEC[c.unit]) registerTf(makeCustomTf(c.n, c.unit)); } catch (e) { Log.warn('state', 'custom timeframe restore failed', e) }
     }
   })();
 
