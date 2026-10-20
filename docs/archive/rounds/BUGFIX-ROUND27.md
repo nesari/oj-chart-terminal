@@ -52,7 +52,7 @@ OJChart همهٔ مهرهای زمان را در ورودی به **UTC واقع�
   استفاده می‌کنند — و `feed.js` digits را از پاسخ bars هم ثبت می‌کند تا حتی قبل از
   اولین تیک، وچ‌لیست با ارقام واقعی چاپ کند. (پاک‌سازی آخرین ناهمگونی digits)
 
-### اثبات (Playwright E2E — `scripts/bug_repro_offset.py`)
+### اثبات (Playwright E2E — `tools/dev/bug_repro_offset.py`)
 تاریخچهٔ مسموم (سطح 155.2 با مهر زمانی +1 روز) روی EURUSD تزریق می‌شود؛ تیک زنده ≈1.08:
 
 | حالت | قبل از فیکس | بعد از فیکس |
@@ -115,11 +115,11 @@ DOM/عمق بازار، تقویم اقتصادی، سشن‌بندها — نی
 ---
 
 ## ۳) تست‌ها
-- `scripts/bug_repro_offset.py` (تصمیم‌گیرندهٔ باگ): off=0 HEALED ✅ / off=-5400 HEALED ✅ (قبلاً STUCK)
-- `scripts/test_round27_features.py` (جدید، ۱۱ چک): عمق M1=5000 ✅ · صفحهٔ قدیمی‌تر
+- `tools/dev/bug_repro_offset.py` (تصمیم‌گیرندهٔ باگ): off=0 HEALED ✅ / off=-5400 HEALED ✅ (قبلاً STUCK)
+- `tests/unit/test_round27_features.py` (جدید، ۱۱ چک): عمق M1=5000 ✅ · صفحهٔ قدیمی‌تر
   (+1000 bars، سختِ قدیمی‌تر، صعودی) ✅ · digits=5 چارت+وچ‌لیست ✅ · افزودن EMA/RSI/MACD +
   ردیف‌ها ✅ · RSI∈[0,100] و هیستوگرام MACD ✅ · حذف اندیکاتور ✅ · لجند تاریخ/ساعت ✅ ·
   OHLC رنگی ✅ · **صفر خطای کنسول** ✅ — **11/11 PASS**
-- `scripts/probe_countdown.py`: شمارش معکوس زنده «00:03 → 00:01» (mm:ss درست M1) ✅
+- `tools/dev/probe_countdown.py`: شمارش معکوس زنده «00:03 → 00:01» (mm:ss درست M1) ✅
 - رگرسیون: `py_compile` هر ۳ فایل پرووایدر ✅ · `node --check` تمام jsها ✅
 - اسکرین‌شات‌های مدرک: `docs/r27-t1-depth.png`, `docs/r27-t4-indicators.png`, `docs/r27-final-state.png`

@@ -30,10 +30,10 @@ at openSettingsDialog (pine-ui.js:441) — هنگام کلیک روی چرخ‌�
 ## تحقیق و آزمون
 
 - پروب Node روی فیکسچر واقعی 786-zones.pine: `collectInputs` = ۷۰ تعریف؛ هر ۷ گزینهٔ رشته‌ای اکنون آرایهٔ معمولی (`["Fixed","End of Day","End of Chart"]` و...)؛ رنگ‌ها رشتهٔ CSS و sourceها رشتهٔ ساده‌اند.
-- `scripts/verify_pine74.mjs`: همان **۴۷/۴۷** سبز (موتور دست‌نخورده از نظر ریاضی/اجرا).
-- `scripts/e2e_pine75.py` (رگرسیون راند ۷۵، RSI): همهٔ چک‌ها سبز.
-- **e2e جدید `scripts/e2e_pine76.py`** (هدلس Chromium روی پرووایدر دمو — بازتولید دقیق سناریوی کاربر با خود ۷۸۶ Zones): چسباندن سورس در ادیتور → کامپایل سبز → Add to chart → کلیک چرخ‌دنده → **دیالوگ با هر ۷۰ ورودی و تایپ‌های درست** (۴۲ checkbox، ۱۱ color، ۸ number، ۹ select با گزینه‌های واقعی TV) → ویرایش Days Back → Ok → بستن تمیز بدون backdrop باقی‌مانده → بازسازی سبز → اثبات عدم قفل (بازشدن دیالوگ Indicators بلافاصله پس از آن) → **صفر خطای صفحه در کل سشن** + اسکرین‌شات تأیید بصری (`shots/r76-786-settings.png`).
+- `tests/unit/verify_pine74.mjs`: همان **۴۷/۴۷** سبز (موتور دست‌نخورده از نظر ریاضی/اجرا).
+- `tests/e2e/e2e_pine75.py` (رگرسیون راند ۷۵، RSI): همهٔ چک‌ها سبز.
+- **e2e جدید `tests/e2e/e2e_pine76.py`** (هدلس Chromium روی پرووایدر دمو — بازتولید دقیق سناریوی کاربر با خود ۷۸۶ Zones): چسباندن سورس در ادیتور → کامپایل سبز → Add to chart → کلیک چرخ‌دنده → **دیالوگ با هر ۷۰ ورودی و تایپ‌های درست** (۴۲ checkbox، ۱۱ color، ۸ number، ۹ select با گزینه‌های واقعی TV) → ویرایش Days Back → Ok → بستن تمیز بدون backdrop باقی‌مانده → بازسازی سبز → اثبات عدم قفل (بازشدن دیالوگ Indicators بلافاصله پس از آن) → **صفر خطای صفحه در کل سشن** + اسکرین‌شات تأیید بصری (`shots/r76-786-settings.png`).
 
 ## diff
 
-- **تغییر**: `core/pine/stdlib/inputs.js` (normalizeOptions + snap واقعی)، `chart/pine-ui.js` (شاخهٔ string + buildInput/inline-runها)، `css/app.css` (specificity برچسب + ردیف inline + عرض دیالوگ)، package.json (۱.۹.۲۷)؛ **جدید**: `docs/archive/rounds/BUGFIX-ROUND76.md`، `scripts/e2e_pine76.py`؛ به‌علاوه CHANGELOG.
+- **تغییر**: `core/pine/stdlib/inputs.js` (normalizeOptions + snap واقعی)، `chart/pine-ui.js` (شاخهٔ string + buildInput/inline-runها)، `css/app.css` (specificity برچسب + ردیف inline + عرض دیالوگ)، package.json (۱.۹.۲۷)؛ **جدید**: `docs/archive/rounds/BUGFIX-ROUND76.md`، `tests/e2e/e2e_pine76.py`؛ به‌علاوه CHANGELOG.

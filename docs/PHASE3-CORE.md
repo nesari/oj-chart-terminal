@@ -137,5 +137,5 @@ the renderer's ~150 `U.x` call sites needed **no edits**.
 2. Import core as `../../../core/<name>.js` from `js/<area>/` (the audit
    recomputes and verifies every specifier).
 3. Run the safety net after any change:
-   `bash scripts/check_esm.sh && python3 scripts/audit_imports.py && python3 scripts/test_phase3_core.py`
+   `bash scripts/check_esm.sh && python3 scripts/audit_imports.py && python3 tests/unit/test_phase3_core.py`
    plus the round suites for behavior.

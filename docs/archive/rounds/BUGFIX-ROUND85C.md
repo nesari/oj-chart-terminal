@@ -64,7 +64,7 @@
 ## Tests
 
 - `scripts/test_trade_e2e_browser.py` (Playwright، هدلس): **۳۸/۳۸** — کل مسیر قبلی + ۱۲ چک جدید: بدون‌تگ‌بودن SL/TP، چیپ رنگی محور، cursor روی SL/خط ورود، تولتیپ هاور، درگ از خط ورود → اعمال SL سمت سرور، کلید P/L (چیپ داک + چک‌باکس تیکت)، بستن/بازکردن داک از نوار پایین؛ صفر خطای صفحه.
-- `scripts/test_trade_rpc.py`: **۲۸/۲۸** — `scripts/test_trade_math.mjs`: **۲۱/۲۱** — `scripts/round84_harness.mjs`: ۱۳۵ چک اندیکاتور + ۳۹۲٬۰۰۰ چک bucket-anchor. همه سبز.
+- `scripts/test_trade_rpc.py`: **۲۸/۲۸** — `scripts/test_trade_math.mjs`: **۲۱/۲۱** — `tools/dev/round84_harness.mjs`: ۱۳۵ چک اندیکاتور + ۳۹۲٬۰۰۰ چک bucket-anchor. همه سبز.
 
 ## فایل‌های تغییر کرده
 

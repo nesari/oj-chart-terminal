@@ -17,7 +17,7 @@
 4. Diagnostics: ردیف **Data Health** زنده (HISTORY=LIVE / HISTORY≠LIVE) + دکمهٔ 🔍 **Symbol Probe** که آخرین Closeهای سرو‌شدهٔ پرووایدر را در برابر تیک لاگ می‌کند.
 5. هر payload تاریخچه در لاگ Diagnostics ثبت می‌شود (Export → پاسخ دقیق «پرووایدر چه داد»).
 
-## اثبات روی شرایط واقعی MT5 (تمرین کامل — `scripts/test_mt5_reality.py`، ۹/۹)
+## اثبات روی شرایط واقعی MT5 (تمرین کامل — `tests/unit/test_mt5_reality.py`، ۹/۹)
 کاربر تهران (UTC+3:30) روی بروکر GMT+2 → آفست سرور −۵۴۰۰ ثانیه، EURUSD ۵ رقمی:
 - **P1:** سری == pane.bars == Watchlist == تیک زنده (۱.۰۸۴xx)؛ قیمت داخل بازهٔ محور دیده می‌شود؛ digits=5 تا precision سری می‌رسد؛ serverOff=-5400 اعمال شده؛ بنر مخفی؛ اسکرین‌شات `docs/r29-mt5reality-P1-healthy.png`.
 - **P2:** تزریق تاریخچهٔ سطح-غلط (۱۵۵.۲ — همان حالت «محور یخ‌زده») → در ~۱.۵s توسط گارد R26/27 شناسایی و با reload به قیمت زنده برمی‌گردد؛ بنر بعد از ترمیم پاک می‌شود؛ اسکرین‌شات `docs/r29-mt5reality-P2-healed.png`.

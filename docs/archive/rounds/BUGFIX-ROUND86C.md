@@ -96,12 +96,12 @@ archive synced for a 1-day view, maximizing the cold-sync block behind defect 1.
 
 ## Tests
 
-- `scripts/test_round86c_provider.py` (new, **14/14**): the overflow math reproduced + clamped for
+- `tests/unit/test_round86c_provider.py` (new, **14/14**): the overflow math reproduced + clamped for
   every timeframe; in-process real-socket server proves the loop answers a second connection
   **during** a 2.5 s blocking `get_bars`, ticks resume after, the slow reply arrives (~2.5 s);
   a raising `get_bars` still answers `[]` immediately and the handler survives; the real demo
   provider over the wire answers live-tail, `to`-pages and the MN1 25k-page overflow case.
-- `scripts/test_round86c_paging.mjs` (new, **19/19**): imports the REAL shipped
+- `tests/unit/test_round86c_paging.mjs` (new, **19/19**): imports the REAL shipped
   `gotodate.js`/`session.js` (import-stripped, stubbed) and pins right-sized pages (1640 / 3080 /
   225 — not 25k/20k), single-page fills, cap truncation keeping the newest bars, cold-terminal
   polling, dry-archive stops, and the sliding-pages fix (distinct bars across pages).
@@ -119,4 +119,4 @@ archive synced for a 1-day view, maximizing the cold-sync block behind defect 1.
 | `src/core/feed.js` | `bars_req` → 45 s timeout |
 | `src/renderer/js/panels/gotodate.js` | right-sized pages; oldest-bar fix in `fetchWindow` |
 | `src/renderer/js/panels/session.js` | right-sized pages; oldest-bar fix in `loadBaseBars` |
-| `scripts/test_round86c_provider.py`, `scripts/test_round86c_paging.mjs` | new regression suites |
+| `tests/unit/test_round86c_provider.py`, `tests/unit/test_round86c_paging.mjs` | new regression suites |

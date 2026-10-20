@@ -71,12 +71,12 @@
 | `src/renderer/js/ui/rightpanel.js` | `rpMaxWidth()`؛ کلمپ در `rpApplyWidth`؛ کلمپ دوباره روی resize. |
 | `src/renderer/js/trade/dock.js` | سقف ارتفاع نسبت به پنجره؛ `_applyState` روی resize. |
 | `src/renderer/css/trade.css` | z-index تولتیپ‌ها و منو زیر لایهٔ مودال. |
-| `scripts/test_round103_shortcuts.mjs` | جدید — ۱۵ تست. |
+| `tests/unit/test_round103_shortcuts.mjs` | جدید — ۱۵ تست. |
 
 ## تایید
 
 - `node --check` روی همهٔ JS مخزن → پاک.
-- `scripts/test_round103_shortcuts.mjs` → ۱۵/۱۵.
+- `tests/unit/test_round103_shortcuts.mjs` → ۱۵/۱۵.
 - رگرسیون: round102 ۱۵/۱۵، round88 ۳۰/۳۰، round89 ۱۴/۱۴، round90 ۲۲/۲۲.
 
 ## خارج از محدوده (یافته‌های کم‌اهمیت، رفع‌نشده)

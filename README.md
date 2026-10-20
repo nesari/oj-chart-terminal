@@ -83,7 +83,7 @@ Current version: **1.9.212** (`package.json`).
   plus the Pine engine in `src/core/pine/`). Zero `window` / `document` /
   `electronAPI` references (enforced by tests); the only host seam is
   `core/env.js` (ENV + storage). It runs unchanged in Node, any browser and
-  the Electron renderer — proven by `scripts/test_phase3_core.py`
+  the Electron renderer — proven by `tests/unit/test_phase3_core.py`
   (including a plain-Node import + behavior smoke test).
 - **`src/platform/electron/loghost.js`** — the Electron host adapter: wires
   the batched IPC file-log transport, the global crash net and the
@@ -113,7 +113,7 @@ Current version: **1.9.212** (`package.json`).
 
 Ports can be overridden with `SMOKE_WEB_PORT` / `SMOKE_WS_PORT`; `SMOKE_TIMEOUT_MS` changes the harness timeout.
 CI (`.github/workflows/ci.yml`) runs the full gate on Windows and the two static gates on Linux.
-The older phase scripts (`python3 scripts/test_phase2_modules.py`, `python3 scripts/test_phase3_core.py`) still run standalone.
+The older phase scripts (`python3 tests/unit/test_phase2_modules.py`, `python3 tests/unit/test_phase3_core.py`) still run standalone.
 
 ## Troubleshooting
 

@@ -34,11 +34,11 @@
 | `src/renderer/js/app.js` | import + `Tabs.init()` بعد از `Manager.init()` + facade `__app` |
 | `src/renderer/js/chart/manager.js` | پارامتر سوم اختیاری `explicitPanes` در `setLayout` |
 | `src/renderer/js/chart/toolbar.js` | کال‌بک اختیاری `onPick` در `openSymbolSearch` (بدون کال‌بک = رفتار قبلی) |
-| `scripts/test_round121_tabs.mjs` | **جدید** — ۴۴ بررسی |
+| `tests/unit/test_round121_tabs.mjs` | **جدید** — ۴۴ بررسی |
 
 هیچ فایل دیگری تغییر نکرد: `main.js`، `preload.js`، `provider/*`، `core/state.js`، همهٔ ماژول‌های `trade/*`، `drawing/*` و `panels/*` دست‌نخورده‌اند.
 
 ## تست
-- `scripts/test_round121_tabs.mjs` — ۴۴ بررسی سبز (مدل state، مکانیزم سوییچ، جریان +، تعاملات وین ۱۱، سیم‌کشی shell، قراردادهای CSS، آینه‌های رفتاری reorder/close-neighbour/title).
+- `tests/unit/test_round121_tabs.mjs` — ۴۴ بررسی سبز (مدل state، مکانیزم سوییچ، جریان +، تعاملات وین ۱۱، سیم‌کشی shell، قراردادهای CSS، آینه‌های رفتاری reorder/close-neighbour/title).
 - تازگی: ۵ بررسی اضافه (تیک dirty-checked، گاردها، فقط-نوشتن-روی-تغییر، beforeunload، بدون دست‌زدن به refcount).
 - رگرسیون کامل: هر ۲۲ سویییت (راند ۸۶c تا ۱۲۱) سبز — ~۹۴۰ بررسی.

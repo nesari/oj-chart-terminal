@@ -77,7 +77,7 @@ zones; that formatter is pre-existing app-wide behaviour and was deliberately NO
 
 ## Test round41
 
-`scripts/verify_round41.py` (10/10): z-order/pointer-events of the underlay, underlay painted +
+`tests/e2e/verify_round41.py` (10/10): z-order/pointer-events of the underlay, underlay painted +
 overlay clean at mid-day grid columns, composited candle-over-grid pixel probe, day-number +
 month-name labels zoomed out, full date zoomed in, cross pill full date+time, zero page errors.
 

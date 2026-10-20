@@ -27,7 +27,7 @@
 - `node --check` روی فایل نهایی سبز.
 - رنگ، ضخامت خط، اندازه نمایش و رفتار کلیک از قبل توسط CSS/`currentColor` کنترل می‌شود — هیچ HTML/CSS/منطقی تغییر نکرد.
 
-## تست — `scripts/verify_round43.py` (۸/۸)
+## تست — `tests/e2e/verify_round43.py` (۸/۸)
 
 - C1: برگه تماس ۲۱ آیکون مستقیماً از رجیستری واقعی (`import('./js/ui/icons.js')`) رندر شد — ۲۱ SVG.
 - F-*: هر ۵ فلای‌اوت واقعی (cursor / lines / fibs / gannelliott / forecast) باز شد و همه ردیف‌ها آیکون کشیده‌شده دارند (۰ خالی).

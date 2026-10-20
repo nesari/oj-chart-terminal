@@ -45,7 +45,7 @@ JS reads a theme token with a fallback; `Theme.c()` remains the canvas funnel.
 | Snapshot compositor palette | `chart/toolbar.js` `SNAP_BG` etc. | fixed dark | **fixed under BUG-008** in this same round — the compositor now derives its whole palette from `Manager.getSnapshotPalette(theme)` (see BUG-008 section of CHANGELOG) |
 
 ## Verification
-- `scripts/test_aud001_bug009.py` — **8/8 PASS**: dark → light → dark round-trip
+- `tests/unit/test_aud001_bug009.py` — **8/8 PASS**: dark → light → dark round-trip
   asserts `#ctx-toolbar` / `#fav-float` computed background equals the ACTIVE
   theme's `--panel` token and icon ink flips (`#d1d4dc` ↔ `#131722`); alert
   search input class verified; zero console errors.

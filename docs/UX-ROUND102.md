@@ -104,12 +104,12 @@ U.lsGet(K.slMoney, '') && (this.els.slVal.value = U.lsGet(K.slMoney, ''));
 | `src/renderer/js/trade/dock.js` | رفع باگ ارتفاع؛ تأیید غیرمسدودکننده؛ عدد تب‌ها؛ `_sortRows`/`_wireSort`؛ ردیف جمع کل؛ `_focusSymbol`/`_showTrade`؛ دکمهٔ رفرش. |
 | `src/renderer/js/trade/ticket.js` | حذف خط `slMoney`؛ هندسهٔ ریسک سمت‌آگاه؛ `_preview`/`_clearPreview`/`_prevPane`؛ `_arm`/`_disarm`. |
 | `src/renderer/css/trade.css` | `.trade-ctx*`، `.tt-armed`، `.td-sortable`، `.td-total-row`، `.td-clickable`، `.td-empty-sub`، `.td-hist-refresh`. |
-| `scripts/test_round102_trade_ux.mjs` | جدید — ۱۵ تست. |
+| `tests/unit/test_round102_trade_ux.mjs` | جدید — ۱۵ تست. |
 
 ## تایید
 
 - `node --check` روی **همهٔ** فایل‌های JS مخزن → پاک.
-- `scripts/test_round102_trade_ux.mjs` → ۱۵/۱۵ سبز (هندسهٔ زمان/مختصات + قوانین مرتب‌سازی).
+- `tests/unit/test_round102_trade_ux.mjs` → ۱۵/۱۵ سبز (هندسهٔ زمان/مختصات + قوانین مرتب‌سازی).
 - رگرسیون: round88 ۳۰/۳۰، round89 ۱۴/۱۴، round90 ۲۲/۲۲ سبز.
 - grep: هیچ `console.warn` دیباگی و هیچ `window.confirm` ای در `src/renderer/js/trade/` جز مسیر ریپلی باقی نمانده.
 

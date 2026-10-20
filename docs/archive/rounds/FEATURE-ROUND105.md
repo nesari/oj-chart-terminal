@@ -4,7 +4,7 @@
 - نسخه: 1.9.58 → **1.9.59**
 - نوع: افزودن ویژگی (۲ مورد، هر دو روی لایهٔ تریدِ روی چارت)
 - فایل‌های تغییر کرده: `src/renderer/js/trade/overlay.js`، `src/renderer/css/trade.css`
-- تست: `scripts/test_round105_sltp_money.mjs` (۳۲ تست، بدون DOM)
+- تست: `tests/unit/test_round105_sltp_money.mjs` (۳۲ تست، بدون DOM)
 
 ## درخواست کاربر (دو مورد)
 
@@ -68,7 +68,7 @@ TP 1.08500  +$12.00  ·  120 points · 12 pips
 
 ## تست
 
-`node scripts/test_round105_sltp_money.mjs` → ۳۲/۳۲ — آینهٔ هلپرها با وابستگی تزریقی:
+`node tests/unit/test_round105_sltp_money.mjs` → ۳۲/۳۲ — آینهٔ هلپرها با وابستگی تزریقی:
 
 - علامت پول برای هر ۴ جهت (BUY/SL، BUY/TP، SELL/SL، SELL/TP) و مقیاس‌شدن با حجم.
 - پوینت/پیپ برای نماد ۵، ۳ و ۲ رقمی؛ ورودی خراب → null.

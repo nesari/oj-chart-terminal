@@ -61,7 +61,7 @@ and the round-39 Arrow→Cross tool cycle no longer disturbs the horizontal styl
 
 ## Verification
 
-New suite `scripts/test_round40_axis_resize_cross.py` — **14/14 PASS**:
+New suite `tests/unit/test_round40_axis_resize_cross.py` — **14/14 PASS**:
 - P1–P5: splitter drag widens + persists, restore path re-applies the saved width, splitter
   hides with the panel and returns on reopen, double-click resets to 290, chart relayouts live.
 - U1–U4: grid **and** label spacing uniform (spread ≤ 1px) at five zoom depths on M1 (deep
@@ -85,4 +85,4 @@ weekends), M1 deep zoom, matching crosshair styles, panel resized wider.
   LWC style enum map), `src/renderer/js/ui/rightpanel.js` (resize + splitter visibility),
   `src/renderer/index.html` (splitter element), `src/renderer/css/app.css` (splitter styles),
   `src/renderer/js/app.js` (initResize call), `CHANGELOG.md`, `package.json` → 1.8.1
-- **Added**: `docs/archive/rounds/BUGFIX-ROUND40.md`, `scripts/test_round40_axis_resize_cross.py`
+- **Added**: `docs/archive/rounds/BUGFIX-ROUND40.md`, `tests/unit/test_round40_axis_resize_cross.py`

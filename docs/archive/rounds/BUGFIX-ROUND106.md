@@ -4,7 +4,7 @@
 - نسخه: 1.9.59 → **1.9.60**
 - نوع: رفع باگ (روی تغییرات راند ۱۰۵)
 - فایل‌های تغییر کرده: `src/renderer/js/trade/overlay.js`
-- تست: `scripts/test_round106_hover_instant.mjs` (۱۳ تست، بدون DOM)
+- تست: `tests/unit/test_round106_hover_instant.mjs` (۱۳ تست، بدون DOM)
 
 ## گزارش کاربر
 
@@ -55,7 +55,7 @@
 
 ## تست
 
-`node scripts/test_round106_hover_instant.mjs` → ۱۳/۱۳:
+`node tests/unit/test_round106_hover_instant.mjs` → ۱۳/۱۳:
 
 - جدول تصمیم `_ensureSpec`: spec کامل → بدون fetch؛ ناموجود → fetch؛ ناقص/`tick_value=0`/`tick_size=0` → حذف از کش + fetch مجدد
 - قرارداد هاور لحظه‌ای: `close` / `slide` / `show` — هیچ حالتی «انتظار dwell» ندارد

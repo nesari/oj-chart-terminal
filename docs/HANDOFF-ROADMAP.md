@@ -348,7 +348,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 [x] F5.1  بازنویسی README                     (P2)
 [x] F5.2  docs/ARCHITECTURE.md                (P2)
 [x] F5.3  آرشیو مستندات راندها                (P2)
-[ ] F3.1  بازساختاردهی scripts/               (P2)
+[x] F3.1  بازساختاردهی scripts/               (P2)
 [ ] F3.2  حذف ۶ گروه تکراری                   (P2)
 [ ] F3.3  حذف فایل‌های یک‌بارمصرف             (P2)
 [ ] F3.4  تفکیک CHANGELOG                     (P2)

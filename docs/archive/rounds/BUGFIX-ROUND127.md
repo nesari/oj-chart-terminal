@@ -46,7 +46,7 @@
 
 ## FIX 4 — پنل فلوت: ممیزی کنتراست دارک/لایت (و یک اصلاح واقعی)
 
-ممیزی با بوتِ واقعی اپ (بروکر دمو + رندرر) و دو اسکرین‌شات/اندازه‌گیری per-theme انجام شد (`scripts/audit_round127_panel_theme.py`): هر ۲۸ عنصر متنیِ پنل — تیتر و بج، ردیف Risk، پنج دکمهٔ معامله، نوار وضعیتِ درفت، لیست پوزیشن‌ها با چیپ‌های ½/🛡/×، ردیف Total، چیپ اسپرد، chrome شناور و pill — در هر دو تم اندازه‌گیری شد.
+ممیزی با بوتِ واقعی اپ (بروکر دمو + رندرر) و دو اسکرین‌شات/اندازه‌گیری per-theme انجام شد (`tools/dev/audit_round127_panel_theme.py`): هر ۲۸ عنصر متنیِ پنل — تیتر و بج، ردیف Risk، پنج دکمهٔ معامله، نوار وضعیتِ درفت، لیست پوزیشن‌ها با چیپ‌های ½/🛡/×، ردیف Total، چیپ اسپرد، chrome شناور و pill — در هر دو تم اندازه‌گیری شد.
 
 **یافته و اصلاح (`css/trade.css`):** تنها موردِ زیرِ آستانه، چیپ آبیِ ½ در تم تیره بود: `var(--blue) #2962ff` روی سطح `#2a2a2a` → نسبت **۲٫۹۳** (زیر ۳:۱). تم تیره حالا آبیِ روشن‌تر `#5b8cff` (نسبت ~۴٫۵) می‌گیرد و تم روشن همان آبیِ برند را (روی سطح روشن ~۳٫۶). هاورِ پرشدهٔ آبی + متن سفید در هر دو تم دست‌نخورده. ممیزی پس از اصلاح: **۰ مورد کم‌کنتراست در هر دو تم**.
 
@@ -64,13 +64,13 @@
 
 ## تست و راستی‌آزمایی
 
-- **`scripts/test_round127_fixes.mjs` (۳۳ بررسی)** — آینه‌های رفتاری: تجمیع ۳ پارتیال → یک ردیف (vwap، مجموع‌ها، پرچم SL)، ریاضیِ مرکزِ کندل (`(idx+0.5)×barSpacing`)، ماشین‌حالتِ کلیک/درگ (۳px=هیچ، ۵px=هیچ، ۷px=یک modify)، اسکن‌های قراردادی آیکون/AUMID/آستانه.
-- **`scripts/e2e_round127_click_drag.py` (۱۰ بررسی، Playwright + بروکر دمو)** — خطوط واقعی روی چارت زنده: کلیکِ با لرزش ۲px روی TP و Entry = بدون سفارش/توست/تغییر قیمت؛ درگِ واقعیِ ۴۰px روی TP = **دقیقاً یک** modifySLTP با قیمتِ رهاکردنِ بالاتر از قیمت اولیه و SL دست‌نخورده؛ صفر خطای صفحه.
-- **`scripts/audit_round127_panel_theme.py`** — ممیزی کنتراستِ دو تمیِ پنل فلوت با اسکرین‌شات (`scripts/shots/r127_panel_*.png`).
+- **`tests/unit/test_round127_fixes.mjs` (۳۳ بررسی)** — آینه‌های رفتاری: تجمیع ۳ پارتیال → یک ردیف (vwap، مجموع‌ها، پرچم SL)، ریاضیِ مرکزِ کندل (`(idx+0.5)×barSpacing`)، ماشین‌حالتِ کلیک/درگ (۳px=هیچ، ۵px=هیچ، ۷px=یک modify)، اسکن‌های قراردادی آیکون/AUMID/آستانه.
+- **`tests/e2e/e2e_round127_click_drag.py` (۱۰ بررسی، Playwright + بروکر دمو)** — خطوط واقعی روی چارت زنده: کلیکِ با لرزش ۲px روی TP و Entry = بدون سفارش/توست/تغییر قیمت؛ درگِ واقعیِ ۴۰px روی TP = **دقیقاً یک** modifySLTP با قیمتِ رهاکردنِ بالاتر از قیمت اولیه و SL دست‌نخورده؛ صفر خطای صفحه.
+- **`tools/dev/audit_round127_panel_theme.py`** — ممیزی کنتراستِ دو تمیِ پنل فلوت با اسکرین‌شات (`scripts/shots/r127_panel_*.png`).
 - قراردادهای stale ارتقا یافتند: `test_round120_fixes` (نمای دیلِ پارشیال → تجمیع پوزیشن MT5) و آینهٔ `_xOf` در `test_round102` (قانون مرکز).
 - **رگرسیون کامل ۳۱/۳۱ سویییت mjs سبز** + e2e راندهای ۱۲۵/۱۲۶/۱۲۷ سبز + ممیزی تم سبز؛ `node --check` روی dock/history/overlay/main.
 - تست‌های `test_round95_cache` (یک مورد «عمیق‌ترین کندل») و رفتار طولانی‌مدت `test_round89_provider` پیش از این راند هم همین‌طور بودند (در بستهٔ مرجع ۱۲۶ هم تکرار شد) — به تغییرات این راند مربوط نیستند.
 
 ## diff مقابل بستهٔ راند ۱۲۶
 
-`src/renderer/js/trade/dock.js` · `src/renderer/js/trade/history.js` · `src/renderer/js/trade/overlay.js` · `main.js` · `src/renderer/css/trade.css` · `assets/app.ico` (جدید) · `scripts/make_app_icon.py` (جدید) · `scripts/test_round127_fixes.mjs` (جدید) · `scripts/e2e_round127_click_drag.py` (جدید) · `scripts/audit_round127_panel_theme.py` (جدید) · به‌روزرسانی `test_round120_fixes.mjs` / `test_round102_trade_ux.mjs` · `package.json` · `CHANGELOG.md` · همین سند — **manager.js / provider / feed / tabs.js / oneclick.js دست‌نخورده**.
+`src/renderer/js/trade/dock.js` · `src/renderer/js/trade/history.js` · `src/renderer/js/trade/overlay.js` · `main.js` · `src/renderer/css/trade.css` · `assets/app.ico` (جدید) · `scripts/make_app_icon.py` (جدید) · `tests/unit/test_round127_fixes.mjs` (جدید) · `tests/e2e/e2e_round127_click_drag.py` (جدید) · `tools/dev/audit_round127_panel_theme.py` (جدید) · به‌روزرسانی `test_round120_fixes.mjs` / `test_round102_trade_ux.mjs` · `package.json` · `CHANGELOG.md` · همین سند — **manager.js / provider / feed / tabs.js / oneclick.js دست‌نخورده**.

@@ -69,7 +69,7 @@ LWC است که LargeDashed را `[6,6]` می‌کشد.
 
 ## تست
 
-- `scripts/verify_round51.py` — ۳۱/۳۱: جریان کامل (+) → دیالوگ → ایجاد آلارم → انتخاب
+- `tests/e2e/verify_round51.py` — ۳۱/۳۱: جریان کامل (+) → دیالوگ → ایجاد آلارم → انتخاب
   (چیپ روی خط) → درگ ۷۰px (قیمت و ذخیره‌سازی) → لغو انتخاب → حذف از چارت، در دارک و لایت؛
   برابری الگوی dash عمودی/افقی با پروب پیکسلی (~[6,6])؛ pan: مخفی‌شدن وسط درگ (نه فریم بعد)
   + بدون خط منجمد + برگشت کامل بعد از رها کردن؛ جداکننده‌های راند ۴۸؛ صفر خطای صفحه.
@@ -83,5 +83,5 @@ LWC است که LargeDashed را `[6,6]` می‌کشد.
 - `src/renderer/js/drawing/engine.js`، `src/renderer/js/chart/manager.js`،
   `src/renderer/js/panels/alerts.js`، `src/renderer/css/app.css`
 - `main.js`، `package.json` (1.9.2)، `assets/alert-icon.png` (جدید)
-- `CHANGELOG.md`، `docs/archive/rounds/BUGFIX-ROUND51.md`، `scripts/verify_round51.py` +
-  `scripts/diag_pan51.py` + به‌روزرسانی تست‌منتظر رگرسیون‌ها
+- `CHANGELOG.md`، `docs/archive/rounds/BUGFIX-ROUND51.md`، `tests/e2e/verify_round51.py` +
+  `tools/dev/diag_pan51.py` + به‌روزرسانی تست‌منتظر رگرسیون‌ها

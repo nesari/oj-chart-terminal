@@ -32,6 +32,9 @@
       "!provider/__pycache__/**",
       "assets/**/*",
       "!scripts/**",
+      "!tests/**",
+      "!tools/**",
+      "!fixtures/**",
       "!docs/**"
     ],
     "win": {

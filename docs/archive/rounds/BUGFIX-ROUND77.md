@@ -47,12 +47,12 @@
 ## تست
 
 - `node --check` روی هر دو فایل تغییر یافته.
-- `scripts/verify_pine74.mjs`: ۴۷/۴۷ سبز (هستهٔ ریاضی دست‌نخورده).
+- `tests/unit/verify_pine74.mjs`: ۴۷/۴۷ سبز (هستهٔ ریاضی دست‌نخورده).
 - پروب تایم‌لاین (`probe_race.py`): قبل از رفع — اشیاء بعد از اولین rollback برای همیشه محو؛ بعد از رفع — `boxes: 6, labels: 6` پایدار، بدون ورود تیک به میانهٔ runChunked، churn رسمی هر تیک.
-- e2e جدید `scripts/e2e_pine77.py` (هدلس Chromium روی دمو، خود ۷۸۶ Zones): اجرای کامل + چند ثانیه تیک زنده → باکس‌ها/لیبل‌ها در استور می‌مانند → **اثبات پیکسلی** (کانواس fg هزاران پیکسل رنگی) → دیالوگ تنظیمات (رگرسیون راند ۷۶: ۷۰ ورودی) → Days Back=3 → Ok → بازسازی → **۱۸ باکس (۶ سشن × ۳ روز)** → اثبات عدم قفل → صفر خطای صفحه + اسکرین‌شات.
+- e2e جدید `tests/e2e/e2e_pine77.py` (هدلس Chromium روی دمو، خود ۷۸۶ Zones): اجرای کامل + چند ثانیه تیک زنده → باکس‌ها/لیبل‌ها در استور می‌مانند → **اثبات پیکسلی** (کانواس fg هزاران پیکسل رنگی) → دیالوگ تنظیمات (رگرسیون راند ۷۶: ۷۰ ورودی) → Days Back=3 → Ok → بازسازی → **۱۸ باکس (۶ سشن × ۳ روز)** → اثبات عدم قفل → صفر خطای صفحه + اسکرین‌شات.
 - رگرسیون `e2e_pine76.py` (راند ۷۶): همه سبز.
 
 ## آدیت diff
 
 - **تغییر**: `src/core/pine/interpreter.js` (copy-out در restore + ریست site.n در runBar)، `src/renderer/js/chart/pine-ui.js` (running/pendingRerun + مسیر chunked برای شکاف چندباره‌ای + اکسپوز rt در facade دیباگ)، package.json (۱.۹.۲۸)
-- **جدید**: `docs/archive/rounds/BUGFIX-ROUND77.md`، `scripts/e2e_pine77.py`؛ به‌علاوه CHANGELOG
+- **جدید**: `docs/archive/rounds/BUGFIX-ROUND77.md`، `tests/e2e/e2e_pine77.py`؛ به‌علاوه CHANGELOG

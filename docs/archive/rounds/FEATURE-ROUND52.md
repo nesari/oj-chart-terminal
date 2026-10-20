@@ -56,7 +56,7 @@ Every other tool, the engine, alerts, notifications, separators, themes, favorit
 object tree, shortcuts, and all previous round behaviour.
 
 ## Verification
-`scripts/verify_round52.py` — flyout structure (3 sections, exact TV order, 18 entries,
+`tests/e2e/verify_round52.py` — flyout structure (3 sections, exact TV order, 18 entries,
 Arrow still present), live drawing of Trend Angle / Flat Top/Bottom / Disjoint Channel /
 Regression Trend / Pitchfork on the canvas, store + render checks, settings dialog fields,
 dark + light screenshots, zero page errors; plus the full regression suite of previous rounds.

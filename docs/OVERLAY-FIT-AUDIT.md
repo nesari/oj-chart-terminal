@@ -41,7 +41,7 @@ Mechanism (shared, ONE rule — no per-surface patches):
 | Login screen | boot | BUG-001 scope — rebuilt in this round (two-column, internal scroll only) | see BUG-001 |
 
 ## Verification
-- `scripts/test_bug005_010.py` — **8/8 PASS at 1280×720** (+ a 600px-tall
+- `tests/unit/test_bug005_010.py` — **8/8 PASS at 1280×720** (+ a 600px-tall
   window case): every tool flyout clamped with the LAST item reachable and
   clickable; layout menu fully clamped with SYNC visible and Save reachable
   via internal scroll; resize-while-open closes the menu.

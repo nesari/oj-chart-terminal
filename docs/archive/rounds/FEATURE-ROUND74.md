@@ -79,7 +79,7 @@
 
 ## ۳. تست
 
-- `scripts/verify_pine74.mjs` — **۴۷ چک، همه سبز**:
+- `tests/unit/verify_pine74.mjs` — **۴۷ چک، همه سبز**:
   - پارس ۴ فیکسچر واقعی (`rsi/macd/bollinger/session-box/786-zones`) + خطای سینتکس → کد CE؛
   - پاریتی عددی بار‌به‌بار `ta.sma/ema/rsi/wma/sd/atr` با kernelهای `core/indicators.js` (خطا ≤ 1.8e-15)؛
   - اجرای افزایشی: `updateForming` خروجی را رشد نمی‌دهد/تاریخچهٔ تأییدشده ثابت می‌ماند/بارِ در حال شکل‌گیری واکنش نشان می‌دهد/`pushNewBar` دقیقاً یک مقدار اضافه می‌کند؛
@@ -91,6 +91,6 @@
 
 ## ۴. آدیت diff
 
-- **جدید:** `src/core/pine/` (۱۵ فایل)، `chart/pine-ui.js`، `chart/pine-render-adapter.js`، `panels/pine-editor.js`، `panels/pine-scripts-store.js`، `scripts/verify_pine74.mjs`، `scripts/pine-fixtures/*.pine` (۵ فیکسچر)، `docs/PINE-ENGINE-PLAN.md`، `docs/archive/rounds/FEATURE-ROUND74.md`
+- **جدید:** `src/core/pine/` (۱۵ فایل)، `chart/pine-ui.js`، `chart/pine-render-adapter.js`، `panels/pine-editor.js`، `panels/pine-scripts-store.js`، `tests/unit/verify_pine74.mjs`، `fixtures/pine/*.pine` (۵ فیکسچر)، `docs/PINE-ENGINE-PLAN.md`، `docs/archive/rounds/FEATURE-ROUND74.md`
 - **تغییر:** `core/indicators.js` (فقط refactor: kernels از `pine/stdlib/ta.js` import می‌شوند — ریاضی دست‌نخورده)، `chart/manager.js` ( delegation pine: recompute/tick/frame/serialize/restore/drop + frac برای pineScripts + فریم رندر کانواس pine)، `chart/toolbar.js` (دکمهٔ pine-btn)، `ui/icons.js` (آیکون pine)، `app.js` (init/فاساد `__app`)، `index.html` (دکمهٔ نوار بالا)، `css/app.css` (ادیتور/زیرپن pine)
 - به‌علاوه: `package.json` (۱.۹.۲۵)، CHANGELOG، README (حذف خط «این بیلد عمداً بدون اندیکاتور/ادیتور Pine است»)

@@ -60,13 +60,13 @@
 
 ## تست و اعتبارسنجی
 
-- `scripts/test_round110_vol_input.mjs` (جدید، **۶۶ چک**): آینهٔ کامل پارسر (۱۸ حالت)، زنجیرهٔ
+- `tests/unit/test_round110_vol_input.mjs` (جدید، **۶۶ چک**): آینهٔ کامل پارسر (۱۸ حالت)، زنجیرهٔ
   کامیت+کلمپ برای stepهای 0.01/0.02/0.001 و کلمپ min/max، قالب‌بندی `_volTxt`، قراردادهای سورس
   (فیلد editable، Enter/blur/Esc/Arrows، فلاش قبل از ارسال، ماندگاری، منو، بستن بیرونی،
   جهت‌یابی، کلاس oc-hidden، سینک مولتی‌پن) و قراردادهای CSS تم‌محور.
-- `scripts/test_round108_oneclick.mjs` به‌روز شد: قرارداد مسیر ارسال (flush + `_volCur`)،
+- `tests/unit/test_round108_oneclick.mjs` به‌روز شد: قرارداد مسیر ارسال (flush + `_volCur`)،
   قرارداد Esc جدید، قرارداد CSS (منوی سفارشی به‌جای select native) — **۷۴/۷۴**.
-- repro واقعی `scripts/repro_round110_vol_input.py` (دموبروکر + کرومیوم headless): **۲۵/۲۵** —
+- repro واقعی `tools/dev/repro_round110_vol_input.py` (دموبروکر + کرومیوم headless): **۲۵/۲۵** —
   تایپ واقعی `0.37` و **سفارش واقعی** BUY با همان حجم از گیت تایید، ویرگول اعشار، revert با
   `"abc"`، کلمپ `9999→100.00`، گام ↑/↓، منو (باز/انتخاب/بستن بیرونی/هایلایت جاری)، سینک پن ۲ در
   چیدمان 2v، فلیپ لایت↔دارک + اسکرین‌شات، صفر خطای صفحه.
@@ -77,6 +77,6 @@
 - `src/renderer/js/trade/oneclick.js` — فیلد editable + منو + کامیت/گام/سینک
 - `src/renderer/css/trade.css` — بلوک `.oc-vol*` بازنویسی شد
 - `src/renderer/js/ui/icons.js` — آیکن `chevdown`
-- `scripts/test_round110_vol_input.mjs`، `scripts/repro_round110_vol_input.py`
-- `scripts/test_round108_oneclick.mjs` — قراردادهای به‌روزشده
+- `tests/unit/test_round110_vol_input.mjs`، `tools/dev/repro_round110_vol_input.py`
+- `tests/unit/test_round108_oneclick.mjs` — قراردادهای به‌روزشده
 - `CHANGELOG.md`، `package.json` (1.9.64)

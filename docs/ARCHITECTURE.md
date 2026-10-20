@@ -135,7 +135,8 @@ All renderer access is through `preload.js`; `main.js` validates every payload b
   `src/renderer/index.html`, all permission requests/checks denied, navigation and `window.open`
   blocked, IPC payload size/type validation, credentials encrypted at rest.
 - **Packaging.** `package.json → build.files` ships `main.js`, `preload.js`, `src/**`, `provider/**`
-  and `assets/**`; `scripts/**`, `docs/**` and `provider/__pycache__/**` are excluded.
+  and `assets/**`; `scripts/**`, `tests/**`, `tools/**`, `fixtures/**`, `docs/**` and
+  `provider/__pycache__/**` are excluded.
 - **Quality gate.** `npm run verify` = syntax → import graph → Python compile → offscreen Electron
   boot smoke (see README). CI runs the full gate on Windows and the static gates on Linux.
 

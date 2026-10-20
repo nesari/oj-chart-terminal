@@ -51,7 +51,7 @@ body:not(.theme-light) #right-tabs    { border-left-width: 2px; }
 
 ## ۵) تست
 
-`scripts/verify_round46.py`:
+`tests/e2e/verify_round46.py`:
 
 1. بوت تازهٔ دارک: عرض computed هر پنج مرز = `2px`، رنگ `rgb(46, 46, 46)`.
 2. جمع‌کردن ریل چپ (`collapsed`): بوردر راست = `0px`؛ بازگرداندن: دوباره `2px`.

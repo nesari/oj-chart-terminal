@@ -33,12 +33,12 @@
 7. bare v4 style word `line` (plot style=), `box.set_*` missing setters.
 
 ## Test infra
-- `scripts/verify_pine133.mjs` — user corpus (4 compile + 4 run + 6 regression) = **14/14**
+- `tests/unit/verify_pine133.mjs` — user corpus (4 compile + 4 run + 6 regression) = **14/14**
 - `scripts/verify_pine74/78/80.mjs` — 53/53, 29/29, 16/16 (no regressions)
-- `scripts/e2e_round133_pine_v6.py` — Playwright E2E on the real app+demo feed:
+- `tests/e2e/e2e_round133_pine_v6.py` — Playwright E2E on the real app+demo feed:
   compile via app entry, SMC added through Pine editor → objects on the live
   chart, zero page errors. Screenshot: docs/shots-round133/.
-- `scripts/e2e_round133b_tv_templates.py` — fresh-profile seed: the 5 TV
+- `tests/e2e/e2e_round133b_tv_templates.py` — fresh-profile seed: the 5 TV
   indicators appear in the Pine editor dropdown and each compiles (9+ scripts).
 - `provider_common.py` PORT from `MT5_WS_PORT` env (E2E isolation).
 - CSP `connect-src` widened to `ws://127.0.0.1:*` (test ports).

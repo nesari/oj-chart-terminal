@@ -27,7 +27,7 @@
 - `scripts/test_trade_rpc.py` — ۲۸/۲۸: کل جریان RPC روی WS واقعی + جدید: «هر ردی باید دلیل متنی قابل‌خواندن داشته باشد».
 - `scripts/test_trade_e2e_browser.py` (جدید، Playwright/Chromium) — ۲۴/۲۴: مسیر واقعی کاربر از ورود تا بستن پوزیشن:
   boot → login (demo) → تب Trading → تیکت (حجم 0.10، SL 250pt، TP 500pt، one-click) → BUY مارکت → ثبت پوزیشن در بروکر شبیه‌ساز → سه خط Entry/SL/TP روی چارت (برچسب‌های BUY/SL/TP) → **درگ عمودی خط SL روی چارت → modify واقعی سمت بروکر (1.08199 → 1.07883)** → ردِ کلوز بیش از حجم با پیام قابل‌خواندن → Buy Limit پندینگ → رسم روی چارت → لغو از داک → کلوز ۵۰٪ → Close all → هیستوری (گروه‌بندی + خلاصه) → نوار حساب زنده → صفر خطای صفحه.
-- رگرسیون: `scripts/round84_harness.mjs` (۱۳۵ + ۳۹۲٬۰۰۰ چک) و `scripts/test_trade_math.mjs` (۲۱/۲۱) — همه سبز.
+- رگرسیون: `tools/dev/round84_harness.mjs` (۱۳۵ + ۳۹۲٬۰۰۰ چک) و `scripts/test_trade_math.mjs` (۲۱/۲۱) — همه سبز.
 
 ## فایل‌های تغییر یافته (فقط در محدوده‌ی همین ایراد)
 `src/core/feed.js`، `provider/mt5.py`، `provider/demo.py`، `src/renderer/js/trade/ticket.js`، `src/renderer/js/trade/dock.js`، `src/renderer/css/trade.css` + `CHANGELOG.md`، `package.json` (1.9.36 → 1.9.37).

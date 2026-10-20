@@ -53,7 +53,7 @@ keep the price-pane clip — untouched behavior.
 
 ## Tests
 
-New suite `scripts/test_round37_tabs_vline.py` — **30/30 PASS**:
+New suite `tests/unit/test_round37_tabs_vline.py` — **30/30 PASS**:
 - A: 7 pills in TV order, only `All` active on open, grouped view intact (6 heads), exact
   `33 symbols` footer, no `+N more` on the demo catalog, dark pill colors
   (active `rgb(255,255,255)`, inactive `rgb(42,46,57)`).
@@ -82,4 +82,4 @@ green) · round26 12/12 · round27 11/11 · round29 10/10.
 
 - Modified: `src/renderer/js/chart/toolbar.js`, `src/renderer/js/drawing/engine.js`,
   `src/renderer/css/app.css`, `CHANGELOG.md`, `package.json`
-- Added: `docs/archive/rounds/BUGFIX-ROUND37.md`, `scripts/test_round37_tabs_vline.py`
+- Added: `docs/archive/rounds/BUGFIX-ROUND37.md`, `tests/unit/test_round37_tabs_vline.py`

@@ -56,7 +56,7 @@ factory defaults, and every downstream surface in one shot. **No other file was 
 
 ## Verification
 
-New suite `scripts/test_round38_toolbar_tools.py` — **28/28 PASS**:
+New suite `tests/unit/test_round38_toolbar_tools.py` — **28/28 PASS**:
 
 - **A. buttons**: all 8 group buttons have an SVG icon, **no X-fallback glyph anywhere**, and the
   previously empty tooltips now read `Gann Box` / `Long Position` (asserted live).
@@ -90,5 +90,5 @@ flyout, fibs flyout, drawn Gann Box, drawn Long Position.
 ## Files
 
 - **Modified**: `src/renderer/js/app.js` (one side-effect import + comment)
-- **Added**: `docs/archive/rounds/BUGFIX-ROUND38.md`, `scripts/test_round38_toolbar_tools.py`, screenshot gallery
+- **Added**: `docs/archive/rounds/BUGFIX-ROUND38.md`, `tests/unit/test_round38_toolbar_tools.py`, screenshot gallery
 - **Version**: `package.json` → 1.7.9, `CHANGELOG.md` entry (Persian)

@@ -58,7 +58,7 @@
 
 ## تست‌ها
 
-- **round32 (جدید، ۲۵/۲۵):** `scripts/test_round32_subpanes.py` — ثبات عرض پیل (A)، کپی/استقلال/حذف در ۱→۲v→۱ (B)، زیرپن واقعی + کراپ محور + هدر + آینه‌range + لیبل کراس‌هیر per-pane با پیکسل‌خوانی رنگ #363a45 روی محور همان پن + هم‌عرضی محور + چشم/حذف + پشتهٔ ۳ پن + عبور خط عمودی (C).
+- **round32 (جدید، ۲۵/۲۵):** `tests/unit/test_round32_subpanes.py` — ثبات عرض پیل (A)، کپی/استقلال/حذف در ۱→۲v→۱ (B)، زیرپن واقعی + کراپ محور + هدر + آینه‌range + لیبل کراس‌هیر per-pane با پیکسل‌خوانی رنگ #363a45 روی محور همان پن + هم‌عرضی محور + چشم/حذف + پشتهٔ ۳ پن + عبور خط عمودی (C).
 - **round31 (۲۰/۲۰)** با سلکتورهای به‌روز (ردیف «جدا»ها حالا داخل هدر پن است)، round27 (۱۱/۱۱)، phase3 (۳۱/۳۱)، phase2 (۵/۵)، round26 (۱۲/۱۲)، round29 (۱۰/۱۰)، round25 (۳۰/۳۰).
 
 ## فایل‌های تغییر یافته
@@ -68,5 +68,5 @@
 - `src/renderer/js/drawing/engine.js` — پیل فشرده، view().mainH، _setCrossXY/_subAt/_clearSubCross، گاردهای پن قیمت، _lwcEl Y-دار، dbl زمان، آفست واترمارک/برند، کلیپ mainH.
 - `src/renderer/js/chart/settings.js` — applySubPaneSettings از applyPane.
 - `src/renderer/css/app.css` — .sub-pane/.sub-legend، حذف قانون قدیمی z-index، پیل فشردهٔ .tax-live.
-- `scripts/test_round31_crosshair_indicators.py` — سلکتورهای هدر پن + تولرانس پیل اندازه‌گیری‌شده.
-- `scripts/test_round32_subpanes.py`، `scripts/e2e_helper_round32.py`، `scripts/visual_shots32.py` — جدید.
+- `tests/unit/test_round31_crosshair_indicators.py` — سلکتورهای هدر پن + تولرانس پیل اندازه‌گیری‌شده.
+- `tests/unit/test_round32_subpanes.py`، `tests/e2e/e2e_helper_round32.py`، `tools/dev/visual_shots32.py` — جدید.

@@ -53,7 +53,7 @@
 
 ## ۴) تست و بسته‌بندی
 
-- `scripts/e2e_round132_replay_topbar.py` — **۲۴ چک سبز**: ابعاد/جعبهٔ ۲۴px همهٔ آیکون‌ها، ۸ جداکننده، برچسب‌ها، پیل نماد (شعاع/پرشدن/شورون)، بدون clip در نوار ۴۶px؛ ۱۴ سرعت + باز/بستن منو + اعمال 0.25x + پERSIST + سیکل با مارکر زنده؛ آرم‌شدن pick، **پروب پیکسلی آبی TV روی canvas**، لغو با Escape و با کلیک دوباره، شروع سشن با کلیک چارت؛ اسکرین‌شات topbar/منو/pick در هر دو تم (با سوییچ واقعی `Theme.apply`)؛ صفر خطای صفحه.
-- `scripts/probe_round132_narrow.py` — پنجرهٔ ۹۸۰px: فلش‌های سرریز + نوار ۴۶px + صفر خطا.
+- `tests/e2e/e2e_round132_replay_topbar.py` — **۲۴ چک سبز**: ابعاد/جعبهٔ ۲۴px همهٔ آیکون‌ها، ۸ جداکننده، برچسب‌ها، پیل نماد (شعاع/پرشدن/شورون)، بدون clip در نوار ۴۶px؛ ۱۴ سرعت + باز/بستن منو + اعمال 0.25x + پERSIST + سیکل با مارکر زنده؛ آرم‌شدن pick، **پروب پیکسلی آبی TV روی canvas**، لغو با Escape و با کلیک دوباره، شروع سشن با کلیک چارت؛ اسکرین‌شات topbar/منو/pick در هر دو تم (با سوییچ واقعی `Theme.apply`)؛ صفر خطای صفحه.
+- `tools/dev/probe_round132_narrow.py` — پنجرهٔ ۹۸۰px: فلش‌های سرریز + نوار ۴۶px + صفر خطا.
 - رگرسیون: **۳۰ سوت mjs + e2e راندهای ۱۲۹/۱۳۰/۱۳۱ — همه سبز.**
 - فایل‌های تغییر: `src/renderer/js/panels/replay.js`، `src/renderer/js/drawing/engine.js`، `src/renderer/js/ui/icons.js`، `src/renderer/js/chart/toolbar.js`، `src/renderer/index.html`، `src/renderer/css/app.css`، `package.json`.

@@ -53,7 +53,7 @@
 | ۵ | `recomputePine` بلافاصله پس از add/Ok، پاس کامل تازه‌تمام‌شده را از نو اجرا می‌کرد (۲× هزینه) | **coalescing**: پاس تازه با همان تعداد بار < ۱٫۵ ثانیه = skip | `pine-ui.js` |
 | ۶ | سنگینی قابل مشاهده نبود | سنجهٔ `lastRunMs` در tooltip ردیف لجند + `PineUI.debug` | `pine-ui.js` |
 
-### نتیجهٔ بنچمارک (`scripts/bench_pine78.mjs`، میانهٔ ۳ اجرا، بروکر GMT+3)
+### نتیجهٔ بنچمارک (`tools/dev/bench_pine78.mjs`، میانهٔ ۳ اجرا، بروکر GMT+3)
 | سناریو | ممو خاموش (رفتار راند ۷۷) | مموی روشن (راند ۷۸) | شتاب |
 |---|---|---|---|
 | M15 × ۶ روز (۵۷۶ بار × ۱۵ اینتربار) | ۱۸۵۰ms | **۴۵۱ms** | **×۴٫۱۱** |
@@ -76,12 +76,12 @@
 | تست | نتیجه |
 |---|---|
 | `node --check` روی ۸ فایل تغییر یافته | سبز |
-| `scripts/verify_pine74.mjs` (رگرسیون موتور) | **۴۷/۴۷** |
-| `scripts/verify_pine78.mjs` (جدید) | **۲۹/۲۹** |
-| `scripts/bench_pine78.mjs` (جدید) | ×۴٫۱۱ / ×۲٫۶۳ + پاریتی |
-| `scripts/e2e_pine78.py` (جدید — بروکر GMT+3) | همه سبز + ۲ اسکرین‌شات |
+| `tests/unit/verify_pine74.mjs` (رگرسیون موتور) | **۴۷/۴۷** |
+| `tests/unit/verify_pine78.mjs` (جدید) | **۲۹/۲۹** |
+| `tools/dev/bench_pine78.mjs` (جدید) | ×۴٫۱۱ / ×۲٫۶۳ + پاریتی |
+| `tests/e2e/e2e_pine78.py` (جدید — بروکر GMT+3) | همه سبز + ۲ اسکرین‌شات |
 | رگرسیون `e2e_pine75/76/77` | همه سبز |
 
 ## آدیت diff
-- **تغییر:** `core/pine/types.js`، `core/pine/interpreter.js`، `core/pine/stdlib/time.js`، `core/pine/stdlib/request.js`، `core/pine/stdlib/objects.js`، `chart/pine-render-adapter.js`، `chart/pine-ui.js`، `css/app.css`، `package.json`، `scripts/e2e_pine76.py` (آپدیت مشروع شمارش رنگ)
-- **جدید:** `docs/archive/rounds/FEATURE-ROUND78.md`، `scripts/verify_pine78.mjs`، `scripts/bench_pine78.mjs`، `scripts/e2e_pine78.py`
+- **تغییر:** `core/pine/types.js`، `core/pine/interpreter.js`، `core/pine/stdlib/time.js`، `core/pine/stdlib/request.js`، `core/pine/stdlib/objects.js`، `chart/pine-render-adapter.js`، `chart/pine-ui.js`، `css/app.css`، `package.json`، `tests/e2e/e2e_pine76.py` (آپدیت مشروع شمارش رنگ)
+- **جدید:** `docs/archive/rounds/FEATURE-ROUND78.md`، `tests/unit/verify_pine78.mjs`، `tools/dev/bench_pine78.mjs`، `tests/e2e/e2e_pine78.py`

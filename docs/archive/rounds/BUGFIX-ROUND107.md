@@ -4,7 +4,7 @@
 - نسخه: 1.9.60 → **1.9.61**
 - نوع: رفع باگ (continuation of راند ۱۰۵/۱۰۶)
 - فایل‌های تغییر کرده: `src/renderer/js/trade/overlay.js`، `src/renderer/js/trade/history.js`
-- تست: `scripts/test_round107_tip_visible.mjs` (۲۳ تست، بدون DOM) + repro خودکار مرورگر
+- تست: `tests/unit/test_round107_tip_visible.mjs` (۲۳ تست، بدون DOM) + repro خودکار مرورگر
 - خروجی repro: `scripts/round107_sl_tag.png` (اسکرین‌شات تگ روی چارت واقعی)
 
 ## گزارش کاربر (با عکس)
@@ -92,7 +92,7 @@ page errors: 0
 
 ## تست
 
-`node scripts/test_round107_tip_visible.mjs` → ۲۳/۲۳:
+`node tests/unit/test_round107_tip_visible.mjs` → ۲۳/۲۳:
 
 - **A (آینهٔ cascade):** مدل `computed = inline !== '' ? inline : cssDefault` — بازتولید باگ قدیمی (`''` + `none` کلاس → نامرئی) و اثبات فیکس (`'block'` → نمایان) برای هر دو کلاس تگ
 - **B (قرارداد سورس):** `_showTip` فقط با `'block'` نمایش می‌دهد؛ هیچ مسیر نمایشی با `''` باقی نمانده؛ hide ها با `'none'`؛ کلاس‌های CSS همان `display:none` پیش‌فرض را دارند (دام مستند شده، نه حذف)

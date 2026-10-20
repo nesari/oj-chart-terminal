@@ -76,7 +76,7 @@ SYM_CACHE = {'names': [], 'names_at': 0.0, 'all': [], 'all_at': 0.0, 'vis': set(
 | سوییت | نتیجه |
 |---|---|
 | `scripts/repro36_search_keyerror.py` (اثبات ریشه، MT5 تقلبی) | 3/3 |
-| `scripts/test_round36_search_ui.py` (جدید — E2E) | 20/20 |
+| `tests/unit/test_round36_search_ui.py` (جدید — E2E) | 20/20 |
 | round35-ui / round35-mt5-search | 34/34 · 7/7 |
 | round31 / round32 / round33 | 20/20 · 25/25 · 18/18 |
 | phase3 / phase2 | 31/31 · 5/5 |

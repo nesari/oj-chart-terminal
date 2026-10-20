@@ -34,5 +34,5 @@
 - `src/renderer/css/trade.css` — `.tn-head/.tn-bell/.tn-badge/.tn-title/.tn-master/.tn-collapsed-hint/.tn-hint` + تم لایت از طریق متغیرهای موجود.
 
 ## تست
-- `scripts/test_round129_notify_icon.mjs` — ۳۶ چک قراردادی + آینه‌های رفتاری (ریاضی گیت/سوئیپ، بَج، `purgeInMin`).
-- `scripts/e2e_round129_notify.py` — E2E مرورگر واقعی روی بروکر دمو: ۳۳ چک؛ زنگ/بَج/آریا، باز-بسته و پERSIST بعد از reload، ثبت رویداد واقعی OPEN/CLOSE با زمان حتی وقتی لیست بسته است، حذف تکی/Clear all، سوئیپ اجباریِ ۲۵ ساعته + گیتِ همان‌روز + مُهر پایدار، صفر خطای صفحه.
+- `tests/unit/test_round129_notify_icon.mjs` — ۳۶ چک قراردادی + آینه‌های رفتاری (ریاضی گیت/سوئیپ، بَج، `purgeInMin`).
+- `tests/e2e/e2e_round129_notify.py` — E2E مرورگر واقعی روی بروکر دمو: ۳۳ چک؛ زنگ/بَج/آریا، باز-بسته و پERSIST بعد از reload، ثبت رویداد واقعی OPEN/CLOSE با زمان حتی وقتی لیست بسته است، حذف تکی/Clear all، سوئیپ اجباریِ ۲۵ ساعته + گیتِ همان‌روز + مُهر پایدار، صفر خطای صفحه.

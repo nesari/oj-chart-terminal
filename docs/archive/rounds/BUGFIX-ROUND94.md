@@ -29,5 +29,5 @@
 - `provider_common.bucket_start`: MN3/MN6/MN12 با `calendar.timegm` (روی ماشین UTC+3:30 همه‌ی باکت‌ها −۳٫۵h جابه‌جا بودند).
 
 ## تست
-- `scripts/test_round94_weekend.py` (۱۲ سناریو)، `scripts/sim_round94_weekend.py` (شبیه‌ساز ساعت‌محور: کد قبلی FAIL با −14h، کد جدید PASS).
+- `tests/unit/test_round94_weekend.py` (۱۲ سناریو)، `tools/dev/sim_round94_weekend.py` (شبیه‌ساز ساعت‌محور: کد قبلی FAIL با −14h، کد جدید PASS).
 - `test_round89_offset.py` با معنای جدید به‌روز شد (مسیر hard-code شده‌ی `/home/z/...` هم اصلاح شد).

@@ -49,7 +49,7 @@
 - کلیک روی هر سطر = سوئیچ؛ رفرش = پینگ تازه؛ انتخاب دستی ماندگار.
 - مسیر اتصال، هویت اکانت، تیک‌ها و همهٔ رفتارهای چارت دست‌نخورده — اسکن فقط خواندنی است.
 
-## تست — `scripts/verify_round55.py` (۲۵/۲۵)
+## تست — `tests/e2e/verify_round55.py` (۲۵/۲۵)
 
 - استاتیک: نسخهٔ 1.9.6؛ هوک‌ها + دیسپچ در هر سه فایل پرووایدر؛ مارک‌آپ بخش؛ سیم‌کشی Rescan؛ CSS سطرها/تیرها.
 - اجرایی: اسکن Demo خودکار (۶ سطر، پینگ «xx.xx ms»، صعودی، سریع‌ترین auto-select، میله‌های سیگنال per-tier)؛ سوییچ + persist در localStorage؛ Rescan (پینگ تازه + حفظ انتخاب دستی)؛ حالت MT5 (راهنمای فیلد خالی، با تایپ سرور → اسکن → کلیک سطر فیلد Server را پر می‌کند)؛ برگشت به Demo انتخاب ماندگار را برمی‌گرداند؛ Connect عادی اپ را بالا می‌آورد؛ صفر خطای صفحه.
@@ -63,4 +63,4 @@ r54 ۴۵/۴۵، r53 ۵۰/۵۰، r52 ۳۴/۳۴، r51 ۳۱/۳۱ (دوبار)، r50
 
 ## آدیت diff نسبت به راند ۵۴
 
-در `src/`: فقط `index.html` + `js/ui/login.js` + `css/app.css`. پرووایدر: `provider_common.py` + `demo.py` + `mt5.py`. ریشه: `package.json` (1.9.6)، `CHANGELOG.md`، `docs/archive/rounds/FEATURE-ROUND55.md`، `scripts/verify_round55.py` (+ پین‌ها/ری‌ترای فقط-تستی در verify_round51/52/53/54).
+در `src/`: فقط `index.html` + `js/ui/login.js` + `css/app.css`. پرووایدر: `provider_common.py` + `demo.py` + `mt5.py`. ریشه: `package.json` (1.9.6)، `CHANGELOG.md`، `docs/archive/rounds/FEATURE-ROUND55.md`، `tests/e2e/verify_round55.py` (+ پین‌ها/ری‌ترای فقط-تستی در verify_round51/52/53/54).

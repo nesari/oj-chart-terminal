@@ -73,7 +73,7 @@
 
 ## تست
 
-- `scripts/test_round124_solo_float_dockback.mjs` — ۳۱ بررسی: بوت پشتهٔ solo (و حذف نشستن سطوح میزبان‌محور در آن شاخه)، قاعدهٔ per-symbol دست‌نخورده، CSS، قواعد ادغام saveAcct (دلتا/اجتماع/seq/forced/shadow)، `syncSeqFromDisk`، تریگر فوری پایه، ژست‌های dock-back و مسیر مشترک با منو، `refreshMode` بی‌صدا.
+- `tests/unit/test_round124_solo_float_dockback.mjs` — ۳۱ بررسی: بوت پشتهٔ solo (و حذف نشستن سطوح میزبان‌محور در آن شاخه)، قاعدهٔ per-symbol دست‌نخورده، CSS، قواعد ادغام saveAcct (دلتا/اجتماع/seq/forced/shadow)، `syncSeqFromDisk`، تریگر فوری پایه، ژست‌های dock-back و مسیر مشترک با منو، `refreshMode` بی‌صدا.
 - قرارداد راند ۱۲۲ («پشتهٔ ترید در solo بوت نمی‌شود») به رفتار تازه ارتقا یافت → ۴۸/۴۸.
 - رگرسیون کامل: **۲۵ سویییت سبز (~۹۷۰ بررسی)**؛ `node --check` روی app.js / route.js / replaytrade.js / oneclick.js / tabs.js.
 
@@ -86,8 +86,8 @@
 | `src/renderer/js/trade/replaytrade.js` | `saveAcct` ادغام‌گر + `_shadowBal` + `_forceSave` در reset + `syncSeqFromDisk` |
 | `src/renderer/js/trade/oneclick.js` | فقط سرصفحهٔ مستندات (سولو + قاعدهٔ per-symbol) |
 | `src/renderer/js/chart/tabs.js` | ژست‌های dock-back در solo + تریگر فوری `_refreshBases` + سرصفحه |
-| `scripts/test_round124_solo_float_dockback.mjs` | تست جدید |
-| `scripts/test_round122_tabs_live_undock.mjs` | ارتقای قرارداد solo |
+| `tests/unit/test_round124_solo_float_dockback.mjs` | تست جدید |
+| `tests/unit/test_round122_tabs_live_undock.mjs` | ارتقای قرارداد solo |
 | `package.json` / `CHANGELOG.md` | 1.9.79 |
 
 ## محدودیت‌های شناخته‌شده

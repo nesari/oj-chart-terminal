@@ -40,9 +40,9 @@ const key = this._paintKey(from, to);   // از/به صحیح
 ## تست
 
 - `node --check` روی فایل تغییر یافته — سبز.
-- `scripts/verify_pine74.mjs` — **۴۷/۴۷** (هستهٔ Pine دست‌نخورده).
-- `scripts/verify_pine78.mjs` — **۲۹/۲۹** (مدل رنگ/زمان و پاریتی ممو دست‌نخورده).
-- **`scripts/e2e_pine79.py` جدید** (هدلس Chromium، خود ۷۸۶ Zones، demo provider با تیک ۱ ثانیه‌ای):
+- `tests/unit/verify_pine74.mjs` — **۴۷/۴۷** (هستهٔ Pine دست‌نخورده).
+- `tests/unit/verify_pine78.mjs` — **۲۹/۲۹** (مدل رنگ/زمان و پاریتی ممو دست‌نخورده).
+- **`tests/e2e/e2e_pine79.py` جدید** (هدلس Chromium، خود ۷۸۶ Zones، demo provider با تیک ۱ ثانیه‌ای):
   - برای قطعیت، تیک‌های فید در پنجرهٔ اندازه‌گیری بی‌صدا می‌شوند و یک **باکس آزمون سبز مات** با هندسهٔ شناخته‌شده مستقیماً به استور ران‌تایم تزریق می‌شود (rollback تیک نمی‌تواند پاکش کند؛ store.version کلید را به‌روز می‌کند و همان فریم نقاشی می‌شود).
   - سنجه: `off = (لبهٔ چپ نقاشی‌شدهٔ باکس از روی پیکسل‌های کانواس fg) − (x مدل همان لبه از روی مدل LWC)` — اندازه‌گیری **افتراقی** نسبت به سکون اولیه، تا خطای ثابتِ استروک بوردر/antialiasing حذف شود.
   - چک‌ها: وسط درگ (دکمه پایین، ۵٫۵ بار) → حین گلید اینرسی (+۸۰ms پس از رها کردن) → پس از نشست گلید (+۵۰۰ms) → پن دوم (۸٫۵ بار) + گلید دوم — همه باید `|Δ| ≤ 1.5px` بمانند.
@@ -54,4 +54,4 @@ const key = this._paintKey(from, to);   // از/به صحیح
 ## آدیت diff
 
 - **تغییر**: `src/renderer/js/chart/pine-render-adapter.js` (کلید اعشاری + `_vertKey` + اشتراک رویداد محدوده در `attach` + استخراج `_paintIfKeyChanged`)، `package.json` (۱.۹٫۳۰)، CHANGELOG.
-- **جدید**: `docs/archive/rounds/BUGFIX-ROUND79.md` (همین سند)، `scripts/e2e_pine79.py`.
+- **جدید**: `docs/archive/rounds/BUGFIX-ROUND79.md` (همین سند)، `tests/e2e/e2e_pine79.py`.

@@ -16,7 +16,7 @@
 | ۷ | اتصال Alert (`alertcondition`/`alert` → موتور Alerts + صدای راند ۷۳) | 🔶 stub ثبت‌شده در interpreter؛ سیم نهایی به `panels/alerts.js` → راند بعد | `interpreter.js` |
 | ۸ | کارایی (chunked run، به‌روزرسانی فقط forming-bar، سقف نرم حلقه) | ✅ انجام شد (Web Worker → اختیاری آینده) | `compile.js`, `pine-ui.js` |
 | ۹ | `strategy.*` + Strategy Tester | ⬜ نسخهٔ بعدی (کامپایلر فعلاً tolerated است) | — |
-| ۱۰ | تست تطبیق (فیکسچرها + پاریتی عددی + e2e هدلس + اسکرین‌شات) | ✅ انجام شد — ۴۷ چک Node + e2e مرورگر + پذیرش 786 Zones | `scripts/verify_pine74.mjs` |
+| ۱۰ | تست تطبیق (فیکسچرها + پاریتی عددی + e2e هدلس + اسکرین‌شات) | ✅ انجام شد — ۴۷ چک Node + e2e مرورگر + پذیرش 786 Zones | `tests/unit/verify_pine74.mjs` |
 | ۱۱ | مستندسازی و یکپارچگی فرآیند | ✅ همین سند + `FEATURE-ROUND74.md` + به‌روزرسانی README/CHANGELOG | `docs/` |
 
 ## معیار پذیرش نهایی — تحقق یافت

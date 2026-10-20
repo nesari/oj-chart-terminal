@@ -48,7 +48,7 @@
 - تمام رفتارهای تب‌ها (درگ‌واپس، undock/dock-back، منوی راست‌کلیک، لیبل لایو)، ماژول‌های چارت/معامله و `Manager.setLayout` با قرارداد `explicitPanes`.
 - ابعاد نوار (۳۴px)، تم تاریک/روشن و پوستهٔ هر دو.
 
-### تست — `scripts/test_round125_frameless.mjs` (۴۰ بررسی)
+### تست — `tests/unit/test_round125_frameless.mjs` (۴۰ بررسی)
 - `frame: false` در هر دو BrowserWindow (میزبان + جداشده) با توضیح ROUND125.
 - چهار کانال `win:*` + کانال push `win:max-state` + سیم‌کشی در `secureWindow` (مشترک).
 - پل `mt5Win` در preload با هر پنج متد.

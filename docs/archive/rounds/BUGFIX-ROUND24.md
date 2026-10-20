@@ -12,7 +12,7 @@
   - `sanitizeBars(bars, symbol, tfId)` (خط ~233): حذف non-finite، fold تایم تکراری در بار قبلی، drop نزولی‌ها (بدون بازترتیب). Export: `Manager.sanitizeBars`.
   - `loadBars()`: `bars = sanitizeBars(...)` قبل از setPaneData → ریست `pane.pz = {active:false,...}` → try/catch با retry → `pane.bars = bars` فقط بعد از پذیرش setData → probe `[data-guard]` (هشدار کنسول در واگرایی series/legend).
 - **نقاط اتصال برای آینده:** هر مسیر داده جدید (Compare جدید، import، …) باید از `sanitizeBars` بگذرد؛ هر کد جدیدی که `pane.pz` می‌نویسد باید با loadBars ریست شود؛ probe `[data-guard]` را در لاگ‌ها جدی بگیرید.
-- **تست:** `scripts/test_bug007.py` (15/15) — بازتولید پنجره کهنه، سوییچ نماد/TF، sanitize unit، درگ محور + دابل‌کلیک ریست (Round-14). اسکرین‌شات: `bug007-before/after`.
+- **تست:** `tests/unit/test_bug007.py` (15/15) — بازتولید پنجره کهنه، سوییچ نماد/TF، sanitize unit، درگ محور + دابل‌کلیک ریست (Round-14). اسکرین‌شات: `bug007-before/after`.
 
 ## BUG-002 — گام غیر یکنواخت محور زمان ✅
 - **ریشه (در vendor LWC 4.2.3، بدون پچ):** تیک‌های نیتیو ایندکس‌محورند با gap=ceil(9.375×8/barSpacing) و **هر مرز روز اجرا را ریست می‌کنند**؛ منطقه آینده اصلاً تیک ندارد (لایه قبلی tax-ext گام ثابت 46px می‌کشید) → سه گام مختلف.

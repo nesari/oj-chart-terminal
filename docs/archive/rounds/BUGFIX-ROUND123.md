@@ -76,7 +76,7 @@ localStorage را «از نو» می‌خواند (~۱ ثانیه تأخیر ط�
 
 ## تست‌ها
 
-- `scripts/test_round123_fixes.mjs` — ۳۵ بررسی: قراردادهای منبع (قلاب آررو، seed،
+- `tests/unit/test_round123_fixes.mjs` — ۳۵ بررسی: قراردادهای منبع (قلاب آررو، seed،
   payload-based dock-back، اعتبارسنج main، claim یک‌باره، مسیریابی tabsHostWindow) +
   آینه‌های رفتاری (معنای receiver-less، منطق seed، قواعد validator، claim یک‌باره، routing).
 - قراردادهای `test_round121_tabs.mjs` (۴۴) و `test_round122_tabs_live_undock.mjs` (۴۸)
@@ -90,6 +90,6 @@ localStorage را «از نو» می‌خواند (~۱ ثانیه تأخیر ط�
 | `src/renderer/js/chart/tabs.js` | FIX A (قلاب + seed) + FIX B (claim/dockback/accept + beforeunload solo) |
 | `main.js` | `validDockRec`، `pendingSolo`، `tabs:claim`، ارسال رکورد در dock-request، `tabsHostWindow` |
 | `preload.js` | پل `claimTab` |
-| `scripts/test_round123_fixes.mjs` | جدید (۳۵ بررسی) |
-| `scripts/test_round121_tabs.mjs` / `test_round122_tabs_live_undock.mjs` | ارتقای قراردادهای stale |
+| `tests/unit/test_round123_fixes.mjs` | جدید (۳۵ بررسی) |
+| `tests/unit/test_round121_tabs.mjs` / `test_round122_tabs_live_undock.mjs` | ارتقای قراردادهای stale |
 | `package.json` / `CHANGELOG.md` | 1.9.78 + ورودی راند ۱۲۳ |

@@ -38,7 +38,7 @@
 - `provider/mt5.py` — `search` به فیلتر پایتونی case-insensitive روی فهرست کامل نمادها بازنویسی شد (`q.upper() in name.upper()`) با کش ۳۰ دقیقه‌ای (`SYM_CACHE['all']`)، اولویت نمادهای visible (مثل قبل)، dedupe و fallback وایلدکارد برای حالت خرابی `symbols_get`. چون جستجو سمت سرورِ پرووایدر اصلاح شد، هر سه ورودی (پنجرهٔ Symbol Search، Add Symbol در Watchlist، Compare) یک‌جا درست شدند.
 - `provider/demo.py` — نماد تکراری EURJPY از کاتالوگ حذف و `search` با `dict.fromkeys` dedupe شد.
 
-**راستی‌آزمایی:** یونیت `scripts/test_round35_mt5_search.py` با ماژول تقلبی MetaTrader5 (وایلدکارد حساس به حروف مثل واقعی) — `eur`/`EuR`/`EUR` همه EURUSD و حتی `eurusd.m` را پیدا می‌کنند؛ خالی بدون dup. E2E — سه ورودی با `gbp`، `GbPjPy`، `usdj`، `eUrJ` نتیجهٔ درست می‌دهند.
+**راستی‌آزمایی:** یونیت `tests/unit/test_round35_mt5_search.py` با ماژول تقلبی MetaTrader5 (وایلدکارد حساس به حروف مثل واقعی) — `eur`/`EuR`/`EUR` همه EURUSD و حتی `eurusd.m` را پیدا می‌کنند؛ خالی بدون dup. E2E — سه ورودی با `gbp`، `GbPjPy`، `usdj`، `eUrJ` نتیجهٔ درست می‌دهند.
 
 ## مورد ۵ — Compare کار نمی‌کرد + گزینهٔ حذف نبود
 
@@ -75,9 +75,9 @@
 | `src/renderer/js/drawing/tools.js` | مورد ۶: `vTimeLabel` → `TZ.crossLabel` |
 | `provider/mt5.py` | مورد ۴: جستجوی case-insensitive + کش + dedupe |
 | `provider/demo.py` | مورد ۴: dedupe کاتالوگ/نتایج |
-| `scripts/test_round35_ui_polish.py` | سوییت E2E جدید (۳۴ چک) |
-| `scripts/test_round35_mt5_search.py` | یونیت جستجوی MT5 (۷ چک) |
-| `scripts/visual_shots35.py` + `scripts/shots35/` | گالری تصاویر هر دو تم |
+| `tests/unit/test_round35_ui_polish.py` | سوییت E2E جدید (۳۴ چک) |
+| `tests/unit/test_round35_mt5_search.py` | یونیت جستجوی MT5 (۷ چک) |
+| `tools/dev/visual_shots35.py` + `scripts/shots35/` | گالری تصاویر هر دو تم |
 
 ## رگرسیون کامل
 

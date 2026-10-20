@@ -68,8 +68,8 @@ main process events (boot/quit/provider/crash) ──mlogEvent──▶ همان
 
 ## ۶) تست‌ها
 
-- `scripts/test_round28_diag.py` — ۱۰ چک E2E (headless chromium + demo provider): بوت بدون شکستن CSP، پنل، API لاگر، کاتالوگ خطا، scrub، selftest، export، crash net، رگرسیون عمق/digits، صفر خطای کنسول → **10/10 PASS**.
-- `scripts/test_round27_features.py` → **11/11 PASS** (بدون رگرسیون).
+- `tests/unit/test_round28_diag.py` — ۱۰ چک E2E (headless chromium + demo provider): بوت بدون شکستن CSP، پنل، API لاگر، کاتالوگ خطا، scrub، selftest، export، crash net، رگرسیون عمق/digits، صفر خطای کنسول → **10/10 PASS**.
+- `tests/unit/test_round27_features.py` → **11/11 PASS** (بدون رگرسیون).
 - `node --check` کل js + `py_compile` پرووایدرها — سبز.
 
 ## ۷) راهنمای توسعه برای لایه‌های بعدی

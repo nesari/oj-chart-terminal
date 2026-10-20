@@ -65,8 +65,8 @@
 | `src/renderer/css/trade.css` | استایل‌های `.oc-*` (پنل، هدر، دکمه‌ها، سلکت حجم، قرص، فلش، لایت) |
 | `src/renderer/js/ui/icons.js` | آیکن `bolt` (قرص minimize) |
 | `src/renderer/js/app.js` | ایمپورت + `OneClick.init()` بعد از `TradeOverlay.init()` + نمایان در `window.__app` |
-| `scripts/test_round108_oneclick.mjs` | **۷۱ چک** — آینه قوانین (حجم/رقم/جای‌گذاری/ماشین قفل) + قراردادهای سورس |
-| `scripts/repro_round108_oneclick.py` | repro واقعی: بوت دموبروکر + کرومیوم headless — **۳۶/۳۶** (سفارش واقعی، مینی‌مایز، TF، دو تم، مولتی‌چارت) |
+| `tests/unit/test_round108_oneclick.mjs` | **۷۱ چک** — آینه قوانین (حجم/رقم/جای‌گذاری/ماشین قفل) + قراردادهای سورس |
+| `tools/dev/repro_round108_oneclick.py` | repro واقعی: بوت دموبروکر + کرومیوم headless — **۳۶/۳۶** (سفارش واقعی، مینی‌مایز، TF، دو تم، مولتی‌چارت) |
 
 ## نتایج اعتبارسنجی
 

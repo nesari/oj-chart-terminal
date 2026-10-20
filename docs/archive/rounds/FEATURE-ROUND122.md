@@ -31,8 +31,8 @@
 | `src/renderer/js/ui/icons.js` | دو آیکون افزودنی `undock`/`dock` |
 | `src/renderer/index.html` | دکمهٔ `#tab-dock-btn` در نوار تب |
 | `src/renderer/css/app.css` | استایل `.t-quote/.t-px/.t-chg`، `.tab-dock`، قواعد `body.solo` |
-| `scripts/test_round122_tabs_live_undock.mjs` | **جدید** — ۴۸ بررسی |
-| `scripts/test_round121_tabs.mjs` | به‌روزرسانی قراردادها (persist key برنچ‌شده + دامنهٔ دقیق‌تر releaseSub) |
+| `tests/unit/test_round122_tabs_live_undock.mjs` | **جدید** — ۴۸ بررسی |
+| `tests/unit/test_round121_tabs.mjs` | به‌روزرسانی قراردادها (persist key برنچ‌شده + دامنهٔ دقیق‌تر releaseSub) |
 
 بقیهٔ پروژه — از جمله `provider/*`، `manager.js`، همهٔ `trade/*`، `state.js`، `drawing/*` — دست‌نخورده.
 
@@ -40,5 +40,5 @@
 سرور پرووایدر چند-کلاینته است (`self.subs[ws]` به‌ازای هر اتصال + `broadcast` به همه) — هر پنجره WS مستقل خودش را دارد و لاگین دوم روی همان حساب بی‌ضرر است. به همین دلیل پنجرهٔ جداشده بدون هیچ تغییری در پرووایدر کار می‌کند.
 
 ## تست
-- `scripts/test_round122_tabs_live_undock.mjs` — ۴۸ بررسی سبز (لیبل/سابسکرایب/پایهٔ روزانه، گسترهٔ کامل undock↔dockback↔promote، گیت‌های solo، آینه‌های رفتاری مرز روز/درصد/reconcile/handoff).
+- `tests/unit/test_round122_tabs_live_undock.mjs` — ۴۸ بررسی سبز (لیبل/سابسکرایب/پایهٔ روزانه، گسترهٔ کامل undock↔dockback↔promote، گیت‌های solo، آینه‌های رفتاری مرز روز/درصد/reconcile/handoff).
 - رگرسیون کامل: هر ۲۳ سویییت (راند ۸۶c تا ۱۲۲) سبز.

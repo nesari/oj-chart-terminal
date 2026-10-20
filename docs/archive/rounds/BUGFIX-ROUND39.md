@@ -91,7 +91,7 @@ The check found THREE real deviations, all fixed:
 
 ## Verification
 
-New suite `scripts/test_round39_news_alerts.py` — **33/33 PASS** (N1-N7 news
+New suite `tests/unit/test_round39_news_alerts.py` — **33/33 PASS** (N1-N7 news
 panel/filters/marks/persistence with colour-pixel probes — the marks can sit
 exactly on a bar-grid column, so counts alone lie; A1-A12 alerts end-to-end
 incl. past-time rejection and firing; C1-C4 arrow parity with a cross-colour
@@ -110,7 +110,7 @@ with the alert items, arrow cursor, 720px window.
 ## Files
 
 - **Added**: `src/renderer/js/panels/news.js`, `docs/archive/rounds/BUGFIX-ROUND39.md`,
-  `scripts/test_round39_news_alerts.py`, screenshot gallery
+  `tests/unit/test_round39_news_alerts.py`, screenshot gallery
 - **Modified**: `provider/provider_common.py` (calendar + `news` handler),
   `src/core/feed.js` (`news()`), `src/renderer/index.html` (rail tab + panel),
   `src/renderer/js/ui/icons.js` (news icon), `src/renderer/js/app.js` (wire-up

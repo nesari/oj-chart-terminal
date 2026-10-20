@@ -39,7 +39,7 @@
 - `package.json` — 1.9.7
 
 ## تست
-`scripts/verify_round56.py` — ۵۳/۵۳:
+`tests/e2e/verify_round56.py` — ۵۳/۵۳:
 - استاتیک: نسخه، مارکاپ دکمه کنار tz-clock، wiring، پروتکل اسکن، مرتب‌سازی صعودی، مسیر سوئیچ Demo/MT5، `switchServer` + listener + fallback، دست‌نخوردگی بخش راند ۵۵، CSS، RPCهای پرووایدر.
 - سینتکس: parse ESM هر دو ماژول با node.
 - e2e (Playwright، هم‌سناریو با shell وب): دکمه در نوار پایین کنار ساعت؛ پاپ‌آپ با ۶ سطر پینگ واقعی صعودی؛ سریع‌ترین selected وقتی pick نیست؛ Rescan دوباره می‌سنجد (مقادیر عوض می‌شوند) و انتخاب می‌ماند؛ سوئیچ → toast → reload → persist → برچسب جدید → اپ برگشت → سطر جدید selected؛ کلیک سرور جاری بدون reload می‌بندد؛ لایت‌اسپات؛ fallback MT5 (prefill فیلد Server)؛ جداکنندهٔ جدید عین قبلی؛ صفر خطای صفحه.
