@@ -56,7 +56,8 @@ TradingView-style charting desktop app (Electron) powered by MetaTrader 5 data �
 - **Save Layout** (TradingView logic): the toolbar icon next to the layout picker opens the TV-style menu — Save layout (`Ctrl+S`), Autosave toggle, Make a copy…, Rename…, Download chart data… (CSV of the active chart), Create new layout…, RECENTLY USED and Open layout…. Saving keeps the complete personal setup (layout + splitters, every chart's symbol/interval/style, chart settings, sync toggles, timezone, favorites, watchlist and all drawings) under a name; saved layouts are listed for one-click load or delete. The app also reopens your last charts on relaunch (turn Autosave off to keep only explicitly saved layouts).
 - Free chart panning: with Auto Scale off, dragging the chart moves it freely both horizontally and vertically (TradingView behaviour); wheel over the price scale or dragging the price scale zooms it vertically (double-click the scale to reset). In multi-chart layouts every chart has a maximize/restore button (top-right of the chart, Esc also restores). The tool settings dialog is a floating window — drag it by its title bar anywhere over the chart.
 - Timeframe keyboard switcher: type digits (e.g. `15`) then `Enter`; seconds intervals use lowercase `s` (1s, 5s, 15s, 30s).
-- Watchlist (add/remove/click to load symbol), Price Alerts (5 conditions, notifications + sound), Data Window, Bar Replay.
+- Watchlist (add/remove/click to load symbol), Price Alerts (5 conditions, notifications + sound), Data Window, Bar Replay, and the provider's economic **News calendar** (impact/currency filters, locate-on-chart).
+- **Trading** (live MT5 or the built-in demo engine): unified order ticket with SL/TP and risk modes, one-click trading, positions/pending orders dock (partial close, SL/TP modify, cancel), strategy tester and replay trading — see `src/renderer/js/trade/`, `src/renderer/js/panels/tester.js` and `src/renderer/js/panels/replay.js`.
 - Timezone picker at the bottom-right of the chart — the full TradingView timezone list; applies to the time axis, crosshair and Data Window.
 
 ## Building a real installer
@@ -84,10 +85,10 @@ Note: the Windows/macOS builds are **unsigned** by default (no code-signing cert
 
 ## Notes
 
-- Built-in indicators + a fully local **Pine Script v6 engine and editor** (round 74): write/edit `.pine` scripts in the bottom Pine Editor panel, "Add to chart", TV-style sub-panes, script-owned boxes/lines/labels — see `docs/PINE-ENGINE-PLAN.md`. Chat and news remain excluded.
-- No trading — data and analysis only.
+- Built-in indicators + a fully local **Pine Script v6 engine and editor** (round 74): write/edit `.pine` scripts in the bottom Pine Editor panel, "Add to chart", TV-style sub-panes, script-owned boxes/lines/labels — see `docs/PINE-ENGINE-PLAN.md`. Chat remains excluded.
+- Trading is included: the same UI drives a real MT5 account or the built-in demo engine (see the **Trading** bullet above).
 
-## Diagnostics, Logs & Security (v1.4.0 — round 28)
+## Diagnostics, Logs & Security (round 28)
 
 - **Diagnostics panel**: right rail → info icon. Live log view with level/category/text filters, expandable context rows, session stats, one-click **Export** (`.log`/`.json`), and a **Self-test** (✓) that verifies logger, error system, scrubbing, storage, IPC and feed health.
 - **File logs**: `<userData>/logs/app-YYYY-MM-DD.log` (JSONL, auto-rotation ~2MB, 7-day pruning). On Windows: `%APPDATA%/mt5-chart-terminal/logs/`. Attach a file (or use Export) when reporting a bug.
@@ -95,14 +96,15 @@ Note: the Windows/macOS builds are **unsigned** by default (no code-signing cert
 - **Security**: strict CSP, sandboxed renderer, every IPC payload validated, saved passwords encrypted via OS safeStorage (DPAPI), log contexts auto-redacted (`password/token/...` never reach the log).
 - Details: `docs/FEATURE-ROUND28.md` + `CHANGELOG.md`.
 
-## Architecture (v1.6.0 — Phase 3, platform-agnostic core)
+## Architecture (v1.9.212 — Phase 3, platform-agnostic core)
 
-- **`src/core/`** — the platform-agnostic layer (8 modules: env, util, logger,
-  errors, indicators, state, timezone, feed). Zero `window` / `document` /
+- **`src/core/`** — the platform-agnostic layer (10 top-level modules: env, util,
+  logger, errors, indicators, state, timezone, feed, demo-math, session-math —
+  plus the Pine engine in `src/core/pine/`). Zero `window` / `document` /
   `electronAPI` references (enforced by tests); the only host seam is
   `core/env.js` (ENV + storage). It runs unchanged in Node, any browser and
-  the Electron renderer — proven by `scripts/test_phase3_core.py` (31 checks,
-  including a plain-Node import + behavior smoke test).
+  the Electron renderer — proven by `scripts/test_phase3_core.py`
+  (including a plain-Node import + behavior smoke test).
 - **`src/platform/electron/loghost.js`** — the Electron host adapter: wires
   the batched IPC file-log transport, the global crash net and the
   beforeunload flush onto the core logger. A phase-4 web shell will ship its
@@ -113,13 +115,12 @@ Note: the Windows/macOS builds are **unsigned** by default (no code-signing cert
 
 - The renderer is a **static ES-module graph** with a single entry point
   (`js/app.js`); there are **no `window.*` module globals** anymore — every
-  cross-file reference is a named `import`/`export`. Each of the 30 modules
-  carries a JSDoc `@module` header.
+  cross-file reference is a named `import`/`export`. Each module carries a
+  JSDoc `@module` header.
 - Intentional `window` surfaces: `electronAPI` (preload bridge),
   `LightweightCharts` (vendor UMD), and `window.__app` — the test/debug
-  facade exposing all 26 module handles.
+  facade exposing the module handles.
 - Phase 2 (ES-module graph, no `window.*` globals) remains the base layer;
   details in `docs/PHASE2-ESMODULES.md`, phase 3 in `docs/PHASE3-CORE.md`.
-- Dev checks: `bash scripts/check_esm.sh` (33 modules),
-  `python3 scripts/audit_imports.py`, `python3 scripts/test_phase2_modules.py`,
+- Dev checks: `python3 scripts/test_phase2_modules.py`,
   `python3 scripts/test_phase3_core.py`.
