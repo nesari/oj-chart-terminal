@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: Windows — full verify (syntax + imports + python + smoke)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Syntax gate
+        run: npm run check:syntax
+
+      - name: Import graph gate
+        run: npm run check:imports
+
+      - name: Python provider gate
+        run: npm run check:py
+
+      - name: Boot smoke (demo provider + offscreen Electron)
+        run: npm run smoke
+
+      - name: Upload smoke screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshot
+          path: docs/_smoke.png
+          if-no-files-found: ignore
+
+  linux:
+    name: Linux — syntax + imports
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Linux only runs the static gates; skip the Electron binary download.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Syntax gate
+        run: npm run check:syntax
+
+      - name: Import graph gate
+        run: npm run check:imports
