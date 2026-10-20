@@ -14,7 +14,7 @@ A lightweight TradingView-style charting terminal for Windows, built with Electr
 
 ## Run (development / from source)
 
-1. Extract this folder anywhere (e.g. `C:\Users\Farzad\Desktop\mt5-chart-app`).
+1. Extract this folder anywhere (e.g. `C:\Users\AHNesari\Desktop\mt5-chart-app`).
 2. **Windows:** double-click **run-demo.bat** (simulated data, any account) or **run-mt5.bat** (real MT5).
    **macOS/Linux:** run `./run.sh` (demo mode) or `./run.sh mt5` (real MT5 — Windows only in practice, see above).
    - **Linux sandbox note:** on distributions where Chromium's SUID sandbox is blocked (some Ubuntu 22.04+/24.04 AppArmor setups, Docker, WSL), launch with `./run.sh --no-sandbox`. Extra flags are forwarded to Electron; only use this on machines you trust, since it disables Chromium's sandbox.

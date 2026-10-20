@@ -3,7 +3,7 @@ indicator("786 Zones", overlay=true, max_boxes_count=500, max_lines_count=500, m
 
 // ============================================================================
 // 786 Zones — v5.5
-// By: Amir & Farzad
+// By: Amir & AHNesari
 //
 // Draws opening-range zones for trading sessions (Sydney, Tokyo, Hong Kong,
 // Frankfurt, London, New York) on the chart.
