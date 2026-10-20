@@ -338,7 +338,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 [x] F1.3  version از app.getVersion()         (P1)
 [x] F1.4  حذف __pycache__ از بیلد             (P1)
 [x] F1.5  آیکون mac/linux                     (P1)
-[ ] F1.6  چرخه‌ی عمر رندرر/پنجره              (P1)
+[x] F1.6  چرخه‌ی عمر رندرر/پنجره              (P1)
 [ ] F1.7  رفع تزریق HTML در compare/watchlist (P1)
 [ ] F1.8  تصحیح README                        (P1)
 [ ] F2.1  اسکریپت‌های npm                     (P1)

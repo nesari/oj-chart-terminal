@@ -783,7 +783,17 @@ app.whenReady().then(() => {
   mlogEvent('info', 'app', 'main boot', { version: app.getVersion(), electron: process.versions.electron, node: process.versions.node, platform: process.platform });
   createWindow();
 });
-app.on('window-all-closed', () => { stopProvider(); app.quit(); });
+app.on('window-all-closed', () => {
+  stopProvider();
+  if (process.platform !== 'darwin') app.quit();
+});
+app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
+app.on('render-process-gone', (e, wc, details) => {
+  try { mlogEvent('error', 'error', 'renderer gone', details); } catch (err) {}
+});
+app.on('child-process-gone', (e, details) => {
+  try { mlogEvent('error', 'error', 'child gone', details); } catch (err) {}
+});
 app.on('before-quit', () => { mlogEvent('info', 'app', 'app quit'); stopProvider(); try { if (logStream) { logStream.end(); logStream = null; } } catch (e) {} });
 
 /* round 28: main-process crash net — uncaught exceptions land in the log
