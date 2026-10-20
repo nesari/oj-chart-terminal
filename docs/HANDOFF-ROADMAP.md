@@ -346,7 +346,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 [x] F2.3  CI workflow                         (P1)
 [x] F2.4  ثبت smoke harness                   (P1)
 [x] F5.1  بازنویسی README                     (P2)
-[ ] F5.2  docs/ARCHITECTURE.md                (P2)
+[x] F5.2  docs/ARCHITECTURE.md                (P2)
 [ ] F5.3  آرشیو مستندات راندها                (P2)
 [ ] F3.1  بازساختاردهی scripts/               (P2)
 [ ] F3.2  حذف ۶ گروه تکراری                   (P2)
