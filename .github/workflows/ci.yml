@@ -7,7 +7,7 @@ on:
 
 jobs:
   windows:
-    name: Windows — full verify (syntax + imports + python + smoke)
+    name: Windows — full verify (syntax + imports + python + unit + smoke)
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -38,6 +38,9 @@ jobs:
 
       - name: Python provider gate
         run: npm run check:py
+
+      - name: Unit gate (140 Node suites)
+        run: npm run test:unit
 
       - name: Boot smoke (demo provider + offscreen Electron)
         run: npm run smoke
