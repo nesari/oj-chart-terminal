@@ -780,7 +780,7 @@ app.whenReady().then(() => {
   try { app.setAppUserModelId(process.platform === 'win32' ? aumid : 'OJChart Notification'); } catch (e) {}
   hardenPermissions(require('electron').session.defaultSession); // ROUND126
   pruneLogs();
-  mlogEvent('info', 'app', 'main boot', { version: '1.9.212', electron: process.versions.electron, node: process.versions.node, platform: process.platform });
+  mlogEvent('info', 'app', 'main boot', { version: app.getVersion(), electron: process.versions.electron, node: process.versions.node, platform: process.platform });
   createWindow();
 });
 app.on('window-all-closed', () => { stopProvider(); app.quit(); });
