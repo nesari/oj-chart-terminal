@@ -1,0 +1,181 @@
+/* ======================================================================
+ * ROUND86 — Replay Trading Suite styles:
+ *   - "Replay Trading" right-panel tab (#tab-replaytrade / .rtt-*)
+ *   - the two dialogs (Go to Date / Custom Session) reuse the shared
+ *     .dialog CSS — only their 3-column rows and hints live here (.gd-*).
+ * Theme variables come from app.css (dark + light).
+ * ==================================================================== */
+
+/* ---------- right-panel tab ---------- */
+#tab-replaytrade { display: flex; flex-direction: column; }
+#rtt-body { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+
+.rtt-status {
+  display: flex; align-items: center; gap: 7px; padding: 8px 12px;
+  font-size: 11.5px; color: var(--text-dim); border-bottom: 1px solid var(--border);
+}
+.rtt-status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); flex: 0 0 auto; }
+.rtt-status.live .dot { background: var(--green); }
+.rtt-status.live { color: var(--text); }
+
+.rtt-acct {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
+}
+.rtt-kpi {
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 3px; text-align: center; min-width: 0;
+}
+.rtt-kpi b {
+  display: block; font-size: 11px; color: var(--white); font-variant-numeric: tabular-nums;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.rtt-kpi b.pos { color: var(--green); }
+.rtt-kpi b.neg { color: var(--red); }
+.rtt-kpi span { font-size: 8.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-dim); }
+
+.rtt-sec { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+.rtt-sec-title {
+  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+}
+.rtt-sec-title .rtt-spr { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text); font-variant-numeric: tabular-nums; }
+
+.rtt-row { display: flex; gap: 5px; align-items: center; margin-bottom: 6px; }
+.rtt-row:last-child { margin-bottom: 0; }
+.rtt-row input, .rtt-row select {
+  flex: 1 1 0; min-width: 0; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); padding: 6px 8px; font-size: 12px; outline: none;
+}
+.rtt-row input:focus, .rtt-row select:focus { border-color: var(--blue); }
+.rtt-lbl { display: flex; flex-direction: column; gap: 3px; flex: 1 1 0; min-width: 0; font-size: 10px; color: var(--text-dim); }
+.rtt-lbl input, .rtt-lbl select {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); padding: 6px 8px; font-size: 12px; outline: none; width: 100%;
+}
+.rtt-lbl input:focus, .rtt-lbl select:focus { border-color: var(--blue); }
+
+.rtt-bs {
+  flex: 1 1 0; border: 0; border-radius: 6px; padding: 9px 0;
+  font-weight: 800; font-size: 12.5px; cursor: pointer; color: #fff; letter-spacing: .04em;
+}
+.rtt-bs:disabled { opacity: .45; cursor: default; }
+.rtt-buy { background: #089981; }
+.rtt-buy:hover { background: #0aa88d; }
+.rtt-sell { background: #f23645; }
+.rtt-sell:hover { background: #ff4b59; }
+
+.rtt-mini {
+  border: 1px solid var(--border); background: var(--panel2); color: var(--text-dim);
+  border-radius: 4px; font-size: 10.5px; padding: 3px 8px; cursor: pointer; white-space: nowrap;
+}
+.rtt-mini:hover { color: var(--text); border-color: var(--border2); }
+.rtt-mini.danger:hover { color: #fff; background: var(--red); border-color: var(--red); }
+
+.rtt-hint { font-size: 10px; color: var(--text-dim); line-height: 1.5; margin-top: 6px; }
+
+.rtt-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.rtt-tab {
+  flex: 1 1 0; padding: 8px 0 7px; background: transparent; border: 0;
+  color: var(--text-dim); font-size: 11px; font-weight: 700; cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.rtt-tab:hover { color: var(--text); }
+.rtt-tab.on { color: var(--text); border-bottom-color: var(--blue); }
+
+.rtt-tables { flex: 1 1 auto; overflow-y: auto; min-height: 90px; }
+.rtt-empty { padding: 20px 14px; color: var(--text-dim); font-size: 11.5px; text-align: center; line-height: 1.6; }
+.rtt-sum {
+  padding: 7px 12px; font-size: 11px; color: var(--text-dim);
+  border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums;
+}
+.rtt-sum b.pos { color: var(--green); }
+.rtt-sum b.neg { color: var(--red); }
+
+.rtt-prow { padding: 7px 10px; border-bottom: 1px solid rgba(42, 46, 57, .45); font-size: 11.5px; }
+body.theme-light .rtt-prow { border-bottom-color: rgba(213, 217, 226, .7); }
+.rtt-l1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.rtt-lhead { color: var(--text-dim); font-size: 10.5px; }
+.rtt-lhead span { text-transform: uppercase; letter-spacing: .05em; font-size: 9.5px; }
+.rtt-lhead .rtt-mini { margin-left: auto; }
+.rtt-side {
+  width: 16px; height: 16px; border-radius: 4px; color: #fff; font-size: 10px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+}
+.rtt-side.buy { background: #089981; }
+.rtt-side.sell { background: #f23645; }
+.rtt-sym { font-weight: 700; color: var(--white); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rtt-vol { color: var(--text-dim); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.rtt-otype { color: var(--text); font-size: 10.5px; flex: 0 0 auto; }
+.rtt-pl { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; flex: 0 0 auto; }
+.rtt-pl.pos { color: var(--green); }
+.rtt-pl.neg { color: var(--red); }
+.rtt-btns { display: flex; gap: 4px; flex: 0 0 auto; }
+.rtt-sub {
+  display: flex; gap: 10px; margin-top: 4px; color: var(--text-dim);
+  font-size: 10.5px; font-variant-numeric: tabular-nums; flex-wrap: wrap;
+}
+.rtt-edit { cursor: pointer; }
+.rtt-edit:hover { color: var(--text); }
+.rtt-reason {
+  font-size: 9px; font-weight: 800; letter-spacing: .04em; color: var(--yellow);
+  border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; flex: 0 0 auto;
+}
+.rtt-inline { display: inline-flex; gap: 4px; align-items: center; }
+.rtt-inline input {
+  width: 86px; background: var(--bg); border: 1px solid var(--blue); border-radius: 4px;
+  color: var(--text); padding: 2px 6px; font-size: 11px; outline: none;
+}
+
+/* ---------- dialogs (Go to Date / Custom Session) ---------- */
+.rtt-dlg { width: 460px; max-width: 92vw; }
+.rtt-dlg .dlg-hint { font-size: 11px; color: var(--text-dim); line-height: 1.5; margin: 6px 0 4px; }
+.gd-row3 { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 8px; }
+.rtt-dlg .dlg-row label { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: var(--text-dim); }
+
+/* ROUND87: hour:minute pair inside one dialog label */
+.gd-hm { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.gd-hm select { flex: 1; min-width: 0; }
+.gd-hm-sep { color: var(--text-dim); font-weight: 700; flex: 0 0 auto; }
+
+/* ---------- ROUND86B: merged Go-to-Date dialog (date | Custom Session) ---------- */
+.gd-dlg { width: 500px; max-width: 94vw; }
+.gd-tabs {
+  display: flex; gap: 4px; margin: 8px 0 10px; border-bottom: 1px solid var(--border);
+}
+.gd-tab {
+  appearance: none; border: none; background: transparent; color: var(--text-dim);
+  font: 700 11.5px/1 inherit; letter-spacing: .02em; padding: 8px 12px; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.gd-tab:hover { color: var(--text); }
+.gd-tab.on { color: var(--blue); border-bottom-color: var(--blue); }
+.gd-modes { display: flex; gap: 16px; margin: 10px 0 2px; }
+.gd-mode {
+  display: flex !important; flex-direction: row !important; align-items: center; gap: 6px !important;
+  font-size: 11px !important; color: var(--text) !important; cursor: pointer;
+}
+.gd-mode input { accent-color: var(--blue); cursor: pointer; }
+#gd-mode-info { min-height: 14px; }
+
+/* floating "Return to live" chip while a Go-to-Date historical view is shown */
+.gd-chip {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 30;
+  display: flex; align-items: center; gap: 8px; padding: 5px 8px 5px 10px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.35); font-size: 11px; color: var(--text);
+}
+.gd-chip.hidden { display: none; }
+.gd-chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--yellow); flex: 0 0 auto; }
+.gd-chip-btn {
+  appearance: none; border: 1px solid var(--blue); background: transparent; color: var(--blue);
+  font: 700 10.5px/1 inherit; padding: 4px 9px; border-radius: 5px; cursor: pointer;
+}
+.gd-chip-btn:hover { background: var(--blue); color: #fff; }
+
+/* ====== ROUND120 — the demo extras block (settings + cash ledger) ======
+   The unified ticket lives ABOVE it; this block carries only the
+   demo-specific controls. Same visual language as the old panel. */
+#tr-demo-extra { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+#tr-demo-extra .rtt-sec { padding: 9px 10px; }
+#rtt-cash { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; overflow-y: auto; }

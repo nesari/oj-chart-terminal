@@ -1,0 +1,47 @@
+{
+  "name": "mt5-chart-terminal",
+  "version": "1.9.212",
+  "description": "TradingView-style chart terminal powered by MetaTrader 5 data",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis",
+    "dist:mac": "electron-builder --mac dmg",
+    "dist:linux": "electron-builder --linux AppImage"
+  },
+  "author": "Farzad",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "33.4.11",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.ojchart.terminal",
+    "productName": "OJ Chart Terminal",
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "provider/**/*",
+      "assets/**/*",
+      "!scripts/**",
+      "!docs/**"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/app.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/logo.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/logo.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

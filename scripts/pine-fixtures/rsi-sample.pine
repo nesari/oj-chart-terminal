@@ -1,0 +1,9 @@
+//@version=6
+indicator("RSI (sample)", overlay=false)
+len = input.int(14, "Length", minval=1, maxval=500)
+src = input.source(close, "Source")
+r = ta.rsi(src, len)
+plot(r, title="RSI", color=color.new(#7e57c2, 0), linewidth=2)
+hline(70, "Overbought", color=color.new(color.red, 40), linestyle=hline.style_dashed)
+hline(30, "Oversold", color=color.new(color.green, 40), linestyle=hline.style_dashed)
+bgcolor(r > 70 ? color.new(color.red, 85) : r < 30 ? color.new(color.green, 85) : na)

@@ -1,0 +1,849 @@
+/* =====================================================================
+   ROUND85c — Trading UI (order ticket + bottom dock + chart overlay UX)
+   Everything rides the theme variables (--panel/--border/--text/…) so
+   dark AND light follow the theme switch like the rest of the app.
+
+   ROUND85c (user feedback):
+   - ticket: tidy sectioned layout — consistent spacing, uniform control
+     heights, clear group separation (was visually messy)
+   - dock: header icon + close button + P/L chip, tables fold columns
+     away as the window narrows (responsive to the app window size)
+   - overlay: hover tooltip + drag-chip color variants (SL red / TP green)
+   ===================================================================== */
+
+/* ---------------- right-panel order ticket ---------------- */
+/* The ticket must SHRINK to the panel's available height so .tt-wrap
+   scrolls INSIDE the panel — otherwise a tall content stack spills under
+   the bottom dock and the BUY/SELL buttons become unclickable. */
+#trade-ticket { padding: 0; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.tt-wrap { height: 100%; box-sizing: border-box; padding: 10px 12px 16px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+
+.tt-acc { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+/* ROUND128: account name + mode chip share one row; the KPI grid below it */
+.tt-acc-top { display: flex; align-items: center; gap: 8px; justify-content: space-between; margin-bottom: 7px; }
+.tt-acc-name { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* ROUND128 (user request) — the account specs got TANGLED: the old markup
+   was one flat 3-column grid of 12 bare cells, so labels and their numbers
+   landed on DIFFERENT rows ("Balance" next to Equity's value …). Each
+   label+value pair is ONE unit now; the pair row is a flex line so the
+   number always sits glued to its own label, and the grid wraps by itself
+   (auto-fit minmax) as the panel/window is resized — no JS needed. */
+.tt-acc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 5px 12px; font-size: 11px; }
+.tt-acc-kpi { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.tt-acc-kpi span { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tt-acc-kpi b { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tt-acc-grid b.pos, .td-kpi b.pos, .td-profit.pos { color: var(--green); }
+.tt-acc-grid b.neg, .td-kpi b.neg, .td-profit.neg { color: var(--red); }
+
+.tt-sec { display: flex; flex-direction: column; gap: 7px; padding-top: 9px; border-top: 1px solid var(--border); }
+.tt-sec-title { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); margin: 0; }
+
+.tt-row { display: flex; gap: 6px; align-items: center; }
+.tt-row input, .tt-row select {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); padding: 6px 8px; font-size: 12px; outline: none; min-width: 0;
+}
+.tt-row input:focus, .tt-row select:focus { border-color: var(--border2); }
+.tt-row input:disabled { opacity: .45; }
+.tt-symrow { justify-content: space-between; position: relative; }
+.tt-symrow select { flex: 1; font-weight: 600; min-width: 0; }
+/* ROUND128: the gear button that opens the ticket-options dropdown */
+.tt-gear-btn {
+  flex: 0 0 auto; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text-dim); cursor: pointer; padding: 0;
+}
+.tt-gear-btn:hover { color: var(--text); border-color: var(--border2); background: var(--border); }
+.tt-gear-btn[aria-expanded="true"] { color: var(--text); border-color: var(--border2); background: var(--border); }
+.tt-gear-btn svg { width: 15px; height: 15px; }
+/* the dropdown itself — TV-like floating card, clamped to the panel */
+.tt-gear-wrap { position: relative; }
+.tt-gear-menu {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 60;
+  min-width: 190px; box-sizing: border-box; padding: 8px 10px;
+  background: var(--panel); border: 1px solid var(--border2); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  display: flex; flex-direction: column; gap: 7px;
+}
+.tt-gear-menu.hidden { display: none; }
+.tt-gear-title { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); }
+.tt-follow { font-size: 11px; color: var(--text-dim); display: flex; gap: 5px; align-items: center; white-space: nowrap; cursor: pointer; }
+.tt-follow:hover { color: var(--text); }
+
+.tt-volrow input { flex: 1; text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; }
+.tt-step {
+  width: 30px; height: 28px; background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); font-size: 15px; cursor: pointer; line-height: 1;
+}
+.tt-step:hover { background: var(--border); }
+.tt-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.tt-chip {
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 20px;
+  color: var(--text-dim); padding: 2.5px 10px; font-size: 11px; cursor: pointer;
+}
+.tt-chip:hover { color: var(--text); border-color: var(--border2); }
+
+.tt-sltp { display: flex; flex-direction: column; gap: 6px; }
+.tt-sltp-row { display: flex; gap: 6px; align-items: center; }
+.tt-sltp-row select { width: 88px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text); padding: 5.5px 6px; font-size: 11.5px; outline: none; }
+.tt-sltp-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text); padding: 5.5px 8px; font-size: 12px; outline: none; }
+.tt-switch { display: flex; align-items: center; gap: 5px; width: 44px; font-size: 11.5px; }
+.tt-sl-c { color: var(--red); }
+.tt-tp-c { color: var(--green); }
+.tt-sltp-info { font-size: 11px; color: var(--text-dim); padding-left: 50px; min-height: 14px; font-variant-numeric: tabular-nums; }
+.tt-riskrow { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+.tt-riskrow input { width: 46px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text); padding: 4.5px 6px; font-size: 11.5px; text-align: center; outline: none; }
+.tt-mini {
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); font-size: 11px; padding: 4.5px 10px; cursor: pointer; white-space: nowrap;
+}
+.tt-mini:hover { border-color: var(--border2); background: var(--border); }
+.tt-rr-info { font-size: 11.5px; color: var(--text); font-variant-numeric: tabular-nums; }
+.tt-oneclick { font-size: 11.5px; color: var(--text-dim); display: flex; gap: 6px; align-items: center; margin-top: 3px; cursor: pointer; }
+
+.tt-exect { display: flex; gap: 8px; margin-top: 3px; }
+.tt-exec {
+  flex: 1; border: none; border-radius: 8px; padding: 10px 6px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px; align-items: center;
+  color: #fff; font-weight: 700; font-size: 13px; letter-spacing: .04em;
+}
+.tt-exec .tt-exec-px { font-weight: 600; font-size: 11.5px; opacity: .92; font-variant-numeric: tabular-nums; }
+.tt-buy { background: var(--green); }
+.tt-buy:hover { filter: brightness(1.08); }
+.tt-sell { background: var(--red); }
+.tt-sell:hover { filter: brightness(1.08); }
+/* ROUND102: armed state of an execute button (replaces the modal confirm).
+   Deliberately loud — it is the last thing between a click and real money. */
+.tt-exec.tt-armed {
+  animation: tt-arm-pulse 1s ease-in-out infinite;
+  outline: 2px solid var(--text); outline-offset: 1px;
+}
+@keyframes tt-arm-pulse { 50% { filter: brightness(1.28); } }
+.tt-mkt-info { font-size: 10.5px; color: var(--text-dim); text-align: center; min-height: 13px; }
+.tt-status { font-size: 11.5px; min-height: 15px; color: var(--text-dim); word-break: break-word; }
+.tt-status.ok { color: var(--green); }
+.tt-status.err { color: var(--red); }
+
+/* ---------------- bottom trading dock ---------------- */
+/* ROUND104 BUGFIX: the collapse button clears root.style.height, which fell
+   back to THIS rule - so a "collapsed" dock kept its full 220px and simply
+   showed an empty grey slab under the header. `height` is now only a default
+   for the very first paint; the collapsed state is driven by a class that
+   sizes the dock to its header. */
+#trade-dock {
+  position: relative; flex: 0 0 auto; height: 220px;
+  background: var(--panel); border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; min-height: 0; z-index: 30;
+}
+#trade-dock.td-collapsed { height: auto !important; }
+#trade-dock.td-collapsed #td-resize { display: none; }
+#td-resize { position: absolute; top: -3px; left: 0; right: 0; height: 6px; cursor: row-resize; z-index: 2; }
+#td-head {
+  display: flex; align-items: center; gap: 12px; padding: 6px 12px;
+  border-bottom: 1px solid var(--border); font-size: 11.5px; flex: 0 0 auto; white-space: nowrap;
+}
+#td-ic { display: inline-flex; align-items: center; color: var(--blue); }
+#td-ic svg { width: 16px; height: 16px; }
+#td-title { font-weight: 700; font-size: 12px; margin-right: 2px; }
+.td-kpi { display: flex; gap: 5px; align-items: baseline; white-space: nowrap; min-width: 0; }
+.td-kpi label { color: var(--text-dim); font-size: 10.5px; }
+.td-kpi b { font-weight: 600; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+/* ROUND128: the header KPI numbers always glue to their own label — each
+   pair is one flex unit, so a value can never wrap under the wrong label
+   when the window is resized; ellipsis keeps the row on one line */
+.td-kpi b { max-width: 92px; }
+/* responsive header: less important KPIs fold away first */
+.td-narrow .td-k-free, .td-narrow .td-k-level { display: none; }
+.td-xnarrow .td-k-margin { display: none; }
+.td-xnarrow .td-k-float { display: none; }
+#td-status { font-size: 10px; padding: 1px 7px; border-radius: 10px; }
+#td-status.td-on { background: rgba(8,153,129,.16); color: var(--green); }
+#td-status.td-off { background: rgba(242,54,69,.16); color: var(--red); }
+#td-status.td-wait { background: var(--panel2); color: var(--text-dim); }
+/* round85b: MetaTrader terminal blocks programmatic orders (Algo Trading off) */
+#td-status.td-autooff {
+  background: rgba(242,54,69,.22); color: var(--red); font-weight: 700;
+  animation: td-autooff-pulse 1.6s ease-in-out infinite;
+}
+@keyframes td-autooff-pulse { 50% { opacity: .55; } }
+/* ROUND85c: chart-P/L toggle chip + panel close button */
+.td-plbtn { font-weight: 600; }
+.td-plbtn.on { border-color: var(--blue); color: var(--blue); }
+/* ROUND85d: chart-VOLUME toggle chip (same look as the P/L chip) */
+.td-volbtn { font-weight: 600; }
+.td-volbtn.on { border-color: var(--blue); color: var(--blue); }
+.td-mini.td-x:hover { border-color: var(--red); color: var(--red); }
+#td-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+#td-tabs { display: flex; align-items: center; gap: 4px; padding: 5px 10px 0; flex: 0 0 auto; }
+.td-tab {
+  background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-dim);
+  font-size: 12px; padding: 5px 10px; cursor: pointer;
+}
+.td-tab:hover { color: var(--text); }
+.td-tab.active { color: var(--text); border-bottom-color: var(--blue); font-weight: 600; }
+#td-summary { font-size: 11.5px; color: var(--text-dim); padding-right: 8px; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+#td-scroller { flex: 1 1 auto; overflow: auto; min-height: 0; }
+.td-table { padding: 2px 0 8px; min-width: 100%; }
+.td-row {
+  display: grid; align-items: center; padding: 4px 12px; font-size: 11.5px; white-space: nowrap;
+  gap: 5px;
+}
+/* per-table column layouts (classes keep headers and rows in sync) */
+/* ROUND104: the last data column takes the slack (minmax + 1fr) so the rows
+   span the full dock width. The fixed px track list stopped at ~890px, so on
+   any normal window the table ended mid-screen with a wide empty gutter and
+   the Manage buttons floated far from the row they belong to. */
+#td-pos .td-row { grid-template-columns: 70px 90px 56px 56px 82px 82px 82px 82px 74px minmax(86px, 1fr) 128px; }
+#td-ord .td-row { grid-template-columns: 70px 90px 84px 56px 82px 82px 82px 74px 74px minmax(82px, 1fr) 128px; }
+.hist-row { grid-template-columns: 74px 90px 58px 56px 82px 82px 74px minmax(90px, 1fr) 70px; }
+/* responsive: fold columns away as the dock gets narrower */
+.td-narrow #td-pos .td-row { grid-template-columns: 64px 84px 50px 50px 76px 76px 76px minmax(84px, 1fr) 106px; }
+.td-narrow #td-pos .c-cur, .td-narrow #td-pos .c-time { display: none; }
+.td-xnarrow #td-pos .td-row { grid-template-columns: 58px 74px 46px 46px 70px 70px minmax(68px, 1fr) 94px; }
+.td-xnarrow #td-pos .c-open { display: none; }
+
+.td-narrow #td-ord .td-row { grid-template-columns: 64px 82px 78px 50px 78px 74px 74px minmax(76px, 1fr) 100px; }
+.td-narrow #td-ord .c-time, .td-narrow #td-ord .c-exp { display: none; }
+.td-xnarrow #td-ord .td-row { grid-template-columns: 58px 74px 70px 46px 74px minmax(70px, 1fr) 70px 92px; }
+.td-xnarrow #td-ord .c-cur { display: none; }
+
+.td-narrow .hist-row { grid-template-columns: 74px 84px 52px 50px 78px minmax(84px, 1fr) 66px; }
+.td-narrow .hist-row .c-cat, .td-narrow .hist-row .c-open { display: none; }
+.td-xnarrow .hist-row { grid-template-columns: 70px 80px 48px 46px 74px minmax(78px, 1fr); }
+.td-xnarrow .hist-row .c-tk { display: none; }
+
+.td-head-row { color: var(--text-dim); font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; position: sticky; top: 0; background: var(--panel); z-index: 1; }
+.td-item { border-top: 1px solid transparent; }
+.td-item:hover { background: var(--panel2); }
+.td-item span { overflow: hidden; text-overflow: ellipsis; }
+.td-item i { color: var(--text-dim); font-style: normal; }
+.td-dim { color: var(--text-dim); }
+.td-buy { color: var(--green); font-weight: 600; }
+.td-sell { color: var(--red); font-weight: 600; }
+.td-r { text-align: right; font-variant-numeric: tabular-nums; }
+.td-profit { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+.td-manage { display: flex; gap: 4px; justify-content: flex-end; }
+.td-mini {
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); font-size: 10.5px; padding: 2px 7px; cursor: pointer;
+}
+.td-mini:hover { border-color: var(--border2); }
+.td-mini.td-danger:hover { border-color: var(--red); color: var(--red); }
+.td-mini.td-ok:hover { border-color: var(--green); color: var(--green); }
+.td-empty { padding: 22px 14px; color: var(--text-dim); font-size: 12px; text-align: center; line-height: 1.7; }
+.td-empty-sub { font-size: 11px; opacity: .8; }
+/* ROUND102: sortable headers, clickable rows, sticky totals row */
+.td-sortable { cursor: pointer; user-select: none; }
+.td-sortable:hover { color: var(--text); }
+.td-head-row .td-sortable.on { color: var(--blue); }
+.td-clickable { cursor: pointer; }
+.td-total-row {
+  position: sticky; bottom: 0; background: var(--panel); z-index: 1;
+  border-top: 1px solid var(--border); color: var(--text-dim);
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em;
+}
+.td-total-row .td-total-pl { font-size: 11.5px; font-weight: 700; text-transform: none; letter-spacing: 0; }
+.td-total-row .td-total-pl.pos { color: var(--green); }
+.td-total-row .td-total-pl.neg { color: var(--red); }
+.td-hist-refresh { margin-left: auto; font-size: 12px; line-height: 1; }
+.td-inline-input {
+  width: 100%; background: var(--bg); border: 1px solid var(--blue); border-radius: 4px;
+  color: var(--text); padding: 2px 5px; font-size: 11.5px; outline: none; min-width: 58px;
+}
+.td-hist-chips { display: flex; gap: 5px; padding: 6px 12px; }
+.td-hist-chips .td-chip { background: var(--panel2); border: 1px solid var(--border); border-radius: 20px; color: var(--text-dim); padding: 2px 10px; font-size: 11px; cursor: pointer; }
+.td-hist-chips .td-chip.on { color: var(--text); border-color: var(--blue); }
+
+/* ---------------- ROUND113: MT5-style history grid ----------------
+   The terminal look: a real column GRID (vertical + horizontal rule lines),
+   sticky header, the S/L cell painted RED on a stop-out and the T.P. cell
+   GREEN on a take-profit fill, and the sticky Total bar under the table
+   (account rollup left, money sums aligned under their own columns). */
+.td-hgrid { padding: 2px 0 8px; }
+.td-h2row { display: grid; align-items: stretch; font-size: 11px; white-space: nowrap; }
+.td-h2c {
+  padding: 3px 8px; overflow: hidden; text-overflow: ellipsis;
+  border-left: 1px solid var(--border);
+  display: flex; align-items: center; min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.td-h2c:first-child { border-left: none; }
+.td-h2c.ta-r { justify-content: flex-end; text-align: right; }
+.td-h2head {
+  position: sticky; top: 0; z-index: 1; background: var(--panel);
+  color: var(--text-dim); font-size: 10px; text-transform: uppercase;
+  letter-spacing: .04em; border-bottom: 1px solid var(--border2);
+  user-select: none;
+}
+.td-h2head .td-h2c { padding: 5px 8px; }
+.td-h2head .td-sortable { cursor: pointer; }
+.td-h2head .td-sortable:hover { color: var(--text); }
+.td-h2head .td-sortable.on { color: var(--blue); }
+.td-h2item { border-bottom: 1px solid var(--border); color: var(--text); }
+.td-h2item:hover { background: var(--panel2); }
+.td-h2item .td-buy { color: var(--green); font-weight: 600; }
+.td-h2item .td-sell { color: var(--red); font-weight: 600; }
+/* ROUND116: pending orders ride the Positions grid — the Type cell names
+   the order (buy limit / sell stop …) in the chart's pending orange */
+.td-h2item .td-pend { color: #ff9800; font-weight: 600; }
+/* SL/TP close markers — the whole cell paints like the terminal's */
+.td-hl-sl { background: #f23645; color: #ffffff !important; font-weight: 600; }
+.td-hl-tp { background: #089981; color: #ffffff !important; font-weight: 600; }
+/* the Total bar (sticky, MT5's bottom rollup) */
+.td-h2total {
+  position: sticky; bottom: 0; z-index: 1; background: var(--panel);
+  border-top: 1px solid var(--border2);
+  color: var(--text-dim); font-size: 11px;
+}
+.td-h2-rollup { color: var(--text); font-variant-numeric: tabular-nums; }
+.td-h2-sum { font-weight: 600; }
+.td-h2total .pos { color: var(--green); }
+.td-h2total .neg { color: var(--red); }
+/* the right-click column on/off menu — toggling NEVER closes it; only a
+   press outside the menu (or Esc) does */
+.td-hmenu {
+  position: fixed; left: 0; top: 0; z-index: 1350;
+  min-width: 172px; max-height: 72vh; overflow-y: auto;
+  background: var(--menu); border: 1px solid var(--border2); border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45); padding: 4px;
+  font-size: 12px; color: var(--text);
+}
+.td-hmenu-item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 9px; border-radius: 5px; cursor: pointer; user-select: none;
+}
+.td-hmenu-item:hover { background: var(--panel2); }
+.td-hmenu-chk { width: 14px; flex: 0 0 auto; text-align: center; color: var(--blue); font-weight: 800; }
+.td-hmenu-item.off .td-hmenu-lbl { color: var(--text-dim); }
+.td-hmenu-lbl { white-space: nowrap; }
+
+/* ---------------- ROUND99: trade-history connector canvas ----------------
+   MT5-style dashed entry->exit lines + exact deal-price dots, painted by
+   trade/history.js. UNDER the drawing-engine overlay (.pane-overlay z 10)
+   so user drawings stay on top; ABOVE the chart canvas. */
+/* ROUND100: the history layer is a lightweight-charts series primitive —
+   the old overlay canvas (.th-connect-canvas) was removed */
+
+/* ---------------- chart overlay: hover tooltip (ROUND85c) ----------------
+   What the hovered line is: side/volume/ticket + the money at that level.
+   pointer-events:none so it never blocks the chart or the drag. */
+/* ROUND100: both trade tooltips are position:FIXED (screen space at the
+   cursor, like MT5) — left/top are set by JS, clamped to the viewport */
+.trade-hover-tip {
+  position: fixed; left: 0; top: 0;
+  background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--blue);
+  color: var(--text); font-size: 11px; padding: 5px 10px; border-radius: 6px;
+  /* ROUND103: was 9999 — above the modal dialogs (1100) and the toast stack (1300),
+     so a chart hover box could paint over a dialog it has nothing to do with. */
+  z-index: 1000; pointer-events: none; box-shadow: 0 3px 12px rgba(0,0,0,.3);
+  white-space: nowrap; display: none;
+}
+/* ROUND100: trade-history hover box (closed-trade profit, MT5 format) */
+.th-hist-tip {
+  position: fixed; left: 0; top: 0;
+  background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--blue);
+  color: var(--text); font-size: 11px; padding: 5px 10px; border-radius: 6px;
+  z-index: 1000; pointer-events: none; box-shadow: 0 3px 12px rgba(0,0,0,.3);
+  white-space: nowrap; display: none;
+  font-variant-numeric: tabular-nums;
+}
+.trade-hover-tip.tht-sl { border-left-color: var(--red); }
+.trade-hover-tip.tht-tp { border-left-color: var(--green); }
+.trade-hover-tip.tht-order { border-left-color: #ff9800; }
+.tht-row { display: flex; gap: 7px; align-items: baseline; line-height: 1.55; }
+.tht-row b { font-weight: 700; }
+.tht-dim { color: var(--text-dim); }
+.tht-money { font-variant-numeric: tabular-nums; font-weight: 600; }
+/* ROUND105: the money a level locks is the headline number of the tag —
+   one step bigger than the rows around it (MT5 parity) */
+.trade-hover-tip .tht-money { font-size: 12.5px; }
+.tht-money.pos { color: var(--green); }
+.tht-money.neg { color: var(--red); }
+.tht-hint { color: var(--text-dim); font-size: 10px; margin-top: 2px; }
+.tht-sl { color: var(--red); }
+.tht-tp { color: var(--green); }
+.tht-ord { color: #ff9800; }
+
+/* ---------------- ROUND102: on-chart trade context menu ----------------
+   Right-click a position / order / SL / TP line: close, halve, break-even,
+   drop an SL/TP — without hunting for the row in the bottom dock. */
+.trade-ctx {
+  /* ROUND103: under the dialog backdrop (1100), over every chart layer */
+  position: fixed; left: 0; top: 0; z-index: 1010; min-width: 186px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 8px 26px rgba(0,0,0,.38); padding: 4px; overflow: hidden;
+}
+.trade-ctx-head {
+  font-size: 10.5px; color: var(--text-dim); padding: 5px 9px 6px;
+  border-bottom: 1px solid var(--border); margin-bottom: 4px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.trade-ctx-item {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  color: var(--text); font-size: 11.5px; padding: 6px 9px; border-radius: 5px;
+  cursor: pointer; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.trade-ctx-item:hover { background: var(--panel2); }
+.trade-ctx-item.danger { color: var(--red); }
+.trade-ctx-item.danger:hover { background: rgba(242,54,69,.14); }
+.trade-ctx-item:disabled { color: var(--text-dim); cursor: default; opacity: .55; }
+.trade-ctx-item:disabled:hover { background: none; }
+body.theme-light .trade-ctx { box-shadow: 0 8px 26px rgba(0,0,0,.16); }
+
+/* ---------------- chart drag chip (while dragging a line) ---------------- */
+.trade-drag-chip {
+  position: absolute; right: 64px; transform: translateY(-50%);
+  background: var(--blue); color: #fff; font-size: 11px; font-weight: 600;
+  padding: 3px 9px; border-radius: 5px; z-index: 25; pointer-events: none;
+  box-shadow: 0 3px 12px rgba(0,0,0,.35); white-space: nowrap;
+}
+/* ROUND85c: entry-line drag preview — the chip takes the target side color */
+.trade-drag-chip.tdc-sl { background: var(--red); }
+.trade-drag-chip.tdc-tp { background: var(--green); }
+.trade-drag-chip.tdc-warn { background: #b36b00; }
+
+/* light-theme refinements (surfaces only — colors follow the vars) */
+body.theme-light #trade-dock { background: var(--panel); }
+body.theme-light .tt-exec { color: #fff; }
+body.theme-light .trade-hover-tip { box-shadow: 0 3px 12px rgba(0,0,0,.18); }
+
+/* ROUND85E: "Trading alerts" card in the Alerts panel (right panel) —
+   ROUND130: the card shell is the unified .al-card (panels.css); these are
+   the body extras (type-switch rows + per-trade rows) */
+.ta-defs { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 4px;
+  padding-bottom: 4px; border-bottom: 1px solid rgba(128,128,128,.18); }
+.ta-dim { font-size: 11px; color: var(--text-dim); padding: 5px 2px; line-height: 1.5; }
+.ta-row { display: flex; align-items: center; gap: 8px; padding: 5px 2px; font-size: 11px;
+  border-top: 1px solid rgba(128,128,128,.14); }
+.ta-row:first-child { border-top: 0; }
+.ta-row .ta-name { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; color: var(--text); }
+.ta-row .ta-name b { font-weight: 700; }
+.ta-row .ta-name .ta-t { color: var(--text-dim); font-size: 10px; }
+.ta-row .ta-tog { flex: 0 0 auto; }
+.ta-row .ta-tog:hover em { color: var(--text); }
+
+/* ROUND128: the "Trade notifications" card — persistent, user-managed list
+   of every trade event (default OFF) with per-row delete + clear all.
+   ROUND130: the card shell + header come from the .al-card system. */
+.tn-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 1px 0 5px; }
+.tn-count { font-size: 10.5px; color: var(--text-dim); }
+.tn-toolbar .mini-btn {
+  width: auto; height: 22px; padding: 0 9px; font-size: 10.5px; font-weight: 700;
+  border: 1px solid var(--border2); border-radius: 6px; background: var(--panel2); gap: 4px;
+}
+.tn-toolbar .mini-btn:hover { color: var(--red); border-color: rgba(242,54,69,.5); background: transparent; }
+.tn-list { display: flex; flex-direction: column; max-height: 172px; overflow-y: auto; }
+.tn-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 2px;
+  border-top: 1px solid rgba(128,128,128,.14); font-size: 11px; }
+.tn-row:first-child { border-top: 0; }
+.tn-tag {
+  flex: 0 0 auto; font-size: 8.5px; font-weight: 800; letter-spacing: .05em;
+  padding: 2px 6px; border-radius: 9px; margin-top: 1px; min-width: 34px; text-align: center;
+  background: var(--panel2); color: var(--text-dim); border: 1px solid var(--border);
+}
+.tn-tag.tn-open   { color: var(--blue);  background: rgba(41,98,255,.12);  border-color: rgba(41,98,255,.35); }
+.tn-tag.tn-fill   { color: var(--blue);  background: rgba(41,98,255,.12);  border-color: rgba(41,98,255,.35); }
+.tn-tag.tn-close  { color: var(--text-dim); }
+.tn-tag.tn-sl, .tn-tag.tn-slmod     { color: var(--red);   background: rgba(242,54,69,.12);  border-color: rgba(242,54,69,.35); }
+.tn-tag.tn-tp, .tn-tag.tn-tpmod     { color: var(--green); background: rgba(8,153,129,.12);  border-color: rgba(8,153,129,.35); }
+.tn-tag.tn-partial { color: #b36b00; background: rgba(179,107,0,.12); border-color: rgba(179,107,0,.35); }
+.tn-main { flex: 1 1 auto; min-width: 0; }
+.tn-msg { color: var(--text); line-height: 1.45; word-break: break-word; }
+.tn-time { color: var(--text-dim); font-size: 10px; margin-top: 1px; font-variant-numeric: tabular-nums; }
+.tn-del { flex: 0 0 auto; width: 22px; height: 22px; opacity: .55; }
+.tn-row:hover .tn-del { opacity: 1; }
+
+/* ROUND129: the bell chip — now the icon slot of the unified .al-head
+   (24×24 like .al-ico), carrying the live count badge; blue when open */
+.tn-bell {
+  position: relative; flex: 0 0 auto; display: inline-flex; align-items: center;
+  justify-content: center; width: 24px; height: 24px; padding: 0;
+  border-radius: 7px; border: 0; background: var(--panel2);
+  color: var(--text-dim); cursor: pointer; transition: color .15s, background .15s;
+}
+.tn-bell svg { width: 14px; height: 14px; }
+.al-card.al-tn.al-open .tn-bell { background: rgba(41, 98, 255, .16); color: var(--blue); }
+.tn-badge {
+  position: absolute; top: -6px; right: -7px; min-width: 15px; height: 14px;
+  padding: 0 4px; border-radius: 7px; background: var(--blue); color: #fff;
+  font-size: 9px; font-weight: 700; line-height: 14px; text-align: center;
+  font-variant-numeric: tabular-nums; pointer-events: none;
+}
+.tn-badge.tn-zero { display: none; }
+.tn-title { flex: 1 1 auto; min-width: 0; font-size: 12px; font-weight: 700;
+  color: var(--text); cursor: pointer; user-select: none; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.tn-title:hover { color: var(--blue); }
+.tn-hint { border-top: 1px solid rgba(128,128,128,.18); margin-top: 5px; padding: 5px 2px 1px; font-size: 10px; }
+
+/* ---------------- ROUND128: the Modify-position modal ----------------
+   One TradingView-like dialog for partial exit + SL/TP edit, opened from
+   the Tool Box double-click, the chart trade-line double-click and the
+   trade context menu's "Modify position" — live AND demo alike. */
+.tm-backdrop {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+  animation: tm-fade .12s ease-out;
+}
+@keyframes tm-fade { from { opacity: 0; } }
+.tm-card {
+  width: 340px; max-width: calc(100vw - 24px); max-height: calc(100vh - 24px);
+  overflow-y: auto; box-sizing: border-box;
+  background: var(--panel); border: 1px solid var(--border2); border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0,0,0,.5);
+  padding: 12px 14px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  animation: tm-pop .14s ease-out;
+}
+@keyframes tm-pop { from { transform: translateY(6px) scale(.98); opacity: 0; } }
+.tm-head { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+.tm-side {
+  font-weight: 800; font-size: 11px; letter-spacing: .04em;
+  padding: 2.5px 8px; border-radius: 5px; color: #fff;
+}
+.tm-side.buy { background: var(--green); }
+.tm-side.sell { background: var(--red); }
+.tm-side.ord { background: #ff9800; }
+.tm-sym { font-weight: 700; }
+.tm-vol-tag { color: var(--text-dim); font-size: 11px; white-space: nowrap; }
+.tm-chip {
+  font-size: 9px; font-weight: 700; letter-spacing: .06em; padding: 2px 7px;
+  border-radius: 9px; background: var(--panel2); border: 1px solid var(--border); color: var(--text-dim);
+}
+.tm-t { color: var(--text-dim); font-size: 10.5px; margin-left: auto; }
+.tm-x {
+  background: transparent; border: 0; color: var(--text-dim); font-size: 17px;
+  cursor: pointer; line-height: 1; padding: 0 2px;
+}
+.tm-x:hover { color: var(--text); }
+.tm-info {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: var(--text-dim);
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px;
+}
+.tm-info b { color: var(--text); font-variant-numeric: tabular-nums; margin-left: 4px; }
+.tm-info b.pos { color: var(--green); }
+.tm-info b.neg { color: var(--red); }
+.tm-sec { display: flex; flex-direction: column; gap: 7px; padding-top: 9px; border-top: 1px solid var(--border); }
+.tm-sec-title { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); }
+.tm-row { display: flex; align-items: center; gap: 6px; }
+.tm-row input {
+  flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); padding: 6.5px 8px; font-size: 12px; outline: none; font-variant-numeric: tabular-nums;
+}
+.tm-row input:focus { border-color: var(--border2); }
+.tm-unit { color: var(--text-dim); font-size: 11px; }
+.tm-lbl { width: 24px; font-size: 11px; font-weight: 700; }
+.tm-lbl.sl { color: var(--red); }
+.tm-lbl.tp { color: var(--green); }
+.tm-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.tm-chip-b {
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 14px;
+  color: var(--text-dim); padding: 2.5px 10px; font-size: 11px; cursor: pointer;
+}
+.tm-chip-b:hover { color: var(--text); border-color: var(--border2); }
+.tm-hint { font-size: 10.5px; color: var(--text-dim); min-height: 13px; }
+.tm-actions { display: flex; gap: 7px; }
+.tm-btn {
+  flex: 1; background: var(--blue); border: 0; border-radius: 6px; color: #fff;
+  font-weight: 700; font-size: 11.5px; padding: 8px 10px; cursor: pointer; white-space: nowrap;
+}
+.tm-btn:hover { filter: brightness(1.1); }
+.tm-btn.danger { background: var(--red); }
+.tm-btn.danger:hover { filter: brightness(1.1); }
+
+/* ------------- ROUND108→111: the chart-side Trade panel (v3) -------------
+   v3 (user mock-up): the slim one-click row grew into the full money-
+   management panel — Risk row (lot / $ / % modes), Buy/Sell/Set and
+   Pend.Buy/Pend.Sell/Cancel, a live status strip while a draft is armed
+   (three dashed lines on the chart), and a collapsible Open Positions
+   section with % / $ units and per-row actions (close half · risk-free ·
+   close). KEPT from v2: hover chrome, drag-anywhere + pin, minimized pill,
+   floating spread chip, one panel per pane, theme tokens everywhere. */
+.oc-panel {
+  position: absolute; left: 8px; top: 40px; z-index: 13;
+  width: 248px; max-width: calc(100% - 8px);
+  border-radius: 9px;
+  background: var(--panel); border: 1px solid var(--border2);
+  box-shadow: 0 8px 22px rgba(0,0,0,.45);
+  user-select: none; -webkit-user-select: none;
+}
+/* hover chrome — a grip chip (left) and a tools chip (right) floating on the
+   top border, revealed on hover. The strip itself never paints and never
+   takes pointer events (click-through), so the SELL/BUY tops under it stay
+   fully clickable — only the two chips are interactive.
+   ROUND112 (user, with screenshots): the icons were TOO SMALL and their
+   colour washed out in both themes — the chrome grew to 20px chips with
+   solid var(--panel) bodies, 12px glyphs and full var(--text) colour. */
+.oc-chrome {
+  position: absolute; top: -10px; left: 3px; right: 3px; height: 20px; z-index: 3;
+  display: flex; align-items: stretch; justify-content: space-between;
+  opacity: 0; pointer-events: none; transition: opacity .12s ease;
+  background: none;
+}
+.oc-panel:hover .oc-chrome { opacity: 1; }
+.oc-chrome > * { pointer-events: auto; }
+.oc-grip {
+  flex: 0 0 24px; display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; cursor: grab;
+  background: var(--panel); border: 1px solid var(--border2);
+  color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.oc-grip:active { cursor: grabbing; }
+.oc-grip svg { width: 12px; height: 12px; }
+.oc-tools {
+  display: flex; align-items: stretch; gap: 1px; padding: 0 2px;
+  border-radius: 8px;
+  background: var(--panel); border: 1px solid var(--border2);
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.oc-cbtn {
+  flex: 0 0 auto; width: 20px; padding: 0; border: none; border-radius: 6px;
+  cursor: pointer; background: transparent; color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+}
+.oc-cbtn:hover { background: var(--menu); color: var(--text); }
+.oc-cbtn svg { width: 12px; height: 12px; }
+.oc-cbtn.oc-on { background: var(--blue); color: #ffffff; }
+/* floating spread chip — overlaps the top border, costs zero height */
+.oc-spread {
+  position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  z-index: 2; pointer-events: none;
+  font-size: 9px; font-weight: 700; line-height: 1.1; letter-spacing: .2px;
+  color: var(--text-dim); background: var(--panel2);
+  border: 1px solid var(--border2); border-radius: 999px; padding: 2px 7px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+/* title row — “Trade” + the mode badge + symbol + the live bid/ask */
+.oc-title {
+  display: flex; align-items: baseline; gap: 6px;
+  padding: 8px 9px 0; font-size: 11px; color: var(--text);
+}
+.oc-title b { font-weight: 800; letter-spacing: .2px; }
+/* ROUND112: LIVE / DEMO badge — amber for the demo account, blue for the
+   broker; solid fills so it reads in both themes */
+.oc-mbadge {
+  align-self: center; flex: 0 0 auto;
+  font-size: 8px; font-weight: 800; letter-spacing: .5px; line-height: 1;
+  padding: 2px 4px; border-radius: 3px; color: #ffffff; background: var(--blue);
+}
+.oc-mbadge.demo { background: #ff9800; }
+.oc-tsym { color: var(--text-dim); font-size: 10px; font-weight: 700; }
+.oc-tpx {
+  margin-left: auto; color: var(--text-dim); font-size: 10px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+/* risk row — [Risk] [− value +] [% $ Lot] (the user mock-up, MT5 money mgmt) */
+.oc-risk { display: flex; align-items: center; gap: 5px; padding: 7px 9px 0; }
+.oc-rlbl { flex: 0 0 auto; font-size: 10px; font-weight: 700; color: var(--text-dim); }
+.oc-step {
+  flex: 1 1 auto; min-width: 0; height: 24px;
+  display: flex; align-items: stretch; overflow: hidden;
+  border: 1px solid var(--border2); border-radius: 6px; background: var(--panel2);
+}
+.oc-sbtn {
+  flex: 0 0 20px; border: none; padding: 0; background: transparent;
+  color: var(--text-dim); font-family: inherit;
+  font-size: 13px; font-weight: 700; line-height: 1; cursor: pointer;
+}
+.oc-sbtn:hover { background: var(--menu); color: var(--text); }
+.oc-rin {
+  flex: 1 1 auto; min-width: 0; border: none; outline: none; padding: 0 2px;
+  background: transparent; color: var(--text); font-family: inherit;
+  font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums;
+  text-align: center; cursor: text;
+}
+.oc-modes { flex: 0 0 auto; display: flex; gap: 2px; }
+.oc-modeb {
+  min-width: 26px; height: 24px; padding: 0 5px;
+  border: 1px solid var(--border2); border-radius: 6px;
+  background: var(--panel2); color: var(--text-dim); font-family: inherit;
+  font-size: 10px; font-weight: 800; cursor: pointer;
+}
+.oc-modeb:hover { color: var(--text); }
+.oc-modeb.oc-on { border-color: var(--blue); color: var(--text); background: var(--menu); }
+
+/* order grid — Buy | Sell | Set› / Pend.Buy | Pend.Sell | Cancel */
+.oc-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; padding: 7px 9px 2px; }
+.oc-side {
+  min-width: 0; border: none; border-radius: 6px; cursor: pointer;
+  height: 24px; padding: 0 2px; font-family: inherit; color: #ffffff;
+  background-color: var(--red);   /* sell; buy overrides the colour below */
+  background-image: linear-gradient(180deg, rgba(255,255,255,.17), rgba(0,0,0,.14));
+  display: flex; align-items: center; justify-content: center;
+  transition: filter .1s ease;
+}
+.oc-side .oc-lbl {
+  font-size: 9.5px; font-weight: 800; letter-spacing: .3px; line-height: 1.25;
+  max-width: 100%; overflow: hidden; white-space: nowrap;
+}
+.oc-side.oc-buy { background-color: var(--green); }
+/* pending arms — the translucent flavour of their side */
+.oc-side.oc-pendbuy {
+  background-color: rgba(8,153,129,.15); background-image: none;
+  color: var(--green); border: 1px solid rgba(8,153,129,.5);
+}
+.oc-side.oc-pendsell {
+  background-color: rgba(242,54,69,.13); background-image: none;
+  color: var(--red); border: 1px solid rgba(242,54,69,.5);
+}
+.oc-side:hover:not(:disabled) { filter: brightness(1.09); }
+.oc-side:active:not(:disabled) { filter: brightness(.95); }
+.oc-side:disabled { filter: saturate(.15) brightness(.66); cursor: default; }
+/* armed = the draft owner (lines on the chart) or the armed CONFIRM SET */
+.oc-side.oc-armed { background: var(--blue); outline: 2px solid rgba(255,255,255,.55); outline-offset: -1px; }
+.oc-side.oc-armed .oc-lbl { color: #ffffff; }
+.oc-exec {
+  min-width: 0; border: none; border-radius: 6px; cursor: pointer;
+  height: 24px; padding: 0 4px; font-family: inherit;
+  font-size: 10.5px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; gap: 2px;
+}
+.oc-exec svg { width: 8px; height: 8px; flex: 0 0 auto; }
+.oc-exec:disabled { filter: saturate(.1) brightness(.7); cursor: default; }
+.oc-set { background: var(--blue); color: #ffffff; }
+.oc-set:hover:not(:disabled) { filter: brightness(1.09); }
+.oc-set.oc-armed { outline: 2px solid rgba(255,255,255,.55); outline-offset: -1px; }
+.oc-set.oc-armed .oc-lbl { font-size: 8.5px; letter-spacing: .3px; }
+.oc-cancel { background: var(--panel2); border: 1px solid var(--border2); color: var(--text); }
+.oc-cancel:hover:not(:disabled) { background: var(--menu); }
+
+/* live status strip — what WILL be sent, while a draft is armed */
+.oc-status {
+  margin: 5px 9px 0; font-size: 9.5px; line-height: 1.4; color: var(--text-dim);
+  background: var(--panel2); border: 1px solid var(--border2); border-radius: 5px;
+  padding: 3px 7px; font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* open positions — header (% / $ units + collapse) + rows */
+.oc-poshead {
+  display: flex; align-items: center; gap: 3px;
+  margin: 8px 9px 2px; padding-top: 7px; border-top: 1px solid var(--border);
+}
+.oc-poslabel { flex: 1 1 auto; font-size: 10.5px; font-weight: 700; color: var(--text-dim); white-space: nowrap; }
+.oc-unitb {
+  min-width: 20px; height: 18px; padding: 0 4px;
+  border: 1px solid var(--border2); border-radius: 5px;
+  background: var(--panel2); color: var(--text-dim); font-family: inherit;
+  font-size: 9.5px; font-weight: 800; cursor: pointer;
+}
+.oc-unitb:hover { color: var(--text); }
+.oc-unitb.oc-on { border-color: var(--blue); color: var(--text); background: var(--menu); }
+.oc-coll {
+  width: 20px; height: 18px; padding: 0;
+  border: 1px solid var(--border2); border-radius: 5px;
+  background: var(--panel2); color: var(--text-dim); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.oc-coll:hover { color: var(--text); background: var(--menu); }
+.oc-coll svg { width: 9px; height: 9px; transition: transform .12s ease; }
+.oc-coll.oc-closed svg { transform: rotate(-90deg); }
+.oc-poslist { max-height: 132px; overflow-y: auto; padding: 2px 0 6px; }
+.oc-pos-row { display: flex; align-items: center; gap: 5px; padding: 3px 9px; font-size: 10.5px; }
+.oc-pos-row:hover { background: var(--panel2); }
+.oc-pos-name {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 4px;
+  color: var(--text); font-weight: 700; white-space: nowrap; overflow: hidden;
+}
+.oc-pos-name b { overflow: hidden; text-overflow: ellipsis; }
+.oc-psd {
+  flex: 0 0 auto; font-style: normal; font-size: 8px; font-weight: 800;
+  line-height: 1; padding: 2px 3px; border-radius: 3px; color: #ffffff;
+}
+.oc-psd.b { background: var(--green); }
+.oc-psd.s { background: var(--red); }
+.oc-pos-pl {
+  flex: 0 0 auto; display: flex; align-items: baseline; gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.oc-pos-pl b { font-size: 10.5px; font-weight: 800; }
+.oc-pos-pl span { font-size: 9px; }
+.oc-pos-pl b.pos, .oc-pos-pl span.pos { color: var(--green); }
+.oc-pos-pl b.neg, .oc-pos-pl span.neg { color: var(--red); }
+.oc-pos-acts { flex: 0 0 auto; display: flex; gap: 2px; }
+/* ROUND112 (user, with screenshots): the per-position actions were tiny and
+   colourless — 22px chips, 11.5px glyphs and a per-action identity colour
+   that survives BOTH themes (half = blue, risk-free = green, close = red). */
+.oc-pact {
+  width: 22px; height: 22px; padding: 0;
+  border: 1px solid var(--border2); border-radius: 5px;
+  background: var(--panel2); color: var(--text); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-family: inherit; font-size: 11.5px; font-weight: 800;
+}
+.oc-pact svg { width: 11.5px; height: 11.5px; }
+.oc-pact:hover:not(:disabled) { background: var(--menu); color: var(--text); }
+.oc-pact:disabled { opacity: .4; cursor: default; }
+/* ROUND127 audit (dark/light sweep of the whole panel): the blue ½ chip sat
+   just under the readability threshold on the dark surface (var(--blue)
+   #2962ff on #2a2a2a = 2.93). Dark gets a lighter blue (4.5:1); light keeps
+   the brand blue (its surface is pale, ratio 3.6). Hover fills stay blue. */
+.oc-pact.oc-half { color: #5b8cff; border-color: rgba(91,140,255,.55); }
+body.theme-light .oc-pact.oc-half { color: var(--blue); border-color: rgba(41,98,255,.55); }
+.oc-pact.oc-half:hover:not(:disabled) { background: var(--blue); border-color: var(--blue); color: #ffffff; }
+.oc-pact.oc-rf { color: var(--green); border-color: rgba(8,153,129,.55); }
+.oc-pact.oc-rf:hover:not(:disabled) { background: var(--green); border-color: var(--green); color: #ffffff; }
+.oc-pact.oc-x { color: var(--red); border-color: rgba(242,54,69,.5); }
+.oc-pact.oc-x:hover:not(:disabled) { background: var(--red); border-color: var(--red); color: #ffffff; }
+.oc-pos-empty { padding: 5px 9px 2px; font-size: 10px; color: var(--text-dim); }
+body.theme-light .oc-poslist { scrollbar-width: thin; }
+/* ROUND113: the Total row under the Open Positions list — net P/L of every
+   open position, one value in the active unit, theme-token colored */
+.oc-pos-total {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin: 4px 9px 0; padding: 4px 2px 2px;
+  border-top: 1px solid var(--border);
+}
+.oc-pt-label {
+  font-size: 9.5px; font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--text-dim); white-space: nowrap;
+}
+.oc-pt-val { font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.oc-pt-val b.pos, .oc-pt-val.pos { color: var(--green); }
+.oc-pt-val b.neg, .oc-pt-val.neg { color: var(--red); }
+/* minimized state — MT5's collapsed triangle, app flavor: a 24px bolt chip */
+.oc-pill {
+  position: absolute; left: 8px; top: 40px; z-index: 13;
+  width: 24px; height: 24px; padding: 0; border-radius: 7px;
+  border: 1px solid var(--border2); background: var(--panel); color: var(--text);
+  cursor: grab; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+}
+.oc-pill:hover { background: var(--panel2); color: var(--white); border-color: var(--blue); }
+.oc-pill:active { cursor: grabbing; }
+.oc-pill svg { width: 12px; height: 12px; }
+/* drag session — the whole page shows the grabbing cursor */
+body.oc-dragging, body.oc-dragging * { cursor: grabbing !important; }
+/* the ONLY visibility switch — a class, never inline display:'' (round 107) */
+.oc-hidden { display: none !important; }
+@keyframes oc-flash-ok { 0% { box-shadow: 0 0 0 2px rgba(8,153,129,.95); } 100% { box-shadow: none; } }
+@keyframes oc-flash-bad { 0% { box-shadow: 0 0 0 2px rgba(242,54,69,.95); } 100% { box-shadow: none; } }
+.oc-side.flash-ok { animation: oc-flash-ok .9s ease-out; }
+.oc-side.flash-bad { animation: oc-flash-bad .9s ease-out; }
+body.theme-light .oc-panel { box-shadow: 0 8px 22px rgba(19,23,34,.2); }
+body.theme-light .oc-pill { box-shadow: 0 4px 12px rgba(19,23,34,.2); }
+/* ROUND112: the floating chrome chips must keep an edge on the LIGHT chart
+   (they used to wash out against pale candles) */
+body.theme-light .oc-grip,
+body.theme-light .oc-tools { box-shadow: 0 2px 8px rgba(19,23,34,.28); border-color: var(--border2); }
+
+/* ============ ROUND120 — the unified Demo/Live ticket + demo extras ====== */
+/* the mode chip on the account strip: same ticket, the chip names the
+   ACTIVE account (LIVE blue / DEMO orange) */
+.tt-acc { position: relative; }
+.tt-modechip {
+  position: absolute; top: 8px; right: 10px;
+  font-size: 9px; font-weight: 700; letter-spacing: .08em;
+  padding: 2px 7px; border-radius: 999px;
+  background: rgba(41, 98, 255, .18); color: #4d8dff;
+  border: 1px solid rgba(41, 98, 255, .45);
+}
+.tt-modechip.demo { background: rgba(255, 152, 0, .16); color: #ffa733; border-color: rgba(255, 152, 0, .5); }
+body.theme-light .tt-modechip { background: rgba(41, 98, 255, .1); color: #2456c9; }
+body.theme-light .tt-modechip.demo { background: rgba(230, 128, 0, .12); color: #b96a00; }
+/* the ticket fills its body in BOTH mode containers (one element, re-homed) */
+#trade-ticket { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+#tab-trade #tr-demo #trade-ticket { flex: 0 0 auto; }

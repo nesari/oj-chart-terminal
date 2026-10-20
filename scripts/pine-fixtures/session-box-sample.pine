@@ -1,0 +1,50 @@
+//@version=6
+indicator("Session Box (sample)", overlay=true, max_boxes_count=100, max_labels_count=100)
+// A tiny 786-Zones-shaped fixture: var arrays + in-place object updates +
+// timestamp()/dayofweek with a timezone + request.security_lower_tf.
+hourLocal = input.int(9, "Session hour (exchange tz)", minval=0, maxval=23)
+minutesWide = input.int(30, "Zone width (min)", minval=5, maxval=240)
+showLabel = input.bool(true, "Show label")
+
+var box[]   zb = array.new<box>(4)
+var label[] zl = array.new<label>(4)
+var bool[]  zf = array.new<bool>(4, false)
+var float[] zh = array.new<float>(4, na)
+var float[] zlow = array.new<float>(4, na)
+
+m1T = request.security_lower_tf(syminfo.tickerid, "1", time)
+m1H = request.security_lower_tf(syminfo.tickerid, "1", high)
+m1L = request.security_lower_tf(syminfo.tickerid, "1", low)
+
+if array.size(m1T) > 0
+    for k = 0 to array.size(m1T) - 1
+        mt = array.get(m1T, k)
+        mh = array.get(m1H, k)
+        ml = array.get(m1L, k)
+        // the N-th 09:00 exchange-time window, N = 0..3 (per 6h spacing here)
+        dayIdx = math.floor((mt - timestamp(year(mt, "GMT"), month(mt, "GMT"), dayofmonth(mt, "GMT"), 0, 0)) / 21600000)
+        if dayIdx >= 0 and dayIdx <= 3
+            dayStart = timestamp(year(mt, "GMT"), month(mt, "GMT"), dayofmonth(mt, "GMT"), hourLocal, 0)
+            if mt >= dayStart and mt < dayStart + minutesWide * 60000
+                if mh > array.get(zh, dayIdx) or not array.get(zf, dayIdx)
+                    array.set(zh, dayIdx, mh)
+                if array.get(zf, dayIdx) == false or ml < array.get(zlow, dayIdx)
+                    array.set(zlow, dayIdx, ml)
+                array.set(zf, dayIdx, true)
+
+if barstate.islast
+    for d = 0 to 3
+        if array.get(zf, d)
+            b = array.get(zb, d)
+            if na(b)
+                array.set(zb, d, box.new(left=0, top=array.get(zh, d), right=0, bottom=array.get(zlow, d), xloc=xloc.bar_time, bgcolor=color.new(color.teal, 70), border_color=color.new(color.teal, 30)))
+                b = array.get(zb, d)
+            box.set_lefttop(b, 0, array.get(zh, d))
+            box.set_rightbottom(b, 0, array.get(zlow, d))
+            if showLabel
+                l = array.get(zl, d)
+                if na(l)
+                    array.set(zl, d, label.new(x=0, y=array.get(zh, d), text="Z" + str.tostring(d), xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.black, 100), textcolor=color.white, size=size.small))
+                    l = array.get(zl, d)
+                label.set_xy(l, 0, array.get(zh, d))
+                label.set_text(l, "Z" + str.tostring(d))

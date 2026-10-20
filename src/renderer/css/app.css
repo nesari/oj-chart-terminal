@@ -1,0 +1,2278 @@
+/* ===== TradingView dark theme ===== */
+/* round 44: dark base surface follows TradingView's current dark palette
+   (#0f0f0f platform background, was the legacy navy #131722). Only the
+   BACKGROUND family moves — panels/borders/text stay on the classic
+   TradingView grays (#1e222d/#2a2e39/…) so elevation & readability are kept. */
+/* round 45: elevated surfaces follow TradingView's current dark ladder —
+   toolbars/panels #1a1a1a, menus/popups #212121, hover-toggles #2a2a2a — all
+   NEUTRAL grays (was the navy-tinted #1e222d family). Light theme overrides
+   every one of these below, so light is untouched. */
+:root {
+  --bg: #0f0f0f;
+  --panel: #1a1a1a;
+  --panel2: #2a2a2a;
+  --menu: #212121;
+  --border: #2e2e2e;
+  --border2: #3d3d3d;
+  --text: #d1d4dc;
+  --text-dim: #787b86;
+  --white: #ffffff;
+  --blue: #2962ff;
+  --green: #089981;
+  --red: #f23645;
+  --yellow: #f7c948;
+  /* round 33: chart pane separators must stay clearly visible in BOTH themes */
+  --pane-sep: #4a4a4a;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 13px;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+/* ===== light theme (round 19) — every var-based surface follows the switch ===== */
+body.theme-light {
+  --bg: #ffffff;
+  --panel: #f0f3fa;
+  --panel2: #e0e3eb;
+  --menu: #f0f3fa; /* round 45: light menus keep the exact old look */
+  --border: #d5d9e2;
+  --border2: #c4c9d4;
+  --text: #131722;
+  --text-dim: #6a6d78;
+  --white: #131722;
+  --pane-sep: #b8bfcc;
+}
+body.theme-light #login-screen {
+  background: radial-gradient(1200px 700px at 30% 20%, #eef1f8 0%, #dfe3ec 60%);
+}
+body.theme-light .dialog,
+body.theme-light .popup,
+body.theme-light .lt-flyout,
+body.theme-light #ctx-toolbar,
+body.theme-light #fav-float {
+  box-shadow: 0 10px 36px rgba(19,23,34,.18);
+}
+
+/* BUG-009/AUD-001: alert symbol-search input styled by tokens (was inline dark) */
+.al-search {
+  width: calc(100% - 12px); margin: 2px 6px 8px; padding: 7px 9px; font-size: 12px; outline: none;
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 5px; color: var(--text);
+}
+.al-search::placeholder { color: var(--text-dim); }
+.hidden { display: none !important; }
+.flex-spacer { flex: 1 1 auto; }
+.ic { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; }
+.ic svg { width: 20px; height: 20px; }
+
+/* ===== login ===== */
+#login-screen {
+  position: fixed; inset: 0; z-index: 500;
+  background: radial-gradient(1200px 700px at 30% 20%, #1e222d 0%, #0f0f0f 60%); /* round 44: neutral TV-dark glow */
+  display: flex; align-items: center; justify-content: center;
+  padding: 12px; overflow: hidden; /* BUG-001: a page-level scrollbar is NEVER acceptable */
+}
+/* round 23: the card must fit EVERY monitor — it never exceeds the viewport
+   (scrolls internally if a long saved-accounts list + MT5 fields meet a very
+   short window) and its paddings/logo shrink on small screens */
+.login-card {
+  width: min(460px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: clamp(16px, 4vh, 34px) clamp(18px, 4vw, 38px) clamp(14px, 3vh, 28px);
+  box-shadow: 0 18px 60px rgba(0,0,0,.5);
+  flex: 0 1 auto;
+}
+.login-logo { text-align: center; margin-bottom: clamp(10px, 2.4vh, 22px); }
+/* BUG-001: SAVED ACCOUNTS never grows the card — ~3 chips then internal scroll */
+#saved-accounts { max-height: 138px; overflow-y: auto; }
+/* BUG-001: two-column split (branding LEFT ~42%, form RIGHT) on >= ~960x600.
+   The card itself never scrolls in this mode — only the form column does. */
+@media (min-width: 960px) and (min-height: 600px) {
+  .login-card {
+    display: flex; flex-direction: row; align-items: stretch;
+    width: min(880px, calc(100vw - 24px));
+    max-height: calc(100vh - 24px);
+    overflow: hidden; padding: 0;
+  }
+  .login-brand-col {
+    flex: 0 0 42%; max-width: 42%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; padding: 28px 22px; margin-bottom: 0;
+    background: radial-gradient(640px 480px at 30% 22%, #1e222d 0%, #0f0f0f 78%); /* round 44 */
+    border-right: 1px solid var(--border); border-radius: 10px 0 0 10px;
+    user-select: none; pointer-events: none; /* branding column is non-interactive */
+  }
+  /* ROUND84: light-theme brand column — the hardcoded dark gradient above
+     turned var(--white) (#131722 in light) unreadable; light mode gets the
+     matching light radial so the "OJ Chart" title keeps its contrast. */
+  body.theme-light .login-brand-col {
+    background: radial-gradient(640px 480px at 30% 22%, #eef1f8 0%, #dfe3ec 78%);
+  }
+  .login-brand-col .login-logo-img {
+    width: clamp(72px, 13vh, 108px); height: clamp(72px, 13vh, 108px);
+  }
+  .login-form-col {
+    flex: 1 1 auto; min-width: 0;
+    overflow-y: auto; /* the ONLY scroll on the login screen */
+    padding: clamp(18px, 4vh, 34px) clamp(20px, 3vw, 38px) clamp(14px, 3vh, 28px);
+  }
+}
+.login-logo-img {
+  width: clamp(56px, 11vh, 84px); height: clamp(56px, 11vh, 84px); object-fit: contain; border-radius: 18px;
+  margin-bottom: clamp(6px, 1.2vh, 10px); box-shadow: 0 6px 22px rgba(0,0,0,.35);
+}
+/* product logo per pane (round 20/23): sits where the lib attribution used to be.
+   Round 23: wide OJ Chart wordmark, per-theme asset (white mark on the dark
+   chart, dark mark on the light chart) */
+.pane-brand {
+  position: absolute; left: 8px; bottom: 34px; /* fallback — Engine.render measures the axis live (BUG-012) */ z-index: 12; height: 15px; width: auto;
+  border-radius: 3px; object-fit: contain; object-position: left center; pointer-events: none;
+  opacity: .92; filter: drop-shadow(0 1px 3px rgba(0,0,0,.4));
+}
+body.theme-light .pane-brand { filter: none; opacity: .9; }
+/* hide the lightweight-charts attribution anchor (replaced by the brand logo) */
+.pane-chart-host a[href*="tradingview"] { display: none !important; }
+/* ROUND84 (user request: "OJ Chart" must stay readable in BOTH themes):
+   the title/sub keep the theme tokens (var(--white) flips to #131722 in
+   light mode), so the ALWAYS-DARK hardcoded brand-column gradient made the
+   title dark-on-dark in light mode. The brand column now follows the theme
+   (light radial in light mode) — readable in every theme × every window
+   size (the narrow <960px layout mounts the brand block on the card). */
+.login-title { font-size: clamp(18px, 3vh, 24px); font-weight: 700; color: var(--white); letter-spacing: .3px; }
+.login-cards { display: flex; gap: 12px; margin-bottom: clamp(10px, 2.2vh, 18px); }
+.provider-card {
+  flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: clamp(9px, 1.8vh, 16px) 12px; text-align: center; cursor: pointer; transition: border-color .12s, background .12s;
+}
+.provider-card:hover { border-color: var(--border2); }
+.provider-card.selected { border-color: var(--blue); background: rgba(41,98,255,.08); }
+.pc-icon { display: flex; justify-content: center; margin-bottom: clamp(5px, 1vh, 8px); color: var(--text); }
+.pc-icon svg { width: clamp(26px, 4.6vh, 34px); height: clamp(26px, 4.6vh, 34px); }
+.provider-card.selected .pc-icon { color: var(--blue); }
+.pc-name { font-size: 14px; font-weight: 600; color: var(--white); margin-bottom: 6px; }
+.pc-desc { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+#mt5-fields { display: flex; flex-direction: column; gap: clamp(6px, 1.2vh, 10px); margin-bottom: clamp(10px, 2vh, 16px); }
+#mt5-fields label { font-size: 11px; color: var(--text-dim); display: flex; flex-direction: column; gap: 4px; }
+#mt5-fields .opt { opacity: .6; }
+#mt5-fields input {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); padding: 8px 10px; font-size: 13px; outline: none;
+}
+#mt5-fields input:focus { border-color: var(--blue); }
+/* ROUND55: broker server scan (MT5 login-dialog parity) — Network Rescan +
+   access-server rows with measured pings; fastest auto-selected, click to
+   switch, rescan re-measures. Rows mirror the terminal: bars icon, name,
+   ping right. */
+#srv-scan { margin: -4px 0 clamp(10px, 2vh, 16px); display: flex; flex-direction: column; gap: 6px; }
+#srv-rescan, .srv-rescan {
+  display: inline-flex; align-items: center; gap: 7px; align-self: flex-start;
+  background: none; border: 0; padding: 2px 0; cursor: pointer;
+  color: #2dae6f; font-size: 12px; font-weight: 600;
+}
+#srv-rescan:hover, .srv-rescan:hover { filter: brightness(1.15); }
+#srv-rescan svg, .srv-rescan svg { display: block; }
+/* ROUND56: the in-app popup reuses the login-screen row styles; its list
+   container only needs its own max-height (250px-wide popup) */
+.srv-poplist { display: flex; flex-direction: column; gap: 3px; max-height: 260px; overflow-y: auto; }
+#srv-label { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#srv-list { display: flex; flex-direction: column; gap: 3px; max-height: 208px; overflow-y: auto; }
+.srv-row {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  background: none; border: 1px solid transparent; border-radius: 5px;
+  padding: 7px 9px; cursor: pointer; color: var(--text); font-size: 12.5px; text-align: left;
+}
+.srv-row:hover { background: rgba(255, 255, 255, .045); }
+.srv-row.selected { border-color: var(--border2); background: rgba(255, 255, 255, .05); }
+.srv-ic { display: flex; color: #4a4e55; }
+.srv-ic .sb { fill: #4a4e55; }
+.srv-ic .sb.on { fill: #2dae6f; }
+.srv-ic.tier2 .sb.on { fill: #e8b339; }
+.srv-ic.tier1 .sb.on { fill: #f24976; }
+.srv-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srv-ping { color: var(--text-dim); font-variant-numeric: tabular-nums; font-size: 11.5px; white-space: nowrap; }
+.srv-scanline { color: var(--text-dim); font-size: 11.5px; padding: 4px 2px; }
+.srv-scanline.srv-err { color: #f24976; }
+.srv-empty { color: var(--text-dim); font-size: 11.5px; padding: 4px 2px; }
+.theme-light .srv-row:hover, .theme-light .srv-row.selected { background: rgba(0, 0, 0, .045); }
+.theme-light .srv-ic, .theme-light .srv-ic .sb { color: #9aa2ad; fill: #9aa2ad; }
+.theme-light .srv-ic .sb.on { fill: #1f9d5f; }
+#login-connect {
+  width: 100%; background: var(--blue); color: #fff; border: 0; border-radius: 6px;
+  padding: 11px; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+#login-connect:hover { background: #1e53e5; }
+#login-connect:disabled { opacity: .6; cursor: default; }
+#login-status { min-height: 18px; margin-top: 10px; font-size: 12px; text-align: center; color: var(--text-dim); }
+#login-status.error { color: var(--red); }
+#login-back {
+  width: 100%; margin-top: 6px; background: transparent; color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 6px; padding: 8px;
+  font-size: 12px; cursor: pointer;
+}
+#login-back:hover { color: var(--text); border-color: var(--border2); }
+
+/* show/hide password eye */
+.pw-wrap { position: relative; }
+.pw-wrap input { width: 100%; padding-right: 34px; }
+.pw-eye {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  background: none; border: 0; color: var(--text-dim); cursor: pointer;
+  padding: 4px; display: flex;
+}
+.pw-eye:hover { color: var(--text); }
+.pw-eye svg { width: 16px; height: 16px; }
+
+/* remember checkbox */
+.remember-row { flex-direction: row !important; align-items: center; gap: 8px !important; font-size: 12px; cursor: pointer; user-select: none; }
+.remember-row input { width: auto; accent-color: var(--blue); cursor: pointer; }
+
+/* saved accounts list */
+#saved-accounts { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+#saved-accounts .sa-title { font-size: 10px; letter-spacing: .8px; color: var(--text-dim); }
+.acc-chip {
+  display: flex; align-items: center; gap: 8px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px;
+  cursor: pointer; font-size: 12px; color: var(--text);
+}
+.acc-chip:hover { border-color: var(--border2); }
+.acc-chip.active { border-color: var(--blue); background: rgba(41,98,255,.08); }
+.acc-tag { font-size: 9px; font-weight: 700; letter-spacing: .4px; padding: 2px 5px; border-radius: 3px; background: #2a2e39; color: var(--text-dim); flex: none; }
+.acc-tag.mt5 { background: rgba(41,98,255,.15); color: #7d9bff; }
+.acc-x { margin-left: auto; background: none; border: 0; color: var(--text-dim); cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; flex: none; }
+.acc-x:hover { color: var(--red); }
+
+/* in-app account menu (conn-status chip) */
+#acc-menu {
+  position: fixed; z-index: 600; background: var(--panel); border: 1px solid var(--border2);
+  border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.5); padding: 6px;
+  min-width: 250px; display: none;
+}
+#acc-menu.open { display: block; }
+#acc-menu .am-cur { padding: 8px 10px; font-size: 12px; color: var(--text); border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+#acc-menu .am-cur .am-sub { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.am-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  background: none; border: 0; color: var(--text); font-size: 12px;
+  padding: 8px 10px; border-radius: 5px; cursor: pointer;
+}
+.am-item:hover { background: rgba(255,255,255,.05); }
+.am-item.danger { color: var(--red); }
+.am-item.am-add { color: #7d9bff; }
+.am-sep { height: 1px; background: var(--border); margin: 6px 4px; }
+
+/* ===== app frame ===== */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* round 46+47: TV frame separators — TV draws a crisp, clearly visible
+   boundary (~2px on the reference) between every bar and the chart: top-bar
+   bottom edge, left-rail right edge, bottom-bar top edge, right-panel and
+   right-rail left edges.
+   round 47+48 (user feedback): 2px still too thin → 3px → DARK now widens
+   these five boundaries to 5px, color stays #2e2e2e (a step LIGHTER than the
+   #1a1a1a bars / #0f0f0f chart, exactly like TV's dark). LIGHT gets the same
+   treatment mirrored: 2px #ccd0da, a step DARKER than the #f0f3fa bars, so
+   the boundary finally reads in light mode too (TV's light separators are
+   likewise darker than its bars). :not(.collapsed) keeps the left-rail
+   collapse override (#left-toolbar.collapsed { border-right: 0 }) in
+   charge — the width guard must not out-rank it. */
+body:not(.theme-light) #top-toolbar { border-bottom-width: 5px; }
+body:not(.theme-light) #left-toolbar:not(.collapsed) { border-right-width: 5px; }
+body:not(.theme-light) #bottom-toolbar { border-top-width: 5px; }
+body:not(.theme-light) #right-content { border-left-width: 5px; }
+body:not(.theme-light) #right-tabs { border-left-width: 5px; }
+body.theme-light #top-toolbar { border-bottom-width: 2px; border-bottom-color: #ccd0da; }
+body.theme-light #left-toolbar:not(.collapsed) { border-right-width: 2px; border-right-color: #ccd0da; }
+body.theme-light #bottom-toolbar { border-top-width: 2px; border-top-color: #ccd0da; }
+body.theme-light #right-content { border-left-width: 2px; border-left-color: #ccd0da; }
+body.theme-light #right-tabs { border-left-width: 2px; border-left-color: #ccd0da; }
+
+/* ===== ROUND121 (user request): chart tabs — Windows 11 / TV-Desktop =====
+   The strip is the darkest surface (var(--bg)); the ACTIVE tab wears the
+   toolbar's own var(--panel) and sinks 1px over the strip's bottom border so
+   it reads as fused with the bar below (the classic Win11 tab treatment).
+   Themes adapt purely through the CSS variables + two rgba hover overlays. */
+#tab-strip {
+  flex: 0 0 auto;
+  display: flex; align-items: flex-end;
+  height: 34px; padding: 0 0 0 8px; /* ROUND125: right edge hosts the OS buttons flush */
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  user-select: none; -webkit-user-select: none;
+  /* ROUND125 (user request): with the OS title bar gone, the strip's EMPTY
+     area is the window drag surface (TV-Desktop) — double-click there
+     toggles maximize, native frameless behaviour of a drag region. */
+  -webkit-app-region: drag;
+}
+/* ROUND125: everything interactive inside the strip opts OUT of the drag
+   region — only the empty middle moves the window (Chrome/TV rules). Tab
+   items are covered through #tab-list; the buttons carry it EXPLICITLY so
+   the computed region is unambiguous at every level. */
+#tab-list, .tab-add, .tab-dock, .win-controls, .wc-btn { -webkit-app-region: no-drag; }
+#tab-list {
+  display: flex; align-items: flex-end;
+  min-width: 0; flex: 0 1 auto;
+  overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none;
+}
+#tab-list::-webkit-scrollbar { display: none; }
+.tab-item {
+  position: relative;
+  flex: 0 1 auto; min-width: 0; max-width: 220px;
+  height: 30px; margin: 4px 0 0;
+  padding: 0 5px 0 10px;
+  display: flex; align-items: center; gap: 6px;
+  border: 1px solid transparent; border-bottom: 0;
+  border-radius: 7px 7px 0 0;
+  color: var(--text-dim); font-size: 12px;
+  cursor: default;
+}
+/* hairline separators between inactive neighbours (Win11) */
+.tab-item + .tab-item::before {
+  content: ''; position: absolute; left: -1px; top: 9px;
+  width: 1px; height: 12px; background: var(--border);
+}
+.tab-item:hover { background: rgba(255,255,255,.055); }
+body.theme-light .tab-item:hover { background: rgba(19,23,34,.06); }
+.tab-item:hover::before,
+.tab-item.active::before,
+.tab-item.active + .tab-item::before { display: none; }
+.tab-item.active {
+  background: var(--panel);
+  border-color: var(--border);
+  color: var(--text);
+  margin-bottom: -1px;   /* fuse with the toolbar below */
+  z-index: 2;
+}
+.t-title {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 600;
+}
+.tab-item.active .t-title { color: var(--white); }
+.t-chip {
+  flex: 0 0 auto;
+  font-size: 10px; line-height: 1.2;
+  padding: 1px 5px; border-radius: 8px;
+  background: var(--panel2); color: var(--text-dim);
+}
+.t-close {
+  flex: 0 0 auto;
+  width: 18px; height: 18px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 4px;
+  background: transparent; color: var(--text-dim);
+  cursor: pointer;
+  opacity: 0; transition: opacity .08s linear;
+}
+.t-close svg { width: 12px; height: 12px; }
+.tab-item:hover .t-close, .tab-item.active .t-close { opacity: 1; }
+.t-close:hover { background: var(--panel2); color: var(--text); }
+/* drag reorder */
+.tab-item.dragging { opacity: .45; }
+.tab-item.drop-before { box-shadow: inset 2px 0 0 0 var(--blue); }
+.tab-item.drop-after { box-shadow: inset -2px 0 0 0 var(--blue); }
+/* ROUND122: a tab being docked back dims until the host acks */
+.tab-item.docking { opacity: .4; pointer-events: none; }
+
+/* ROUND122: TV-style live quote inside the tab — price + arrow + session
+   change %, tabular numerals so digits never jitter while ticking */
+.t-quote {
+  flex: 0 1 auto; min-width: 0;
+  display: flex; align-items: center; gap: 5px;
+  overflow: hidden; white-space: nowrap;
+}
+.t-px {
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px; color: var(--text-dim);
+  transition: color .25s linear;
+}
+.t-px.up { color: var(--green); transition: none; }
+.t-px.down { color: var(--red); transition: none; }
+.t-chg { font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.t-chg.up { color: var(--green); }
+.t-chg.down { color: var(--red); }
+
+/* ROUND122: dock-back button — only rendered meaningful in a solo window */
+.tab-dock {
+  flex: 0 0 auto;
+  width: 26px; height: 26px; margin: 0 2px 3px 4px; padding: 0;
+  display: none; align-items: center; justify-content: center;
+  border: 0; border-radius: 5px;
+  background: transparent; color: var(--text-dim);
+  cursor: pointer;
+}
+body.solo .tab-dock { display: flex; }
+.tab-dock svg { width: 15px; height: 15px; }
+.tab-dock:hover { background: var(--panel2); color: var(--text); }
+
+/* ROUND122: detached window — the trade stack is not booted there, so the
+   Trading rail button hides (the dock's one-click surfaces boot with it) */
+body.solo #right-tabs .rt-btn[data-tab="trade"] { display: none; }
+/* "+" new-tab button */
+.tab-add {
+  flex: 0 0 auto;
+  width: 26px; height: 26px; margin: 0 2px 3px 4px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 5px;
+  background: transparent; color: var(--text-dim);
+  cursor: pointer;
+}
+.tab-add svg { width: 16px; height: 16px; }
+.tab-add:hover { background: var(--panel2); color: var(--text); }
+
+/* ===== ROUND125 (user request): frameless TV-Desktop window shell =====
+   The OS title bar is gone; the strip's right end (and the login screen's
+   slim bar) carries the integrated Windows buttons: 46px wide, full height,
+   neutral hover, close turns system red — the classic Win11 title-bar
+   treatment, painted from the theme tokens. The maximize glyph flips to
+   the two-squares "restore" form through body.is-max (WinControls pushes
+   the state). The spacer between the tabs and the buttons stays INSIDE the
+   strip's drag region so it drags the window like the rest of the bar. */
+.strip-spacer { flex: 1 1 auto; min-width: 12px; align-self: stretch; }
+.win-controls { display: flex; align-items: stretch; flex: 0 0 auto; align-self: stretch; }
+.wc-btn {
+  position: relative;
+  width: 46px; height: 100%; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 0;
+  background: transparent; color: var(--text-dim);
+  cursor: default;
+}
+.wc-btn:hover { background: rgba(255,255,255,.09); color: var(--text); }
+body.theme-light .wc-btn:hover { background: rgba(19,23,34,.08); }
+/* glyphs — pure CSS, theme-following via currentColor */
+.wc-min::before { content: ''; width: 10px; height: 1px; background: currentColor; }
+.wc-max::before { content: ''; width: 9px; height: 9px; border: 1px solid currentColor; border-radius: 2px; }
+body.is-max .wc-max::before { width: 8px; height: 8px; transform: translate(2px, -2px); }
+body.is-max .wc-max::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; bottom: 0; margin: auto;
+  width: 8px; height: 8px;
+  border: 1px solid currentColor; border-radius: 2px;
+  transform: translate(-2px, 2px);
+}
+.wc-close::before, .wc-close::after {
+  content: ''; position: absolute;
+  width: 12px; height: 1.4px; background: currentColor;
+  transform: rotate(45deg);
+}
+.wc-close::after { transform: rotate(-45deg); }
+.wc-close:hover { background: #e81123; color: #fff; } /* Windows system red */
+
+/* ROUND125: the login window has no tab strip yet — a slim transparent bar
+   over the gradient keeps the drag surface + the same OS buttons while the
+   login card is up (hidden together with #login-screen after connect). */
+#login-titlebar {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 34px; z-index: 520;
+  display: flex; align-items: stretch;
+  -webkit-app-region: drag;
+}
+/* tab context menu (built by tabs.js, positioned via CSSOM) */
+.tab-ctx {
+  position: fixed; z-index: 10000;
+  min-width: 180px; padding: 4px;
+  background: var(--menu);
+  border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+.tctx-item {
+  display: block; width: 100%;
+  padding: 7px 10px; text-align: left;
+  border: 0; border-radius: 5px;
+  background: transparent; color: var(--text);
+  font-size: 12.5px; font-family: inherit; cursor: pointer;
+}
+.tctx-item:hover { background: var(--panel2); }
+
+/* top toolbar */
+/* ROUND132: the bar grew to TV's 46px chrome height and every control got
+   TV's proportions — 34px buttons, 24px glyphs, labels on the text buttons,
+   and one hairline separator between LOGICAL groups. */
+#top-toolbar {
+  height: 46px; display: flex; align-items: center; gap: 4px; padding: 0 8px;
+  background: var(--panel); /* round 45: TV toolbars sit a step above the chart */
+  border-bottom: 1px solid var(--border); flex: 0 0 auto;
+}
+/* left cluster in its own box so the overflow chevron can measure it.
+   Round 23 fix: the cluster must size to its CONTENT (flex-basis auto) so it
+   only scrolls when the window is genuinely too small — with the old flex:1
+   the .flex-spacer stole half the free space and the scroll arrows appeared
+   even though the top bar had plenty of room (TV shows them only on overflow) */
+#tb-left {
+  display: flex; align-items: center; gap: 4px; min-width: 0; flex: 0 1 auto;
+  height: 100%;
+}
+#tb-ovf { flex: 0 0 auto; }
+.tb-ovf-item { display: none !important; }
+.tb-btn {
+  height: 34px; min-width: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: transparent; border: 0; border-radius: 6px; color: var(--text);
+  padding: 0 7px; cursor: pointer; font-size: 13px; font-family: inherit;
+}
+.tb-btn:hover { background: var(--panel2); }
+.tb-btn.active { background: var(--panel2); color: var(--white); }
+/* ROUND132: TV's keyboard focus ring — a thin blue inset replaces the harsh
+   default white double ring (mouse users never see it; Escape/Tab users do) */
+.tb-btn:focus-visible { outline: 2px solid rgba(41,98,255,.85); outline-offset: -1px; }
+.tb-btn .ic svg { width: 20px; height: 20px; }
+/* ROUND132: icons set directly on the button (layout, tf-menu, style, alert,
+   replay, undo/redo, compare, camera, gear, doc, theme...) ride the same
+   24px box as the .ic ones — the layout glyph used to ship its own 28x24
+   viewBox and read visibly oversized/misaligned next to the rest */
+.tb-btn > svg { width: 24px; height: 24px; flex: none; }
+.tb-text { font-weight: 600; }
+/* ROUND132: TV top-bar text buttons (Indicators / Alert / Replay) */
+.tb-lbl { font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; }
+.tb-chev { display: inline-flex; align-items: center; }
+.tb-chev svg { width: 14px; height: 14px; color: var(--text-dim); }
+.tb-sep { width: 1px; height: 26px; background: var(--border); margin: 0 5px; flex: 0 0 auto; }
+/* ROUND132: the TV symbol selector — a filled pill (not a flat button):
+   bold symbol, small chevron, round cap. Both themes verified. */
+#symbol-btn {
+  font-size: 14px; font-weight: 700; color: var(--white);
+  background: var(--panel2); border-radius: 999px; height: 32px;
+  padding: 0 8px 0 14px; gap: 5px; letter-spacing: .2px;
+}
+#symbol-btn:hover { background: var(--panel2h, var(--panel2)); filter: brightness(1.12); }
+body.theme-light #symbol-btn:hover { filter: brightness(.97); }
+#symbol-btn .ic { display: inline-flex; align-items: center; }
+#symbol-btn .ic svg { width: 15px; height: 15px; color: var(--text-dim); }
+#tf-fav-bar { display: flex; align-items: center; gap: 2px; }
+#tf-fav-bar .tb-btn { min-width: 34px; font-weight: 700; font-size: 13px; }
+/* round 23: the chart's current interval gets an unmistakable colour (TV) */
+/* round 45: TV's CURRENT dark theme marks the active interval with the same
+   neutral gray pill as every other toggle — the blue tint is gone */
+#tf-fav-bar .tb-btn.active { background: var(--panel2); color: var(--white); }
+body.theme-light #tf-fav-bar .tb-btn.active { background: rgba(41,98,255,.14); color: #2962ff; }
+#tf-fav-bar .tf-plus { min-width: 26px; color: var(--text-dim); }
+#tf-fav-bar .tf-plus:hover { color: var(--white); }
+#tf-fav-bar .tf-plus svg { width: 20px; height: 20px; }
+#style-quick { display: flex; gap: 2px; }
+#conn-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); padding: 0 4px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+.dot.yellow { background: var(--yellow); }
+
+/* main row */
+#main { flex: 1 1 auto; display: flex; min-height: 0; }
+
+/* left toolbar */
+#left-toolbar {
+  width: 46px; flex: 0 0 46px; background: var(--panel); border-right: 1px solid var(--border); /* round 45: TV rail is elevated */
+  display: flex; flex-direction: column; align-items: center; padding: 4px 0; gap: 2px; overflow: visible; z-index: 60;
+}
+#left-toolbar.collapsed {
+  border-right: 0; width: 0; flex-basis: 0; padding: 0; overflow: hidden; visibility: hidden;
+}
+/* slim restore tab shown at the left edge while the toolbar is collapsed */
+#lt-expand {
+  position: absolute; left: 0; top: 6px; width: 16px; height: 34px; z-index: 65;
+  border: 1px solid var(--border); border-left: 0; border-radius: 0 6px 6px 0;
+  background: var(--panel); color: var(--text-dim); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+}
+#lt-expand:hover { color: var(--white); background: var(--panel2); }
+#lt-expand svg { width: 13px; height: 13px; }
+/* scrollable groups box + overflow chevron (small window heights) */
+.lt-groups {
+  flex: 0 1 auto; min-height: 0; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%;
+}
+.lt-min { flex: 0 0 auto; }
+.lt-ovf { flex: 0 0 auto; color: var(--text-dim); }
+.lt-ovf:hover { color: var(--text); }
+.lt-btn.tb-ovf-item { display: none !important; }
+.lt-sep.tb-ovf-item { display: none !important; }
+.lt-btn {
+  width: 38px; height: 38px; border: 0; border-radius: 5px; background: transparent;
+  color: var(--text); cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center;
+  flex: 0 0 auto;
+}
+.lt-btn:hover { background: var(--panel2); }
+/* round 45: active/armed states follow TV's current dark theme — neutral gray
+   pill + white icon (was blue). Light theme restatements keep the old look. */
+.lt-btn.armed { background: var(--panel2); color: var(--white); }
+.lt-btn.on { color: var(--white); }
+body.theme-light .lt-btn.armed { background: rgba(41,98,255,.16); color: #2962ff; }
+body.theme-light .lt-btn.on { color: #2962ff; }
+/* ROUND84 (user request): the MAGNET must visibly show that it is armed —
+   dedicated pill highlight (scoped so the shared .lt-btn.on of lock/eye is
+   untouched). Blue TV-style accent in both themes. */
+.lt-btn.magnet-on { background: rgba(41,98,255,.18); color: #4c8dff; }
+body.theme-light .lt-btn.magnet-on { background: rgba(41,98,255,.14); color: #2962ff; }
+.lt-btn svg { width: 24px; height: 24px; }
+.lt-btn .chev {
+  position: absolute; right: 3px; bottom: 3px; width: 0; height: 0;
+  border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 4px solid var(--text-dim);
+}
+.lt-sep { width: 22px; height: 1px; background: var(--border); margin: 5px 0; flex: 0 0 auto; }
+.lt-spacer { flex: 1 1 auto; }
+
+/* flyout panel (left toolbar) */
+/* TV-style vertical LIST with tool names (round 19) */
+.lt-flyout {
+  position: fixed; z-index: 900; background: var(--menu); border: 1px solid var(--border); /* round 45: TV menu gray */
+  border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.5); padding: 6px;
+  display: flex; flex-direction: column; gap: 1px; min-width: 210px; max-height: 78vh; overflow-y: auto;
+}
+.lt-tile {
+  height: 34px; border: 0; border-radius: 5px; background: transparent; color: var(--text);
+  cursor: pointer; position: relative; display: flex; align-items: center; gap: 10px;
+  padding: 0 8px 0 10px; width: 100%; text-align: left;
+}
+.lt-tile:hover { background: var(--panel2); }
+.lt-tile.armed { background: var(--panel2); color: var(--white); } /* round 45 */
+.lt-tile .tile-ic { display: inline-flex; color: var(--text-dim); flex: 0 0 auto; }
+.lt-tile.armed .tile-ic { color: var(--white); } /* round 45 */
+body.theme-light .lt-tile.armed { background: rgba(41,98,255,.16); color: #2962ff; }
+body.theme-light .lt-tile.armed .tile-ic { color: #2962ff; }
+.lt-tile .tile-ic svg { width: 20px; height: 20px; }
+.lt-tile .tile-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lt-tile .tile-star {
+  margin-left: auto; width: 22px; height: 22px; padding: 0; border: 0; background: transparent;
+  color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex: 0 0 auto;
+}
+.lt-tile .tile-star:hover { color: var(--yellow); }
+.lt-tile .tile-star.faved { color: var(--white); } /* round 45: TV fav star is white (was yellow) */
+body.theme-light .lt-tile .tile-star.faved { color: var(--yellow); }
+.lt-tile .tile-star svg { width: 13px; height: 13px; }
+/* ROUND 69 (TV): the favorite star appears on row HOVER only (favorited
+   rows keep it visible), and the keyboard-shortcut hint sits right-aligned
+   before the star (Rectangle = Alt + Shift + R) */
+.lt-tile .tile-star { opacity: 0; transition: opacity .08s ease; }
+.lt-tile:hover .tile-star, .lt-tile .tile-star.faved, .lt-tile:focus-visible .tile-star { opacity: 1; }
+.lt-tile .tile-hint {
+  margin-left: auto; font-size: 10.5px; font-weight: 600; letter-spacing: .2px;
+  color: var(--text-dim); white-space: nowrap; user-select: none;
+}
+.lt-tile .tile-hint + .tile-star { margin-left: 6px; }
+
+/* charts area */
+#charts-area { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; }
+#charts-grid { position: absolute; inset: 0; background: var(--bg); }
+
+.pane-root { position: absolute; background: var(--bg); min-width: 0; min-height: 0; overflow: hidden; box-shadow: inset 0 0 0 .5px var(--border); }
+.pane-root.active-pane { box-shadow: inset 0 0 0 1px rgba(41,98,255,.45); }
+.pane-chart-host { position: absolute; inset: 0; }
+.pane-root canvas { display: block; }
+/* round 32: TRUE indicator sub-panes (TV parity) — the price chart and every
+   separate indicator (MACD, RSI, ...) live in their own stacked wrapper.
+   Geometry (top/height) is computed by Manager.layoutSubPanes; non-last
+   wrappers CLIP the native time axis of their chart (the canvas is grown
+   +26px for that), the last one owns the visible axis strip. */
+.sub-pane { position: absolute; left: 0; width: 100%; overflow: hidden; }
+/* round 33: TV pane divider — a clearly visible 1px line in BOTH themes
+   (the old `--border` token melted into the background, user report) */
+.sub-pane.sub-ind { box-shadow: inset 0 1px 0 var(--pane-sep); }
+
+/* round 33: drag splitter on every price-pane / indicator-pane boundary —
+   a 7px hit-strip; the 1px line matches the pane divider and highlights
+   blue on hover / while dragging (same language as .grid-splitter) */
+.pane-split {
+  position: absolute; left: 0; width: 100%; height: 7px; margin-top: -3px;
+  z-index: 26; cursor: row-resize; pointer-events: auto;
+}
+.pane-split::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 3px; height: 1px;
+  background: transparent; transition: background .12s;
+}
+.pane-split:hover::after, .pane-split.dragging::after { background: var(--blue); }
+.sub-pane > .tv-lightweight-charts { position: relative; z-index: 1; }
+/* pane header (TV): the indicator's legend row lives INSIDE its pane.
+   z-index must sit ABOVE the drawing overlay (10) so the row's eye/gear/x
+   buttons are really clickable — same stack position as .pane-legend (12). */
+.sub-legend {
+  position: absolute; top: 4px; left: 8px; z-index: 12; pointer-events: none;
+  display: flex; flex-direction: column; gap: 2px; font-size: 12px;
+  max-width: calc(100% - 90px);
+}
+.sub-legend .ind-rows { pointer-events: auto; }
+
+/* TV layout picker (grid of layout variants + Sync in Layout toggles) */
+/* BUG-010: the layout picker is ONE viewport-clamped column (U.fitPopup caps
+   the container) — the grid area shrinks & scrolls internally, SYNC IN LAYOUT
+   stays fully visible, LAYOUTS shrinks & scrolls internally (min-height keeps
+   Save reachable). min-height:0 discipline everywhere — no fixed pixel caps. */
+.lay-picker { width: 480px; padding: 4px 0 0; display: flex; flex-direction: column; min-height: 0; }
+.lay-scroll { flex: 1 1 auto; min-height: 60px; overflow-y: auto; padding: 2px 12px 4px; }
+.lay-layouts { flex: 0 1 auto; min-height: 44px; overflow-y: auto; padding-bottom: 4px; }
+.lay-row { display: flex; align-items: center; gap: 10px; padding: 2px 0; }
+.lay-n { flex: 0 0 18px; text-align: center; color: var(--text-dim); font-size: 12px; font-weight: 600; }
+.lay-vars { display: flex; flex-wrap: wrap; gap: 5px; }
+.lay-ic {
+  width: 42px; height: 36px; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent; border-radius: 7px;
+  color: var(--text-dim); cursor: pointer; padding: 0;
+}
+.lay-ic:hover { background: var(--panel2); color: var(--text); }
+.lay-ic.on { border-color: #e0e3eb; color: var(--white); background: rgba(255,255,255,.05); }
+.lay-sep { border-top: 1px solid var(--border); margin: 4px 0 0; padding-top: 10px; }
+.lay-sync { padding: 1px 12px 10px; display: flex; flex-direction: column; }
+.sync-t-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 6px 4px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.sync-t-row:hover { background: var(--panel2); }
+.sync-t-row .st-lab { display: flex; align-items: center; gap: 7px; color: var(--text); font-weight: 600; }
+.sync-t-row .info-ic { color: var(--text-dim); display: inline-flex; }
+.sync-t-row .info-ic svg { width: 14px; height: 14px; }
+.popup .pu-kbd { margin-left: auto; color: var(--text-dim); font-size: 11px; white-space: nowrap; padding-left: 16px; }
+
+/* resizable layout splitters (TV-style chart size customization) */
+.grid-splitter { position: absolute; z-index: 40; }
+/* splitters get exact px geometry from the layout engine; base rules only set the look */
+.grid-splitter.v { cursor: col-resize; }
+.grid-splitter.h { cursor: row-resize; }
+.grid-splitter::after {
+  content: ''; position: absolute; background: var(--border); transition: background .12s;
+}
+.grid-splitter.v::after { left: 2px; top: 0; bottom: 0; width: 1px; }
+.grid-splitter.h::after { top: 2px; left: 0; right: 0; height: 1px; }
+.grid-splitter:hover::after, .grid-splitter.dragging::after { background: var(--blue); }
+
+/* countdown to bar close (price scale label, TV-like) */
+/* ROUND80 (TV parity — user report: the value label and the countdown read
+   as two separate boxes): BOTH rows live in one .pv-stack — one width (the
+   widest row), flush rows, a single drop-shadow around the whole unit.
+   The native LWC last-value label is retired; .pv-label replaces it 1:1
+   (same series-coloured background, white text) and the countdown is the
+   second row of the SAME box. Heights are the JS geometry constants
+   PV_H=18 / CD_H=13 (manager.js). Themes: text is always white on the
+   series colour (TV light theme does the same); no other theme token is
+   involved, so dark/light both render correctly by construction. */
+.pv-stack {
+  position: absolute; right: 7px; z-index: 15; pointer-events: none;
+  display: flex; flex-direction: column; align-items: stretch;
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,.35));
+}
+.pv-label {
+  color: #ffffff; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
+  height: 18px; line-height: 18px; padding: 0 6px; box-sizing: border-box;
+  text-align: center; white-space: nowrap; border-radius: 3px 3px 0 0;
+}
+.pv-stack.no-cd .pv-label { border-radius: 3px; } /* countdown row hidden */
+.cd-label {
+  color: #ffffff; font-size: 9.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+  height: 13px; line-height: 13px; padding: 0 5px; box-sizing: border-box;
+  letter-spacing: .3px; text-align: center; white-space: nowrap;
+  border-radius: 0 0 3px 3px;
+}
+
+/* watermark layer — sits BEHIND the (transparent) chart canvas, like TradingView */
+.pane-wm {
+  position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; text-align: center;
+}
+.pane-wm.off { display: none; }
+/* (round 32: the chart z-index rule moved to `.sub-pane > .tv-lightweight-charts` —
+   the chart element now lives inside its sub-pane wrapper) */
+.pane-wm .wm-sym {
+  font-size: var(--wm-size, 44px); font-weight: 700; color: var(--wm-color, #787b86);
+  opacity: var(--wm-opacity, .12); letter-spacing: 1px; line-height: 1.05; white-space: nowrap;
+}
+.pane-wm .wm-tf {
+  font-size: calc(var(--wm-size, 44px) * 0.42); font-weight: 600; color: var(--wm-color, #787b86);
+  opacity: var(--wm-opacity, .12); line-height: 1; white-space: nowrap;
+}
+
+/* price-scale symbol chip (TV: Name, value, line) */
+/* BUG-A/R25: the chip is the NAME ROW of the price-tag stack now — name only
+   (the live price stays on the native label), one row ABOVE the price tag:
+   [NAME] [PRICE] [COUNTDOWN] */
+.sym-chip {
+  position: absolute; right: 7px; transform: translateY(-50%); z-index: 14; pointer-events: none;
+  display: flex; align-items: center;
+  background: var(--panel2); border: 1px solid var(--border2); border-radius: 4px;
+  padding: 2px 7px; font-size: 11px; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.4);
+}
+.sym-chip .sc-name { color: var(--sc-color, var(--text)); }
+.pane-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
+/* ROUND41: vertical-grid underlay — the engine paints the time-axis grid
+   lines HERE (z 0: above the watermark, BELOW the chart canvas z 1) so the
+   grid sits UNDER the candles instead of over them; sized/cleared by
+   Engine.render every frame, same geometry as .pane-overlay */
+.pane-grid-underlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+.pane-legend {
+  position: absolute; top: 6px; left: 8px; z-index: 12; pointer-events: none;
+  /* compare chips are interactive (remove button) — re-enabled below (r18) */
+  display: flex; flex-direction: column; gap: 2px; font-size: 12px;
+}
+.pane-legend .cmp-legend { pointer-events: auto; }
+/* ROUND 35 (user report "restore the remove option"): the compare chips had
+   NO CSS at all — the color dot collapsed to 0px and the remove X rendered
+   4px wide (invisible, unclickable). TV-style chip: dot + symbol + X. */
+.pane-legend .cmp-legend { display: inline-flex; align-items: center; gap: 6px; }
+.pane-legend .cmp-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 1px 4px; border-radius: 4px;
+  font-size: 11.5px; font-weight: 600; color: var(--text);
+}
+.pane-legend .cmp-chip:hover { background: var(--panel2); }
+.pane-legend .cmp-chip > i { display: inline-block; flex: 0 0 auto; width: 8px; height: 8px; border-radius: 2px; }
+.pane-legend .cmp-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; padding: 0; border: 0; border-radius: 3px;
+  background: transparent; color: var(--text-dim); cursor: pointer; flex: 0 0 auto;
+}
+.pane-legend .cmp-x:hover { color: var(--red); background: var(--panel2); }
+.pane-legend .cmp-x svg { width: 12px; height: 12px; }
+.pane-legend .lg-row1 { display: flex; align-items: baseline; gap: 8px; }
+.pane-legend .lg-logo { display: inline-flex; color: var(--text-dim); align-self: center; }
+.pane-legend .lg-logo svg { width: 16px; height: 16px; }
+.pane-legend .lg-sym { font-size: 13px; font-weight: 700; color: var(--white); }
+.pane-legend .lg-mkt {
+  font-size: 10.5px; font-weight: 600; border-radius: 4px; padding: 1px 6px;
+  align-self: center; white-space: nowrap;
+}
+.pane-legend .lg-mkt.open { color: var(--green); background: rgba(8,153,129,.12); }
+.pane-legend .lg-mkt.closed { color: var(--text-dim); background: rgba(120,123,134,.12); }
+.pane-legend .lg-mkt.idle { display: none; }
+.pane-legend .lg-tf { font-size: 12px; color: var(--text-dim); font-weight: 600; }
+.pane-legend .lg-style { font-size: 11px; color: var(--text-dim); }
+.pane-legend .lg-ohlc { font-size: 11.5px; color: var(--text-dim); display: flex; gap: 7px; }
+.pane-legend .lg-ohlc b { color: var(--text); font-weight: 500; }
+/* ROUND98: live spread chip (persistent span re-appended into .lg-ohlc) */
+.pane-legend .lg-spread { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
+.pane-legend .lg-spread b { color: var(--text); font-weight: 500; }
+.pane-legend .lg-chg.up { color: var(--green); }
+.pane-legend .lg-chg.down { color: var(--red); }
+.pane-text-editor {
+  position: absolute; z-index: 40; background: var(--panel); border: 1px solid var(--blue); border-radius: 4px;
+  color: var(--text); font-size: 13px; padding: 6px 8px; min-width: 140px; outline: none; resize: none;
+  font-family: inherit;
+}
+
+/* floating favorites toolbar */
+#fav-float {
+  position: absolute; z-index: 80; background: var(--panel); border: 1px solid var(--border); /* AUD-001 */
+  border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,.55); padding: 4px;
+  display: flex; align-items: center; gap: 2px; cursor: grab; max-width: calc(100% - 30px); flex-wrap: nowrap;
+}
+#fav-float:active { cursor: grabbing; }
+#fav-float .ff-btn {
+  width: 34px; height: 34px; border: 0; border-radius: 5px; background: transparent; color: var(--text);
+  cursor: pointer; display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+}
+#fav-float .ff-btn:hover { background: var(--panel2); }
+#fav-float .ff-btn.armed { background: var(--panel2); color: var(--white); } /* round 45 */
+body.theme-light #fav-float .ff-btn.armed { background: rgba(41,98,255,.16); color: #2962ff; }
+#fav-float .ff-btn svg { width: 22px; height: 22px; }
+#fav-float .ff-close {
+  width: 18px; height: 34px; border: 0; background: transparent; color: var(--text-dim); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+}
+#fav-float .ff-close:hover { color: var(--red); }
+#fav-float .ff-close svg { width: 13px; height: 13px; }
+#fav-float .ff-empty { font-size: 11px; color: var(--text-dim); padding: 0 8px; white-space: nowrap; }
+
+/* drawing context toolbar */
+/* BUG-009/AUD-001: fully theme-driven (was a hardcoded dark rgba surface —
+   rendered dark-on-dark in the light theme) */
+#ctx-toolbar {
+  position: absolute; z-index: 85; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,.55); padding: 3px 4px;
+  display: flex; align-items: center; gap: 2px;
+}
+#ctx-toolbar .ct-btn {
+  height: 26px; min-width: 26px; border: 0; border-radius: 4px; background: transparent; color: var(--text);
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0 4px;
+  font-size: 11px; font-family: inherit;
+}
+#ctx-toolbar .ct-btn:hover { background: var(--panel2); }
+#ctx-toolbar .ct-btn.on { color: var(--white); background: var(--panel2); } /* round 45 */
+body.theme-light #ctx-toolbar .ct-btn.on { color: #2962ff; background: rgba(41,98,255,.14); }
+#ctx-toolbar .ct-btn.danger:hover { color: var(--red); }
+#ctx-toolbar .ct-btn svg { width: 17px; height: 17px; }
+#ctx-toolbar .ct-sw { width: 17px; height: 17px; border-radius: 50%; border: 0; cursor: pointer; padding: 0; }
+#ctx-toolbar .ct-sw:hover { box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
+#ctx-toolbar .ct-sw.on { box-shadow: 0 0 0 2px var(--blue); }
+#ctx-toolbar .ct-sep { width: 1px; height: 18px; background: var(--border); margin: 0 3px; }
+/* round 21: TV floating-bar look — grip, icon swatches with colour underline,
+   text buttons (width/style) */
+#ctx-toolbar .ct-grip { cursor: grab; color: var(--text-dim); }
+#ctx-toolbar .ct-grip:active { cursor: grabbing; }
+#ctx-toolbar .ct-ic-wrap { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; padding-top: 1px; }
+#ctx-toolbar .ct-ic-wrap svg { width: 15px !important; height: 13px !important; }
+#ctx-toolbar .ct-cline { display: block; width: 15px; height: 3px; border-radius: 1.5px; }
+#ctx-toolbar .ct-tx { gap: 4px; font-size: 11px; color: var(--text); }
+#ctx-toolbar .ct-tx svg { width: 16px; height: 12px; }
+/* ===== round 22 ===== */
+/* top bar: TV-style horizontal scrolling with chevron arrows.
+   Round 23: the wrap sizes to its content (flex 0 1 auto) — the arrows then
+   appear ONLY when the window is too small for the whole cluster */
+#tb-left-wrap { display: flex; align-items: center; flex: 0 1 auto; min-width: 0; }
+#tb-left { flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+#tb-left::-webkit-scrollbar { display: none; }
+.tb-scroll { flex: none; color: var(--text-dim); }
+.tb-scroll:hover { color: var(--white); }
+.tb-scroll svg { width: 15px; height: 15px; }
+/* ROUND242 (UI audit): toolbar buttons must NEVER compress — the reference
+   overflows them into scroll, never squeezes. Every direct child of the
+   scrolling cluster keeps its content width, so layoutTopbar's scrollWidth
+   measure (and the chevrons) triggers honestly on narrow windows; the right
+   cluster is pinned too, and long labels ellipsize instead of pushing. */
+#tb-left > * { flex: none; }
+#tf-fav-bar > *, #style-quick > * { flex: none; }
+#top-toolbar > .tb-btn, #top-toolbar > #conn-status { flex: none; }
+#symbol-btn-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#conn-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+/* "Scroll to the most recent bar" (TV) — per chart, above the time axis */
+.go-live-btn {
+  position: absolute; right: 74px; bottom: 36px; z-index: 40;
+  width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--panel); color: var(--text); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 14px rgba(0,0,0,.45); transition: background .12s, color .12s;
+}
+.go-live-btn:hover { background: var(--panel2); color: var(--white); }
+.go-live-btn svg { width: 16px; height: 16px; }
+/* toggle switch (Sync in Layout rows, Autosave row) — styles were lost in a
+   past restore and the switches rendered invisible; restored in round 22 */
+.st-switch {
+  position: relative; flex: none; display: inline-block; width: 34px; height: 18px;
+  border-radius: 9px; background: var(--border); transition: background .15s; cursor: pointer;
+}
+.st-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+  border-radius: 50%; background: #fff; transition: left .15s; box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.st-switch.on { background: var(--blue); }
+.st-switch.on::after { left: 18px; }
+.sync-t-row .st-switch { margin-left: auto; }
+/* "Loading data…" overlay per pane (round 22) */
+.pane-loading {
+  position: absolute; inset: 0; z-index: 45; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  background: rgba(15,15,15,.42); pointer-events: none; /* round 44: was rgba(#131722,.42) */
+}
+.pane-loading.hidden { display: none; }
+.pl-spin {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid rgba(41,98,255,.22); border-top-color: var(--blue);
+  animation: pl-rotate .85s linear infinite;
+}
+.pl-txt {
+  font-size: 12px; font-weight: 600; color: var(--white);
+  background: var(--panel); border: 1px solid var(--border); /* AUD-001 (Loading chip) */
+  padding: 5px 12px; border-radius: 6px;
+  animation: pl-pulse 1.3s ease-in-out infinite alternate;
+}
+@keyframes pl-rotate { to { transform: rotate(360deg); } }
+@keyframes pl-pulse { from { opacity: .6; } to { opacity: 1; } }
+body.theme-light .pane-loading { background: rgba(255,255,255,.45); }
+/* colour-picker opacity row (round 21) */
+.cp-oprow { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.cp-oprow .cp-oplab { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.cp-oprow input[type=range] { flex: 1; }
+.cp-oprow .cp-opval { font-size: 11px; color: var(--text); width: 34px; text-align: right; }
+/* round 22: full HSV colour editor (TV-like custom picker) */
+.cp-sv {
+  position: relative; width: 196px; height: 128px; border-radius: 5px;
+  cursor: crosshair; border: 1px solid var(--border); margin-top: 8px;
+  background: linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, hsl(220,100%,50%));
+}
+.cp-sv-thumb {
+  position: absolute; width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.6); transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.cp-hue {
+  position: relative; width: 196px; height: 12px; border-radius: 6px; margin-top: 8px;
+  cursor: pointer; border: 1px solid var(--border);
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+.cp-hue-thumb {
+  position: absolute; top: 50%; width: 10px; height: 16px; border-radius: 3px;
+  border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.6); transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* replay bar */
+#replay-bar {
+  position: absolute; z-index: 80; bottom: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; /* AUD-001 */
+  box-shadow: 0 6px 20px rgba(0,0,0,.55); padding: 5px 8px; display: flex; align-items: center; gap: 3px;
+}
+#replay-bar .rp-btn {
+  width: 30px; height: 30px; border: 0; border-radius: 5px; background: transparent; color: var(--text);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+#replay-bar .rp-btn:hover { background: var(--panel2); }
+#replay-bar .rp-btn.on { color: var(--white); } /* round 45 */
+body.theme-light #replay-bar .rp-btn.on { color: #2962ff; }
+#replay-bar .rp-btn svg { width: 18px; height: 18px; }
+/* ROUND132: the speed control is a SPLIT button — label (click = cycle) +
+   chevron (click = the speed-selection menu). One hover surface. */
+#replay-bar .rp-speed-wrap { display: flex; align-items: center; border-radius: 5px; }
+#replay-bar .rp-speed-wrap:hover { background: var(--panel2); }
+#replay-bar .rp-speed {
+  font-size: 12px; font-weight: 700; min-width: 44px; text-align: center; color: var(--white);
+  background: transparent; border: 0; height: 30px; border-radius: 5px 0 0 5px; cursor: pointer; font-family: inherit;
+  padding: 0 2px 0 8px;
+}
+#replay-bar .rp-speed:hover { background: transparent; }
+#replay-bar .rp-speed-menu {
+  width: 18px; height: 30px; border: 0; background: transparent; color: var(--text-dim);
+  cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
+  border-radius: 0 5px 5px 0;
+}
+#replay-bar .rp-speed-menu:hover { color: var(--white); }
+#replay-bar .rp-speed-menu svg { width: 13px; height: 13px; }
+/* ROUND132: the speed-selection popup (grid of every speed) */
+.rp-menu { min-width: 232px; padding: 8px; }
+.rp-menu .rpm-title {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+  color: var(--text-dim); padding: 0 4px 6px;
+}
+.rp-menu .rpm-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+.rp-menu .rpm-item {
+  border: 0; background: transparent; color: var(--text); font-family: inherit;
+  font-size: 12px; font-weight: 700; height: 28px; border-radius: 5px; cursor: pointer;
+}
+.rp-menu .rpm-item:hover { background: var(--panel2); }
+.rp-menu .rpm-item.on { background: rgba(41,98,255,.16); color: #2962ff; }
+body.theme-light .rp-menu .rpm-item.on { background: rgba(41,98,255,.12); color: #2962ff; }
+#replay-bar .rp-info { font-size: 11px; color: var(--text-dim); margin: 0 6px; white-space: nowrap; }
+#replay-bar .rp-sep { width: 1px; height: 18px; background: var(--border); margin: 0 3px; }
+
+/* bottom toolbar */
+#bottom-toolbar {
+  height: 36px; flex: 0 0 36px; display: flex; align-items: center; gap: 3px; padding: 0 8px;
+  background: var(--panel); /* round 45: TV toolbars sit a step above the chart */
+  border-top: 1px solid var(--border);
+  /* ROUND242 (UI audit): the bottom bar had NO overflow handling — on narrow
+     windows its buttons clipped off (body hides overflow). Same discipline
+     as the top bar: children never compress, the bar scrolls invisibly, and
+     low-priority items auto-hide under width breakpoints. */
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+}
+#bottom-toolbar::-webkit-scrollbar { display: none; }
+#bottom-toolbar > *:not(.flex-spacer) { flex: none; }
+#tz-clock { white-space: nowrap; }
+@media (max-width: 1150px) { #tz-clock { display: none; } }
+@media (max-width: 980px) { #srv-label, #tz-label { display: none; } }
+.bt-btn {
+  height: 26px; min-width: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  background: transparent; border: 0; border-radius: 4px; color: var(--text-dim); padding: 0 6px;
+  cursor: pointer; font-size: 12px; font-family: inherit;
+}
+.bt-btn:hover { background: var(--panel2); color: var(--text); }
+.bt-btn.on { color: var(--white); background: var(--panel2); } /* round 45: TV neutral toggle */
+body.theme-light .bt-btn.on { color: #2962ff; background: rgba(41,98,255,.12); }
+.bt-btn svg { width: 17px; height: 17px; }
+
+/* Navigation buttons setting (Canvas > Buttons): hover / always / hidden */
+#bottom-toolbar.nav-hidden #zoom-out-btn,
+#bottom-toolbar.nav-hidden #zoom-in-btn,
+#bottom-toolbar.nav-hidden #zoom-fit-btn { display: none; }
+#bottom-toolbar.nav-always #zoom-out-btn,
+#bottom-toolbar.nav-always #zoom-in-btn,
+#bottom-toolbar.nav-always #zoom-fit-btn { opacity: 1; }
+.st-hidden-by-cfg { display: none !important; }
+.bt-text { font-weight: 700; }
+/* round 23: live clock in the selected timezone, bottom-right (restored) */
+#tz-clock {
+  font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums;
+  padding: 0 4px; letter-spacing: .3px;
+}
+/* round 23: Undo/Redo disabled state (TV dims them) */
+.tb-btn.tb-off { opacity: .35; }
+.tb-btn.tb-off:hover { background: transparent; }
+/* round 23: future time labels on the time axis (region right of the live bar)
+   — plain text like the native ticks, centered on the bar slot */
+.tax-ext {
+  position: absolute; left: 0; bottom: 0; z-index: 6; pointer-events: none;
+  overflow: hidden; font-family: "Segoe UI", Arial, sans-serif;
+}
+.tax-ext span {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  font-size: 11px; color: var(--text); opacity: .92; white-space: nowrap;
+}
+/* ROUND66 (user report): time-axis HIGHLIGHT tags (drawn vline/crossline
+   time labels + the news time pills). They used to paint on the overlay
+   canvas UNDER this DOM strip, so the static numbers ghosted through the
+   highlight ("numbers and highlight fall on each other"). ROOT fix: a
+   dedicated DOM layer ABOVE the numbers (z 7 > .tax-ext 6), rebuilt by
+   Engine.render every frame — same proven mechanism as .tax-live below.
+   Rows: a tag that would cover another at the same spot rises 19px (engine-
+   set bottom), so several events on one bar stay readable. */
+.tax-tags {
+  position: absolute; left: 0; bottom: 0; z-index: 7; pointer-events: none;
+  overflow: visible;
+}
+.tax-tag {
+  position: absolute; transform: translateX(-50%); direction: ltr;
+  background: var(--tag-c, #2962ff); color: #ffffff; border-radius: 2px;
+  padding: 2px 6px; font-size: 10.5px; font-weight: 600; line-height: 1.25;
+  white-space: nowrap; width: max-content;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+/* ROUND67: medium-impact news pill — dark text on the yellow bg, the exact
+   pair the on-canvas tags above the chart already use; readable in BOTH
+   themes (white on #f7c948 washed out). */
+.tax-tag.news-pill.med { color: #1c2030; }
+/* BUG-C/R25: live crosshair time bubble — the TOPMOST layer of the time
+   strip (z 7 > .tax-ext 6). Replaces the native canvas bubble that the
+   static labels used to cover. The element IS the pill: the engine centers
+   it on the crosshair bar via left + translateX(-50%), text = the same
+   TZ.crossLabel output the native formatter produced. Colors replicate the
+   native pill (labelBackgroundColor '#363a45') 1:1 in both themes.
+   ROUND 32: compact TV-style label — width hugs the text (max-content),
+   NEVER both left+right (the old stretch made the highlight huge on the
+   left of the chart and tiny on the right); height auto, vertically
+   centered in the axis strip via the engine-set `bottom`. */
+.tax-live {
+  position: absolute; bottom: 3px; z-index: 7; pointer-events: none;
+  transform: translateX(-50%);
+  width: max-content;
+  background: #363a45; color: #ffffff; border-radius: 2px;
+  padding: 2px 6px; font-size: 11px; line-height: 1.2; white-space: nowrap;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+/* ROUND49 (TV): hover highlight pill on the PRICE scale + the (+) button
+   locked right next to it. The pill plays the native crosshair label's role
+   for the Arrow/Dot cursor tools (Cross keeps the native label — no double):
+   same #363a45/white chip the native label uses, in BOTH themes (the native
+   labelBackgroundColor is theme-agnostic too). pointer-events none — it is
+   pure chrome. Width/position are engine-driven every frame (v.axisW). */
+.pax-live {
+  position: absolute; right: 0; z-index: 7; pointer-events: none;
+  height: 20px; line-height: 20px; text-align: center;
+  background: #363a45; color: #ffffff; border-radius: 2px 0 0 2px;
+  font-size: 11px; white-space: nowrap; direction: ltr;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+.pax-add {
+  position: absolute; z-index: 40; /* above .pane-overlay (10) so it clicks */
+  width: 20px; height: 20px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1px solid #4a4e59;
+  background: #363a45; color: #ffffff; cursor: pointer;
+}
+.pax-add svg { width: 11px; height: 11px; }
+.pax-add:hover { background: #4a4e59; }
+body.theme-light .pax-add {
+  background: #ffffff; color: #131722; border-color: #d5d9e2;
+}
+body.theme-light .pax-add:hover { background: #f0f3fa; }
+/* ROUND51: selected price-alert delete chip — rides the alert line next to
+   the price scale; same chrome family as .pax-add, red delete accent */
+.alert-del {
+  position: absolute; z-index: 40; /* above .pane-overlay (10) so it clicks */
+  width: 20px; height: 20px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1px solid #f23645;
+  background: #363a45; color: #ff7b7b; cursor: pointer;
+}
+.alert-del svg { width: 10px; height: 10px; }
+.alert-del:hover { background: #f23645; color: #ffffff; }
+body.theme-light .alert-del {
+  background: #ffffff; color: #f23645; border-color: #f23645;
+}
+body.theme-light .alert-del:hover { background: #f23645; color: #ffffff; }
+/* round 23: favorites floating bar — grip handle + reorder affordance */
+#fav-float .ff-grip {
+  flex: 0 0 auto; width: 18px; align-self: stretch; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; color: var(--text-dim); cursor: grab; padding: 0;
+}
+#fav-float .ff-grip:hover { color: var(--white); }
+#fav-float .ff-grip svg { width: 12px; height: 14px; }
+#fav-float .ff-btn { cursor: grab; }
+#fav-float .ff-btn.ff-drag { opacity: .35; }
+/* round 23: section headers inside a merged left-toolbar flyout (Gann / Elliott) */
+.lt-flysec {
+  display: flex; align-items: center; gap: 6px; padding: 7px 10px 3px;
+  font-size: 10px; font-weight: 700; letter-spacing: .8px; color: var(--text-dim);
+  text-transform: uppercase; user-select: none;
+}
+
+/* right panel */
+/* right panel: FIXED icon rail at the far right edge (TV) + panel content
+   that opens to the LEFT of the rail (the chart's price scale shifts left) */
+/* ROUND119: the whole panel paints ABOVE the bottom Tool Box dock (z 30) —
+   nothing inside it can ever slide under the dock again */
+#right-panel { display: flex; background: var(--bg); min-height: 0; flex: 0 0 auto; position: relative; z-index: 35; }
+#right-content {
+  width: 290px; flex: 0 0 290px; min-width: 0; display: flex; flex-direction: column;
+  border-left: 1px solid var(--border); background: var(--bg);
+}
+#right-tabs {
+  /* ROUND131: the rail grew one notch (40 -> 44px) to carry the bigger,
+     TV-sized icons; it still scrolls invisibly on small window heights */
+  width: 44px; flex: 0 0 44px; display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 3px;
+  border-left: 1px solid var(--border);
+  /* ROUND39: small window heights — the rail scrolls instead of clipping its
+     last icons (no visible scrollbar, chevron wheel/scroll still works) */
+  overflow-y: auto; scrollbar-width: none;
+}
+#right-tabs::-webkit-scrollbar { display: none; }
+.rt-btn {
+  /* ROUND131 (user request): bigger icons + TV's exact colour language —
+     dim gray glyphs, brighter on hover, and the ACTIVE panel icon turns the
+     TV blue with a soft tinted well (both themes) */
+  width: 36px; height: 36px; border: 0; border-radius: 6px; background: transparent; color: var(--text-dim);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: color .12s, background .12s;
+}
+.rt-btn:hover { background: var(--panel2); color: var(--text); }
+.rt-btn.active { color: #2962ff; background: rgba(41, 98, 255, .12); }
+.rt-btn svg { width: 24px; height: 24px; }
+body.theme-light .rt-btn { color: #5d606b; }
+body.theme-light .rt-btn:hover { color: #131722; }
+body.theme-light .rt-btn.active { color: #2962ff; background: rgba(41, 98, 255, .09); }
+#right-content { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.rtab { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+/* ROUND119 (user report): with the bottom Tool Box dock open, the tall tab
+   contents (e.g. the Trading ticket) spilled UNDER the dock (dock paints
+   above with z-index 30) — parts of the right panel vanished beneath it.
+   Every tab now clips at its own edge and its scrollable body scrolls
+   INSIDE the panel, exactly like the watchlist always did. */
+#tab-trade #tr-demo, #tab-trade #tr-live { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.rhead {
+  height: 40px; flex: 0 0 40px; display: flex; align-items: center; padding: 0 12px; gap: 8px;
+  font-size: 13px; font-weight: 700; color: var(--white); border-bottom: 1px solid var(--border);
+}
+.rhead .mini-btn { margin-left: auto; }
+.mini-btn {
+  width: 26px; height: 26px; border: 0; border-radius: 4px; background: transparent; color: var(--text-dim);
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+}
+.mini-btn:hover { background: var(--panel2); color: var(--text); }
+.mini-btn svg { width: 16px; height: 16px; }
+
+/* ROUND112 (user request): the merged Trading tab — Demo/Live segmented
+   switch in the panel header + the header's button cluster */
+#tab-trade .rhead .wl-head-btns { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+#tab-trade .rhead .wl-head-btns .rt-close { margin-left: 0; }
+.tr-mode {
+  display: inline-flex; align-items: stretch; overflow: hidden;
+  border: 1px solid var(--border2); border-radius: 6px; background: var(--panel2);
+}
+.tr-modeb {
+  border: 0; padding: 3px 9px; background: transparent; color: var(--text-dim);
+  font-family: inherit; font-size: 10px; font-weight: 800; letter-spacing: .3px;
+  cursor: pointer; line-height: 1.2;
+}
+.tr-modeb + .tr-modeb { border-left: 1px solid var(--border2); }
+.tr-modeb:hover { color: var(--text); }
+.tr-modeb.on { background: var(--blue); color: #ffffff; }
+.tr-modeb.on[data-m="demo"] { background: #ff9800; }
+body.theme-light .tr-modeb.on[data-m="demo"] { color: #ffffff; }
+
+/* popups */
+.popup {
+  /* round 21: popups (colour picker, menus) must layer ABOVE the floating
+     tool-settings dialog (1050) — the picker used to hide behind it */
+  position: fixed; z-index: 1150; background: var(--menu); border: 1px solid var(--border); /* round 45: TV menu gray */
+  border-radius: 7px; box-shadow: 0 10px 32px rgba(0,0,0,.55); padding: 6px;
+}
+.popup .pu-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; color: var(--text);
+  padding: 7px 10px; border-radius: 5px; cursor: pointer; font-size: 13px; font-family: inherit; text-align: left;
+}
+.popup .pu-item:hover { background: var(--panel2); }
+.popup .pu-item.hl { background: var(--panel2); } /* round 45: neutral highlight (was blue) */
+body.theme-light .popup .pu-item.hl { background: rgba(41,98,255,.18); }
+.popup .pu-item svg { width: 17px; height: 17px; }
+.popup .pu-title { font-size: 11px; color: var(--text-dim); padding: 6px 10px 4px; font-weight: 700; letter-spacing: .3px; }
+.popup .pu-sep { height: 1px; background: var(--border); margin: 4px 8px; }
+.pu-star { margin-left: auto; background: transparent; border: 0; color: var(--text-dim); cursor: pointer; padding: 2px; display: flex; }
+.pu-star:hover { color: var(--yellow); }
+.pu-star.faved { color: var(--white); } /* round 45: TV fav star is white (was yellow) */
+body.theme-light .pu-star.faved { color: var(--yellow); }
+.pu-star svg { width: 14px; height: 14px; }
+
+/* Save Layout menu (top-bar icon, TV) */
+.sl-menu { width: 320px; }
+.sl-menu .pu-item .ic { display: inline-flex; width: 17px; color: var(--text-dim); }
+.sl-menu .sl-auto .st-switch { margin-left: auto; }
+.sl-menu .sl-recent { flex-wrap: wrap; }
+.sl-menu .sl-rname { font-weight: 600; color: var(--white); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px; }
+.sl-menu .sl-rsum { margin-left: auto; color: var(--text-dim); font-size: 11.5px; white-space: nowrap; }
+
+/* interval mega menu */
+/* ROUND 34: TV-style vertical interval list — "Add custom interval" pinned
+   on top, collapsible group sections, one row per interval, the list scrolls
+   when the user accumulates many intervals. Theme-safe via tokens only. */
+#tf-menu.popup { display: flex; flex-direction: column; padding: 5px; width: 190px; max-width: 92vw; max-height: min(86vh, 560px); }
+.tf-menu-add {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 7px 8px; margin-bottom: 3px;
+  background: transparent; border: 0; border-radius: 3px;
+  color: var(--text); font-size: 12.5px; font-weight: 600; cursor: pointer; text-align: left;
+}
+.tf-menu-add:hover { background: var(--panel2); }
+.tf-menu-add svg { width: 15px; height: 15px; color: var(--text-dim); }
+.tf-menu-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 2px; }
+/* ROUND36: menu narrowed 240px -> 190px (user: "the empty space is still a
+   lot") — rows/groups keep their layout, dead side space is gone. */
+.tf-group + .tf-group { border-top: 1px solid var(--border); }
+.tf-group-head {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 6px 8px 4px; background: transparent; border: 0;
+  color: var(--text-dim); font-size: 10.5px; font-weight: 700;
+  letter-spacing: .8px; text-transform: uppercase; cursor: pointer; text-align: left;
+}
+.tf-group-head:hover { color: var(--text); }
+.tf-group-head .tf-chev { display: inline-flex; }
+.tf-group-head .tf-chev svg { width: 13px; height: 13px; transition: transform .12s ease; }
+.tf-group.collapsed .tf-group-head .tf-chev svg { transform: rotate(-90deg); }
+.tf-group.collapsed .tf-group-items { display: none; }
+.tf-group-items { padding-bottom: 5px; }
+.tf-group-items .pu-item {
+  width: 100%; display: flex; align-items: center;
+  padding: 5px 8px; font-size: 12.5px; font-weight: 600; border-radius: 3px;
+}
+.tf-group-items .pu-item .pu-star { margin-left: auto; opacity: .55; }
+/* ROUND 35: custom rows render [trash][star] — without this rule BOTH
+   buttons carry margin-left:auto (.pu-star) and the free space splits
+   between them, floating the star mid-row (default rows had it on the far
+   right). The star now trails the trash by a fixed 4px, so the star column
+   is at the SAME x on every row; the trash absorbs the free space. */
+.tf-group-items .pu-item .pu-trash + .pu-star { margin-left: 4px; }
+.tf-group-items .pu-item .pu-trash { margin-left: auto; }
+.tf-group-items .pu-item:hover .pu-star,
+.tf-group-items .pu-item .pu-star.faved { opacity: 1; }
+.tf-menu-hint { margin-top: 3px; border-top: 1px solid var(--border); padding-top: 7px; }
+.pu-trash { margin-left: 2px; }
+.pu-trash:hover { color: var(--red); }
+.pu-trash svg { width: 13px; height: 13px; }
+
+/* TV-style typed interval badge (bottom-right) */
+.tv-typing {
+  position: fixed; right: 14px; bottom: 48px; z-index: 1200; display: none;
+  align-items: baseline; gap: 9px; background: var(--panel); border: 1px solid var(--border2); /* AUD-001 */
+  border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.5); padding: 8px 13px;
+}
+.tv-typing.show { display: flex; }
+.tv-typing.err { border-color: var(--red); }
+.tv-typing .tt-val { font-size: 16px; font-weight: 700; color: var(--white); font-variant-numeric: tabular-nums; }
+.tv-typing .tt-hint { font-size: 11px; color: var(--text-dim); }
+
+/* custom interval dialog */
+.dlg-row { display: flex; gap: 10px; }
+.dlg-row label { flex: 1 1 auto; }
+.ctf-preview { font-size: 12px; color: var(--text-dim); margin: 2px 0 10px; }
+.ctf-preview b { color: var(--white); font-size: 13px; }
+
+/* generic dialog */
+.dialog-backdrop { position: fixed; inset: 0; z-index: 1100; background: rgba(0,0,0,.55); display: flex; align-items: flex-start; justify-content: center; }
+.dialog {
+  margin-top: 90px; width: 470px; max-width: 94vw; background: var(--menu); border: 1px solid var(--border); /* round 45: TV menu gray */
+  border-radius: 9px; box-shadow: 0 18px 60px rgba(0,0,0,.6); padding: 18px 20px;
+}
+.dialog h3 { font-size: 15px; color: var(--white); margin-bottom: 14px; display: flex; align-items: center; }
+.dialog h3 .dlg-x { margin-left: auto; }
+/* settings dialog Free Transform (round 19) */
+#settings-dialog.st-movable {
+  position: fixed; margin: 0; display: flex; flex-direction: column;
+  /* ROUND242 (UI audit): fixed 560px clipped on short windows — capped to
+     the viewport, the body (flex:1 below) absorbs the shrink. */
+  height: min(560px, calc(100vh - 40px)); max-width: none; width: 470px;
+}
+#settings-dialog.st-movable .st-body { flex: 1 1 auto; min-height: 0; height: auto; }
+#settings-dialog.st-movable .st-foot { flex: 0 0 auto; }
+/* all checkbox rows share ONE column: check at the start, controls at the end */
+.st-row.st-row-check { justify-content: flex-start; gap: 10px; cursor: pointer; }
+.st-row.st-row-check .st-check { order: 0; }
+.st-row.st-row-check .st-lab { order: 1; }
+.st-row.st-row-check .st-inline { order: 2; margin-left: auto; }
+.dialog label { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--text-dim); margin-bottom: 11px; }
+.dialog input, .dialog select {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text);
+  padding: 8px 10px; font-size: 13px; outline: none; font-family: inherit;
+}
+.dialog input:focus, .dialog select:focus { border-color: var(--blue); }
+.dialog .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.dialog .dlg-btn { border: 0; border-radius: 6px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.dialog .dlg-primary { background: var(--blue); color: #fff; }
+.dialog .dlg-primary:hover { background: #1e53e5; }
+.dialog .dlg-ghost { background: transparent; color: var(--text); }
+.dialog .dlg-ghost:hover { background: var(--panel2); }
+
+/* symbol search */
+#sym-dialog { width: 560px; }
+
+/* chart settings dialog (TradingView-style: 5 tabs, live-apply) */
+#settings-dialog { width: 760px; max-width: calc(100vw - 40px); padding: 0;
+  /* ROUND242 (UI audit): the fixed 440px body clipped under short windows —
+     the dialog caps to the viewport and the body shrinks (pages scroll). */
+  max-height: calc(100vh - 110px); display: flex; flex-direction: column; }
+#settings-dialog h3 {
+  font-size: 15px; color: var(--white); margin: 0; display: flex; align-items: center; flex: none;
+  padding: 14px 18px 10px;
+}
+#settings-dialog h3 .dlg-x { margin-left: auto; }
+.st-body { display: flex; gap: 0; flex: 0 1 440px; min-height: 0; border-top: 1px solid var(--border); }
+.st-nav {
+  flex: 0 0 190px; display: flex; flex-direction: column; gap: 1px; overflow-y: auto;
+  border-right: 1px solid var(--border); padding: 10px 8px; background: rgba(15,15,15,.4); /* round 44 */
+}
+.st-nav-btn {
+  display: flex; align-items: center; gap: 9px; text-align: left; border: 0;
+  background: transparent; color: var(--text); padding: 9px 12px; border-radius: 6px;
+  cursor: pointer; font-size: 13px; font-family: inherit;
+}
+.st-nav-btn:hover { background: var(--panel2); }
+.st-nav-btn.on { background: var(--panel2); color: var(--white); font-weight: 700; }
+.st-nav-btn .st-nav-ic { display: inline-flex; color: var(--text-dim); }
+.st-nav-btn.on .st-nav-ic { color: var(--blue); }
+.st-nav-btn .st-nav-ic svg { width: 17px; height: 17px; }
+.st-page { flex: 1 1 auto; min-width: 0; overflow-y: auto; padding: 12px 18px 16px; }
+.st-sec {
+  font-size: 11px; font-weight: 700; color: var(--text-dim); letter-spacing: .6px;
+  margin: 14px 0 4px; text-transform: uppercase;
+}
+.st-sec:first-child { margin-top: 2px; }
+.st-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 36px; padding: 3px 0; font-size: 13px; color: var(--text); cursor: default;
+}
+.st-row .st-lab { display: flex; align-items: center; gap: 6px; color: var(--text); }
+.st-row .st-q {
+  width: 15px; height: 15px; border-radius: 50%; background: var(--panel2); color: var(--text-dim);
+  font-size: 10px; display: inline-flex; align-items: center; justify-content: center; cursor: help;
+}
+.st-inline { display: flex; align-items: center; gap: 8px; }
+.st-note { font-size: 11px; color: var(--text-dim); padding: 8px 0 2px; line-height: 1.5; }
+/* TV square checkbox */
+.st-check {
+  width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border2);
+  background: var(--bg); display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; flex: 0 0 auto; transition: background .1s, border-color .1s;
+}
+.st-check i {
+  width: 10px; height: 5px; border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translate(0.5px, -1px); opacity: 0;
+}
+.st-check.on { background: var(--blue); border-color: var(--blue); }
+.st-check.on i { opacity: 1; }
+/* color swatch */
+/* color swatch (button — round 19 picker replaces the hidden native input) */
+.st-color {
+  width: 26px; height: 26px; border-radius: 4px; border: 1px solid var(--border2);
+  padding: 2px; cursor: pointer; display: inline-flex; flex: 0 0 auto; background: transparent;
+}
+.st-color:hover { border-color: var(--blue); }
+.st-color-sw { width: 100%; height: 100%; border-radius: 2px; display: block; }
+
+/* custom colour picker popup (round 19): opens next to the swatch, TV-style */
+.popup.color-picker { padding: 10px; }
+.cp-hexrow { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.cp-prev {
+  width: 26px; height: 26px; border-radius: 4px; border: 1px solid var(--border2); display: inline-block;
+  flex: 0 0 auto;
+}
+.cp-hex {
+  width: 96px; background: var(--bg); border: 1px solid var(--border2); color: var(--text);
+  border-radius: 4px; padding: 5px 8px; font-size: 12px; font-family: Consolas, monospace; outline: none;
+}
+.cp-hex:focus { border-color: var(--blue); }
+.cp-grid { display: grid; grid-template-columns: repeat(8, 22px); gap: 4px; }
+.cp-sw {
+  width: 22px; height: 22px; border-radius: 4px; border: 1px solid rgba(128,128,128,.35);
+  cursor: pointer; padding: 0; transition: transform .08s;
+}
+.cp-sw:hover { transform: scale(1.14); }
+.cp-sw.on { box-shadow: 0 0 0 2px var(--blue); }
+
+/* dialog resize grip (Free Transform of dialogs, round 19) */
+.dlg-grip {
+  position: absolute; right: 2px; bottom: 2px; width: 18px; height: 18px; z-index: 6;
+  color: var(--text-dim); cursor: nwse-resize; display: flex; align-items: center;
+  justify-content: center; padding: 0; border: 0; background: transparent;
+}
+.dlg-grip:hover { color: var(--text); }
+.dlg-grip svg { width: 10px; height: 10px; }
+/* selects / inputs */
+.st-sel, .st-num, .st-tpl-name {
+  background: var(--bg); border: 1px solid var(--border2); border-radius: 5px;
+  color: var(--text); padding: 6px 8px; font-size: 12.5px; outline: none; font-family: inherit;
+}
+.st-sel { min-width: 150px; cursor: pointer; }
+.st-sel:hover { border-color: var(--blue); }
+.st-sel-sm { min-width: 90px; }
+.st-num { width: 90px; }
+.st-unit { font-size: 11px; color: var(--text-dim); }
+.st-slider input[type="range"] { width: 170px; accent-color: var(--blue); }
+/* footer */
+.st-foot {
+  display: flex; align-items: center; gap: 10px; padding: 10px 18px;
+  border-top: 1px solid var(--border); flex: none;
+}
+.st-tpl { flex: 0 0 auto; }
+.st-tpl-row { display: flex; align-items: center; gap: 8px; }
+.st-tpl-lab { font-size: 12px; color: var(--text-dim); }
+.st-tpl-name { width: 150px; }
+.st-tpl-btn { padding: 6px 12px; font-size: 12px; }
+.st-foot .dlg-actions { margin-left: auto; display: flex; gap: 8px; }
+#settings-dialog .dlg-btn { border: 0; border-radius: 6px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+#settings-dialog .dlg-primary { background: var(--blue); color: #fff; }
+#settings-dialog .dlg-primary:hover { background: #1e53e5; }
+#settings-dialog .dlg-ghost { background: transparent; color: var(--text); }
+#settings-dialog .dlg-ghost:hover { background: var(--panel2); }
+.dlg-note { font-size: 11.5px; color: var(--text-dim); line-height: 1.55; margin: -6px 0 12px; }
+
+/* ===== drawing-tool settings dialog (TradingView-style) ===== */
+.ds-dialog { width: 460px; max-width: 94vw; padding: 16px 20px 14px; }
+/* floating window (TV): non-modal, opens over the chart, dragged by its title */
+.ds-dialog.ds-float { position: fixed; margin: 0; z-index: 1050; box-shadow: 0 14px 54px rgba(0,0,0,.68); }
+.ds-dialog.ds-float h3.ds-title { cursor: move; user-select: none; }
+.ds-dialog h3.ds-title { font-size: 20px; font-weight: 700; color: var(--white); margin: 0 0 6px; align-items: center; gap: 9px; }
+.ds-title .ds-pen { display: inline-flex; color: var(--text-dim); cursor: pointer; }
+.ds-title .ds-pen svg { width: 15px; height: 15px; }
+.ds-title .dlg-x { margin-left: auto; }
+.ds-tabs {
+  display: flex; gap: 22px; border-bottom: 1px solid var(--border);
+  margin: 0 -20px 4px; padding: 0 20px;
+}
+.ds-tab {
+  border: 0; background: transparent; color: var(--text-dim); font-family: inherit;
+  font-size: 13.5px; font-weight: 600; padding: 9px 2px 10px; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.ds-tab:hover { color: var(--text); }
+.ds-tab.on { color: var(--white); border-bottom-color: var(--white); }
+.ds-body { height: 420px; overflow-y: auto; padding: 8px 2px 6px; }
+.ds-sec {
+  font-size: 11px; font-weight: 700; color: var(--text-dim); letter-spacing: .6px;
+  margin: 14px 0 4px; text-transform: uppercase;
+}
+.ds-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 38px; font-size: 13px; color: var(--text); cursor: default;
+}
+.ds-row .ds-lab { color: var(--text); flex: 0 0 auto; }
+/* check rows (TV: checkbox on the left, label next to it) */
+.ds-check {
+  width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border2);
+  background: var(--bg); display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; flex: 0 0 auto; transition: background .1s, border-color .1s;
+}
+.ds-check i {
+  width: 10px; height: 5px; border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translate(0.5px, -1px); opacity: 0;
+}
+.ds-check.on { background: var(--blue); border-color: var(--blue); }
+.ds-check.on i { opacity: 1; }
+.ds-lab2 { color: var(--text); font-size: 13px; }
+/* TV nested collapsible groups (Box: Border / Middle line / Background) */
+.ds-group { border: 1px solid var(--border); border-radius: 7px; margin: 8px 0; padding: 0; }
+.ds-group-head {
+  display: flex; align-items: center; gap: 7px; padding: 8px 10px; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--text); user-select: none;
+}
+.ds-group-head:hover { color: var(--white); }
+.ds-group-chev {
+  width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-top: 5px solid var(--text-dim); transition: transform .12s; flex: 0 0 auto;
+}
+.ds-group.open .ds-group-chev { transform: rotate(-90deg); }
+.ds-group-body { display: none; padding: 2px 12px 8px; border-top: 1px solid var(--border); }
+.ds-group.open .ds-group-body { display: block; }
+/* ROUND248 (TV parity): Icons emoji grid — categorized like TV's menu tabs */
+.ds-emoji-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; margin: 2px 0 6px; }
+.ds-emoji-ch {
+  border: 0; border-radius: 5px; background: transparent; cursor: pointer;
+  font-size: 19px; line-height: 1.35; padding: 1px 0; font-family: inherit;
+}
+.ds-emoji-ch:hover { background: var(--panel2); }
+.ds-emoji-ch.on { background: rgba(41, 98, 255, .22); }
+/* segmented alignment buttons (Text tab: Top/Inside/Bottom, Left/Center/Right) */
+.ds-seg { display: inline-flex; gap: 2px; }
+.ds-seg-b {
+  border: 1px solid var(--border2); background: var(--bg); color: var(--text-dim);
+  border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; font-family: inherit;
+}
+.ds-seg-b:hover { color: var(--text); background: var(--panel2); }
+.ds-seg-b.on { color: var(--white); background: var(--blue); border-color: var(--blue); }
+.ds-row:has(> .ds-check) { justify-content: flex-start; gap: 10px; cursor: pointer; }
+/* line style / width / arrows buttons */
+.ds-lbtn {
+  border: 1px solid var(--border2); background: var(--bg); border-radius: 4px;
+  padding: 4px 7px; display: inline-flex; align-items: center; cursor: pointer; flex: 0 0 auto;
+}
+.ds-lbtn:hover { border-color: var(--blue); }
+.ds-lbtn svg { display: block; }
+.ds-tog { color: var(--text-dim); }
+.ds-tog svg { width: 20px; height: 14px; }
+.ds-tog.on { color: var(--blue); border-color: var(--blue); }
+.ds-slider input[type="range"] { width: 130px; accent-color: var(--blue); }
+/* levels editor */
+.ds-levels { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 10px; }
+.ds-level {
+  display: flex; align-items: center; gap: 8px; padding: 3px 6px;
+  border: 1px solid transparent; border-radius: 6px;
+}
+.ds-level:hover { background: var(--panel2); }
+.ds-ratio { width: 86px; }
+.ds-level .st-inline { flex: 0 0 auto; }
+.ds-lv-trash {
+  margin-left: auto; border: 0; background: transparent; color: var(--text-dim);
+  cursor: pointer; padding: 4px; border-radius: 4px; display: inline-flex; opacity: 0;
+}
+.ds-level:hover .ds-lv-trash { opacity: 1; }
+.ds-lv-trash:hover { color: var(--red); background: rgba(242,54,69,.12); }
+.ds-lv-trash svg { width: 15px; height: 15px; }
+.ds-lv-add {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  border: 0; background: transparent; color: var(--blue); font-family: inherit;
+  font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 6px 4px;
+}
+.ds-lv-add:hover { text-decoration: underline; }
+.ds-lv-add svg { width: 14px; height: 14px; }
+/* text tab */
+.ds-ta {
+  width: 100%; box-sizing: border-box; min-height: 90px; resize: vertical;
+  background: var(--bg); border: 1px solid var(--border2); border-radius: 6px;
+  color: var(--text); padding: 9px 11px; font-size: 13px; font-family: inherit; outline: none;
+  margin-top: 6px;
+}
+.ds-ta:focus { border-color: var(--blue); }
+/* coordinates tab */
+.ds-coord { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px 10px; margin: 8px 0; }
+.ds-coord-n { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
+.ds-coord-g { display: flex; gap: 14px; margin-top: 6px; }
+.ds-coord-f { flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; margin: 0; font-size: 11px; color: var(--text-dim); }
+/* visibility tab */
+.ds-vis-ctl { flex: 1 1 auto; justify-content: flex-end; }
+.ds-vis-num { width: 62px; text-align: center; }
+.ds-vis input[type="range"] { width: 130px; accent-color: var(--blue); }
+.ds-vis-max {
+  min-width: 34px; text-align: center; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text-dim); padding: 6px 8px; font-size: 12.5px;
+}
+/* footer */
+.ds-dialog .st-foot { margin: 4px -20px -14px; padding: 10px 20px; }
+.ds-tpl-btn {
+  display: inline-flex; align-items: center; gap: 8px; background: transparent;
+  border: 1px solid var(--border2); border-radius: 6px; color: var(--text);
+  padding: 7px 12px; font-size: 12.5px; cursor: pointer; font-family: inherit;
+}
+.ds-tpl-btn:hover { border-color: var(--blue); }
+.ds-chev {
+  width: 7px; height: 7px; border-right: 1.6px solid var(--text-dim); border-bottom: 1.6px solid var(--text-dim);
+  transform: rotate(45deg) translateY(-2px); display: inline-block;
+}
+.ds-ok {
+  background: var(--blue); color: #fff; border: 0; border-radius: 6px;
+  padding: 8px 20px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.ds-ok:hover { background: #1e53e5; }
+.ds-dialog .dlg-ghost { border: 1px solid var(--border2); }
+/* template menu items */
+.ds-tpl-item { position: relative; }
+.ds-tpl-item .ds-tpl-trash {
+  margin-left: auto; opacity: 0; display: inline-flex; color: var(--text-dim);
+}
+.ds-tpl-item:hover .ds-tpl-trash { opacity: 1; }
+.ds-tpl-item .ds-tpl-trash:hover { color: var(--red); }
+.ds-tpl-item .ds-tpl-trash svg { width: 14px; height: 14px; }
+.ds-tpl-back { z-index: 1200; }
+.ds-tpl-dialog { width: 360px; margin-top: 160px; }
+
+/* layout picker: save / saved layouts */
+.lay-save .ic { display: inline-flex; color: var(--text-dim); }
+.lay-save .ic svg { width: 16px; height: 16px; }
+.lay-saved .lay-saved-at { margin-left: auto; font-size: 11px; color: var(--text-dim); }
+
+/* object tree */
+#obj-list { flex: 1 1 auto; overflow-y: auto; padding: 4px 0; }
+.obj-empty { padding: 24px 16px; color: var(--text-dim); font-size: 12px; text-align: center; line-height: 1.6; }
+.obj-group {
+  display: flex; align-items: center; gap: 7px; padding: 7px 10px; cursor: pointer;
+  font-size: 12.5px; font-weight: 700; color: var(--white); border-bottom: 1px solid rgba(42,46,57,.45);
+}
+.obj-group:hover { background: var(--panel); }
+.obj-group .obj-chev { display: flex; color: var(--text-dim); transition: transform .12s; }
+.obj-group .obj-chev svg { width: 13px; height: 13px; }
+.obj-group.closed .obj-chev { transform: rotate(-90deg); }
+.obj-group .obj-gic { display: flex; color: var(--text-dim); }
+.obj-group .obj-gic svg { width: 16px; height: 16px; }
+.obj-group .obj-gcount {
+  margin-left: auto; font-size: 10.5px; font-weight: 700; color: var(--text-dim);
+  background: var(--panel2); border-radius: 8px; padding: 1px 7px;
+}
+.obj-row {
+  display: flex; align-items: center; gap: 7px; padding: 5px 10px 5px 26px; cursor: pointer;
+  font-size: 12px; color: var(--text); border-bottom: 1px solid rgba(42,46,57,.3);
+}
+.obj-row:hover { background: var(--panel); }
+.obj-row.sel { background: rgba(41,98,255,.14); }
+.obj-row.hid .obj-name, .obj-row.hid .obj-ic { opacity: .45; }
+.obj-row .obj-ic { display: flex; color: var(--text-dim); }
+.obj-row .obj-ic svg { width: 14px; height: 14px; }
+.obj-row .obj-name { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.obj-row .obj-act {
+  width: 22px; height: 22px; border: 0; border-radius: 4px; background: transparent; color: var(--text-dim);
+  cursor: pointer; display: none; align-items: center; justify-content: center; padding: 0; flex: 0 0 auto;
+}
+.obj-row:hover .obj-act, .obj-row.sel .obj-act { display: flex; }
+.obj-row .obj-act:hover { background: var(--panel2); color: var(--text); }
+.obj-row .obj-act.danger:hover { color: var(--red); }
+.obj-row .obj-act.dim { color: var(--yellow); }
+.obj-row .obj-act svg { width: 13px; height: 13px; }
+#sym-search-input { width: 100%; margin-bottom: 10px; }
+#sym-results { max-height: 320px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; }
+/* ROUND37: TradingView-style category pill tabs under the search input.
+   Active pill = var(--white) bg + var(--bg) text — those two flip per theme,
+   so the pill reads white-on-dark in the dark theme and dark-on-light in the
+   light theme, exactly like the TV dialog */
+#sym-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.sym-tab {
+  padding: 4px 12px; border: 0; border-radius: 13px; cursor: pointer;
+  background: var(--panel2); color: var(--text); font-size: 12px; font-weight: 600;
+  font-family: inherit; line-height: 1.4; flex: 0 0 auto;
+}
+.sym-tab:hover { background: var(--border2); }
+.sym-tab.on { background: var(--white); color: var(--bg); }
+/* ROUND36: categorized results (Forex / Metals / ... groups) + exact footer
+   count "N symbols"; dim "+N more…" row when a group exceeds the render cap */
+.sym-group-head {
+  padding: 7px 12px 4px; color: var(--text-dim); font-size: 10.5px; font-weight: 700;
+  letter-spacing: .8px; text-transform: uppercase; user-select: none;
+}
+.sym-group-head:not(:first-child) { border-top: 1px solid var(--border); }
+.sym-row:has(+ .sym-group-head) { border-bottom: 0; }
+.sym-more { padding: 6px 12px; color: var(--text-dim); font-size: 11.5px; font-style: italic; }
+.sym-empty { padding: 16px 12px; color: var(--text-dim); font-size: 12.5px; text-align: center; }
+#sym-count { margin-top: 8px; color: var(--text-dim); font-size: 11.5px; }
+.sym-row {
+  display: flex; align-items: center; padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.sym-row:last-child { border-bottom: 0; }
+.sym-row:hover { background: var(--panel2); }
+.sym-row .sym-name { font-weight: 700; color: var(--white); min-width: 90px; }
+.sym-row .sym-desc { color: var(--text-dim); font-size: 12px; margin-left: 10px; }
+
+/* toasts */
+#toasts { position: fixed; right: 16px; bottom: 48px; z-index: 1300; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  position: relative;
+  background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--blue);
+  border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.5); padding: 10px 30px 10px 14px; min-width: 240px; max-width: 360px;
+  animation: toast-in .18s ease-out;
+}
+.toast.warn { border-left-color: var(--yellow); }
+.toast.err { border-left-color: var(--red); }
+.toast.ok { border-left-color: var(--green); }
+.toast .t-title { font-size: 12.5px; font-weight: 700; color: var(--white); }
+.toast .t-body { font-size: 12px; color: var(--text); margin-top: 3px; padding-right: 4px; }
+.toast .toast-x {
+  position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border: 0; border-radius: 4px;
+  background: transparent; color: var(--text-dim); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.toast .toast-x:hover { background: var(--panel2); color: var(--white); }
+.toast .toast-x svg { width: 12px; height: 12px; }
+/* undo/action button — sits below the message, left-aligned; toast-x (close)
+   stays top-right so the two controls never collide. */
+.toast .toast-action {
+  display: block; margin-top: 6px; padding: 3px 10px; border: 1px solid var(--border);
+  border-radius: 4px; background: transparent; color: var(--blue); font-size: 11.5px;
+  font-weight: 600; cursor: pointer;
+}
+.toast .toast-action:hover { background: var(--panel2); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ===== per-chart mini toolbar (chart style per pane, TV-style) ===== */
+.pane-mini-tb {
+  position: absolute; top: 4px; right: 4px; z-index: 12;
+  display: flex; gap: 2px; padding: 2px; border-radius: 6px;
+  background: var(--panel2); border: 1px solid var(--border2);
+  opacity: 0; transition: opacity .12s ease;
+}
+.pane-root:hover .pane-mini-tb, .pane-root.active-pane .pane-mini-tb { opacity: 1; }
+.pane-mini-tb .pmt-btn {
+  width: 26px; height: 26px; border: none; border-radius: 5px; cursor: pointer;
+  background: transparent; color: var(--text-dim);
+  display: flex; align-items: center; justify-content: center;
+}
+.pane-mini-tb .pmt-btn:hover { background: var(--panel2); color: var(--white); }
+.pane-mini-tb .pmt-btn svg { width: 16px; height: 16px; }
+/* per-chart maximize (multi-chart layouts only, like TV) */
+.pane-max-btn.on { color: #fff; background: var(--panel2); }
+#charts-grid[data-layout="1"] .pane-max-btn { display: none; }
+.pane-root.maximized { z-index: 20; box-shadow: 0 0 0 1px #2962ff; }
+
+/* ===== round 27: indicators + older-bars + legend time (parity) ===== */
+/* "Load older bars" pill (bottom-left of the plot) */
+.older-pill {
+  position: absolute; left: 12px; bottom: 68px; z-index: 40;
+  height: 26px; padding: 0 12px; border-radius: 13px;
+  border: 1px solid var(--border2); background: var(--panel);
+  color: var(--text); font-size: 11.5px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.35); transition: background .12s, color .12s;
+}
+.older-pill:hover { background: var(--panel2); color: var(--white); }
+.older-pill.busy { opacity: .75; pointer-events: none; }
+/* honest empty state */
+.pane-nodata {
+  position: absolute; inset: 0; z-index: 30;
+  display: flex; align-items: center; justify-content: center; pointer-events: none;
+}
+.pane-nodata .nd-box {
+  padding: 10px 18px; border-radius: 8px; font-size: 12.5px; color: var(--text-dim);
+  background: var(--panel); border: 1px solid var(--border2);
+}
+.pane-nodata.hidden { display: none; }
+/* ===== round 29: history/live truth banner ===== */
+.pane-hist-warn {
+  position: absolute; left: 50%; top: 10px; transform: translateX(-50%);
+  z-index: 45; max-width: min(92%, 640px); pointer-events: auto;
+}
+.pane-hist-warn.hidden { display: none; }
+.pane-hist-warn .hw-box {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: 8px; font-size: 11.5px;
+  color: #ffb74d; background: var(--panel); border: 1px solid rgba(255,152,0,.55);
+  box-shadow: 0 6px 18px rgba(0,0,0,.4);
+}
+.pane-hist-warn .hw-ic { color: #ff9800; font-size: 13px; }
+.pane-hist-warn .hw-txt { color: var(--text); line-height: 1.35; }
+.pane-hist-warn .hw-retry {
+  height: 22px; padding: 0 10px; border-radius: 5px; cursor: pointer;
+  border: 1px solid var(--border2); background: var(--panel2); color: var(--text);
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.pane-hist-warn .hw-retry:hover { color: var(--white); border-color: #2962ff; }
+/* legend: selected-candle date+time (TV) */
+.lg-bartime { color: var(--text-dim); font-size: 11px; margin-right: 4px; }
+.lg-bartime b { color: var(--text); font-weight: 600; }
+/* legend: TV-style OHLC direction coloring */
+.lg-dir-up span b { color: var(--green); }
+.lg-dir-down span b { color: var(--red); }
+/* indicator legend rows */
+.ind-rows { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
+/* round 31 (TV parity): the legend rows are INTERACTIVE — eye / settings /
+   remove buttons + row click. .pane-legend is pointer-events:none (so the
+   chart stays draggable around it) and the rows re-enable it like
+   .cmp-legend does. Without this the whole indicator management UI was
+   dead: the buttons rendered but never received a click or a :hover. */
+.pane-legend .ind-rows { pointer-events: auto; }
+.ind-row {
+  display: flex; align-items: center; gap: 6px; width: fit-content;
+  padding: 1px 6px 1px 2px; border-radius: 4px; font-size: 11px; cursor: pointer;
+}
+.ind-row:hover { background: var(--panel2); }
+.ind-row.hidden-inst { opacity: .45; }
+.ind-row .ind-title { color: var(--text); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ind-row .ind-title i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.ind-row .ind-vals { color: var(--text-dim); white-space: nowrap; }
+.ind-row .ind-vals b { font-weight: 600; }
+.ind-row .ind-btns { display: inline-flex; gap: 2px; opacity: 0; transition: opacity .1s; }
+.ind-row:hover .ind-btns { opacity: 1; }
+.ind-btn {
+  width: 18px; height: 18px; border: none; border-radius: 4px; cursor: pointer;
+  background: transparent; color: var(--text-dim);
+  display: flex; align-items: center; justify-content: center;
+}
+.ind-btn:hover { background: var(--panel2); color: var(--white); }
+.ind-btn svg { width: 12px; height: 12px; }
+.ind-del:hover { color: var(--red); }
+/* Indicators dialog */
+.ind-dialog { width: 430px; max-height: 76vh; display: flex; flex-direction: column; }
+.ind-dialog .ind-search {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  border: 1px solid var(--border2); border-radius: 6px; padding: 7px 10px; background: var(--bg);
+}
+.ind-dialog .ind-search:focus-within { border-color: var(--blue); }
+.ind-dialog .ind-search .ind-search-ic { color: var(--text-dim); display: flex; }
+.ind-dialog .ind-search .ind-search-ic svg { width: 14px; height: 14px; }
+.ind-dialog .ind-search input {
+  flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-size: 12.5px;
+}
+.ind-dialog .ind-list { overflow-y: auto; min-height: 200px; }
+.ind-item {
+  width: 100%; display: flex; align-items: center; gap: 9px; text-align: left;
+  padding: 7px 8px; border: none; border-radius: 5px; background: transparent;
+  color: var(--text); font-size: 12.5px; cursor: pointer; font-family: inherit;
+}
+.ind-item:hover { background: var(--panel2); }
+.ind-item i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.ind-item .ind-item-name { flex: 1; }
+.ind-item .ind-item-meta { color: var(--text-dim); font-size: 10.5px; }
+/* ROUND84: My-scripts row actions (edit / delete) — small gap between them */
+.ind-item .ms-del { margin-left: 4px; }
+/* indicator settings dialog */
+/* ROUND 76: wider like the reference dialog — 70-input scripts (786 Zones)
+   pack their inline runs (SY|TK|HK|FR|LN|NY, Enable|Type, …) without wrap */
+.ind-settings { width: 460px; }
+/* round 31: TV-like Inputs / Style tabs */
+.ind-settings .ist-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.ind-settings .ist-tab {
+  background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer;
+  color: var(--text-dim); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 12px;
+}
+.ind-settings .ist-tab:hover { color: var(--text); }
+.ind-settings .ist-tab.on { color: var(--blue); border-bottom-color: var(--blue); }
+.ind-settings .ist-body { max-height: 56vh; overflow-y: auto; }
+.ind-settings .ist-empty { color: var(--text-dim); font-size: 12px; padding: 8px 2px; }
+.ind-settings .ist-free { width: 26px; height: 26px; padding: 0; border: 1px solid var(--border2); border-radius: 5px; background: var(--bg); cursor: pointer; }
+.ind-settings .ist-free::-webkit-color-swatch-wrapper { padding: 2px; }
+.ind-settings .ist-free::-webkit-color-swatch { border: none; border-radius: 3px; }
+.dialog .dlg-spacer { flex: 1; }
+.ind-settings .ist-colors { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ind-settings .ist-sw {
+  width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border2); cursor: pointer;
+}
+.ind-settings .ist-sw:hover { transform: scale(1.12); }
+.ind-settings .ist-cur { width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--border2); margin-left: auto; }
+
+/* ROUND40: right-panel width resize splitter (drag the panel's left edge;
+   double-click resets to the default width). Hidden while the panel is
+   closed — RightPanelShow/Close toggle the same .hidden class. */
+.rp-split {
+  width: 5px; flex: 0 0 5px; cursor: col-resize; background: transparent;
+  position: relative; z-index: 30; touch-action: none;
+}
+.rp-split::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 2px; width: 1px;
+  background: transparent; transition: background .12s;
+}
+.rp-split:hover::after, .rp-split:active::after { background: var(--blue); }
+.rp-split.hidden { display: none; }
+
+/* ROUND84 (user request): the login-screen "Chart refresh rate" box was
+   removed — its rules went with it. The same knob still exists inside the
+   in-app "Broker servers" popup (toolbar.js openSrvMenu) below. */
+
+/* same control, rendered inside the in-app "Broker servers" popup
+   (toolbar.js openSrvMenu) — kept visually separate from the server rows */
+.srv-refresh-wrap { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border2); }
+.srv-refresh-label { font-size: 11.5px; color: var(--text-dim); }
+.srv-refresh-select {
+  background: var(--bg2, #14161a); color: var(--text); border: 1px solid var(--border2);
+  border-radius: 5px; padding: 6px 8px; font-size: 12px; cursor: pointer;
+}
+.srv-refresh-note { color: var(--text-dim); font-size: 10px; line-height: 1.35; }
+
+/* ROUND73: alert notification-sound settings (Alerts panel) */
+/* ===== ROUND119: the plain "Repeat" select became a segmented ×1 ×2 ×3 ×5 ∞
+   control ===== */
+/* ===== ROUND130 (user request): the two old card blocks were replaced by
+   the unified .al-card accordion system (panels.css) — only the BODY
+   controls (picker row / segmented repeat / stop button) still live here ===== */
+.alert-snd-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0 4px; font-size: 11.5px; color: var(--text); }
+.alert-snd-row select {
+  background: var(--panel2); color: var(--text); border: 1px solid var(--border2);
+  border-radius: 6px; padding: 4px 8px; font-size: 11.5px; min-width: 132px; cursor: pointer;
+}
+.alert-snd-row select:focus { outline: none; border-color: var(--blue); }
+/* the segmented Repeat control (×1 ×2 ×3 ×5 ∞ Loop) */
+.al-seg {
+  display: inline-flex; border: 1px solid var(--border); border-radius: 7px;
+  overflow: hidden; flex: 0 0 auto;
+}
+.al-seg button {
+  border: 0; background: var(--panel2); color: var(--text-dim); font-size: 11px; font-weight: 600;
+  padding: 4px 10px; cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.al-seg button + button { border-left: 1px solid var(--border); }
+.al-seg button:hover { color: var(--text); }
+.al-seg button.on { background: var(--blue); color: #fff; }
+body.theme-light .al-seg button.on { color: #ffffff; }
+#alert-sound-stop {
+  color: #f23645; border: 1px solid rgba(242,54,69,.5); margin-top: 6px;
+  width: 100%; height: 26px; border-radius: 6px; font-weight: 600;
+}
+#alert-sound-stop:hover { background: rgba(242,54,69,.12); }
+
+/* ═══════════ ROUND 74 — Pine Script engine (editor panel + layers) ═══════════ */
+
+/* script visuals: bg wash UNDER the transparent chart, fg objects OVER it but
+   UNDER the drawing-engine overlay (.pane-overlay z 10) so user drawings stay on top */
+.pine-bg-canvas { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.pine-fg-canvas { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+
+/* ═══════════ ROUND155 — Pine table dashboards (DOM overlay) ═══════════ */
+/* Tables are text grids: DOM, not canvas (TV renders them as DOM too).
+   Above the fg objects (z 8), below the user-drawing overlay (z 10);
+   never interactive (pointer-events none). All dynamic colors/sizes ride
+   the CSSOM (el.style) — never style="" markup (CSP round81). */
+.pine-tables { position: absolute; inset: 0; z-index: 9; pointer-events: none; overflow: hidden; }
+.pine-table { position: absolute; display: grid; font-family: 'Segoe UI', Arial, sans-serif; }
+.pine-table.hidden { display: none; }
+.pine-tcell { display: flex; overflow: hidden; white-space: nowrap; padding: 2px 6px; border: 1px solid transparent; }
+
+/* ---------- Pine Editor bottom panel (TV-style) ---------- */
+#pine-editor {
+  position: relative;
+  display: flex; flex-direction: column;
+  height: 260px;
+  background: var(--panel-bg, #16181d);
+  border-top: 1px solid var(--border, #2a2e39);
+  z-index: 30;
+}
+#pine-editor.hidden { display: none; }
+.pe-resize {
+  position: absolute; top: -4px; left: 0; right: 0; height: 8px;
+  cursor: row-resize; z-index: 5;
+}
+.pe-resize:hover { background: rgba(41, 98, 255, 0.25); }
+.pe-head {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border, #2a2e39);
+  min-height: 38px;
+}
+.pe-logo {
+  font-family: Consolas, Menlo, monospace; font-weight: 700; font-size: 13px;
+  color: #2962ff; letter-spacing: -1px;
+}
+.pe-title { font-size: 12.5px; font-weight: 600; color: var(--text, #d1d4dc); white-space: nowrap; }
+.pe-sep { width: 1px; height: 20px; background: var(--border, #2a2e39); margin: 0 4px; }
+.pe-flex { flex: 1 1 auto; }
+.pe-scripts-wrap { min-width: 150px; max-width: 260px; }
+.pe-scripts-wrap select {
+  width: 100%; height: 26px;
+  background: var(--input-bg, #0f1116); color: var(--text, #d1d4dc);
+  border: 1px solid var(--border, #2a2e39); border-radius: 4px;
+  font-size: 12px; padding: 0 6px; outline: none;
+}
+.pe-btn {
+  height: 26px; min-width: 26px; padding: 0 8px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  background: transparent; color: var(--text, #b2b5be);
+  border: 1px solid transparent; border-radius: 4px;
+  font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.pe-btn:hover { background: var(--hover, rgba(178,181,190,0.08)); border-color: var(--border, #2a2e39); }
+.pe-btn svg { width: 15px; height: 15px; }
+.pe-btn.pe-danger:hover { color: #f23645; border-color: rgba(242,54,69,0.4); }
+.pe-btn.pe-primary {
+  background: #2962ff; color: #fff; font-weight: 600; padding: 0 14px;
+}
+.pe-btn.pe-primary:hover { background: #1e53e5; border-color: transparent; }
+
+.pe-body { flex: 1 1 auto; display: flex; min-height: 0; position: relative; }
+.pe-gutter {
+  flex: 0 0 46px; overflow: hidden;
+  padding: 8px 8px 8px 0;
+  text-align: right;
+  font-family: Consolas, Menlo, monospace; font-size: 12px; line-height: 18px;
+  color: rgba(178,181,190,0.45);
+  background: var(--gutter-bg, rgba(0,0,0,0.18));
+  border-right: 1px solid var(--border, #2a2e39);
+  white-space: pre;
+  user-select: none;
+}
+.pe-code { position: relative; flex: 1 1 auto; overflow: hidden; }
+.pe-hl, .pe-ta {
+  position: absolute; inset: 0;
+  margin: 0; padding: 8px 12px;
+  font-family: Consolas, Menlo, monospace; font-size: 12.5px; line-height: 18px;
+  white-space: pre; overflow: auto;
+  border: 0; outline: 0;
+  tab-size: 4;
+}
+.pe-hl { color: var(--text, #d1d4dc); pointer-events: none; z-index: 1; overflow: hidden; }
+.pe-hl::-webkit-scrollbar { display: none; }
+.pe-ta {
+  z-index: 2;
+  background: transparent; color: transparent;
+  caret-color: #2962ff;
+  resize: none;
+}
+/* token colors (dark-first, theme vars flip on light) */
+.pn-kw { color: #2962ff; font-weight: 600; }
+body.theme-light .pn-kw { color: #1e53e5; }
+.pn-ns { color: #00bcd4; }
+.pn-num { color: #f7c948; }
+.pn-str { color: #4caf50; }
+.pn-cm { color: rgba(120,123,134,0.75); font-style: italic; }
+.pn-color { color: #ff9800; }
+
+.pe-status {
+  padding: 4px 12px;
+  border-top: 1px solid var(--border, #2a2e39);
+  font-family: Consolas, Menlo, monospace; font-size: 11.5px;
+  color: rgba(178,181,190,0.8);
+  min-height: 24px; max-height: 64px; overflow: auto;
+  white-space: pre-wrap;
+}
+.pe-status.error { color: #f23645; }
+.pe-status.ok { color: #26a69a; }
+.pe-err { cursor: pointer; }
+.pe-ok { color: #26a69a; }
+
+/* ---------- Inputs dialog section (settings dialog reuse) ---------- */
+.pine-dlg-src { color: rgba(178,181,190,0.6); font-size: 12px; font-weight: 400; }
+.pine-inputs { max-height: 380px; overflow-y: auto; }
+.ist-sec { margin: 10px 0 4px; font-size: 10.5px; letter-spacing: 0.6px; color: rgba(178,181,190,0.55); text-transform: uppercase; }
+/* ROUND 76 (BUG): `.dialog label` (flex-direction: column, dim 11px) has a
+   higher specificity (0,1,1) than the old `.pine-inp` rule (0,1,0) and
+   silently STACKED every label above its control inside the Pine settings
+   dialog (it went unnoticed while the dialog kept crashing). Restate the
+   horizontal row layout at (0,2,1) so it wins the cascade for good. */
+.dialog label.pine-inp,
+.pine-inp { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 4px 0; color: var(--text, #d1d4dc); font-size: 12px; }
+.pine-inp > span { flex: 0 0 42%; color: var(--text, #d1d4dc); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pine-inp input[type="number"], .pine-inp input[type="text"], .pine-inp select {
+  flex: 1 1 auto; min-width: 0; height: 26px;
+  background: var(--input-bg, #0f1116); color: var(--text, #d1d4dc);
+  border: 1px solid var(--border, #2a2e39); border-radius: 4px;
+  padding: 0 6px; font-size: 12px; outline: none;
+}
+/* ROUND220 (TV parity): input.text_area multiline box (one-per-line lists). */
+.pine-inp textarea.pine-textarea {
+  flex: 1 1 auto; min-width: 0; min-height: 76px; resize: vertical;
+  background: var(--input-bg, #0f1116); color: var(--text, #d1d4dc);
+  border: 1px solid var(--border, #2a2e39); border-radius: 4px;
+  padding: 5px 6px; font-size: 12px; line-height: 1.5; outline: none;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  white-space: pre;
+}
+.pine-inp textarea.pine-textarea:focus { border-color: var(--blue); }
+.pine-inp input[type="checkbox"] { width: 15px; height: 15px; }
+/* ROUND 76 (TV parity): defs sharing an `inline=` key sit together on ONE
+   horizontal row inside the Pine settings dialog (Enable | Type ▾ —
+   Length | Source — Color | style | width), like the reference platform */
+.pine-inline-row { display: flex; align-items: center; gap: 14px; margin: 6px 0; flex-wrap: wrap; }
+.pine-inline-row .pine-inp { margin: 0; gap: 6px; }
+.pine-inline-row .pine-inp > span { flex: 0 0 auto; max-width: 220px; }
+.pine-inp input[type="color"] { width: 40px; height: 24px; padding: 0; border: 1px solid var(--border, #2a2e39); border-radius: 4px; background: transparent; cursor: pointer; }
+
+/* ---------- ROUND78: TV-style Pine color picker (palette + opacity) ---------- */
+/* swatch button — checkerboard shows through the alpha region of the fill */
+.pine-swatch-btn {
+  position: relative; width: 42px; height: 24px; padding: 0; flex: 0 0 auto;
+  border: 1px solid var(--border2, #363a45); border-radius: 4px; cursor: pointer;
+  background:
+    conic-gradient(#5d606b 0 25%, #3a3d46 0 50%, #5d606b 0 75%, #3a3d46 0) 0 0/10px 10px;
+  overflow: hidden;
+}
+.pine-swatch-btn:hover { border-color: var(--blue, #2962ff); }
+.pine-swatch-fill { position: absolute; inset: 0; display: block; }
+/* the floating palette panel (appended to the dialog, viewport-positioned) */
+.pine-palette {
+  position: fixed; z-index: 10050; width: 236px; padding: 8px;
+  background: var(--panel-bg, #1e222d); border: 1px solid var(--border2, #363a45);
+  border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.pine-pal-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+.pine-pal-sw {
+  width: 19px; height: 19px; padding: 0; border: 1px solid rgba(0,0,0,0.35);
+  border-radius: 3px; cursor: pointer;
+}
+.pine-pal-sw:hover { transform: scale(1.15); border-color: #fff; }
+.pine-pal-custom { display: flex; align-items: center; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border, #2a2e39); }
+.pine-pal-csw { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); }
+.pine-pal-plus {
+  width: 19px; height: 19px; padding: 0; border: 1px dashed var(--border2, #363a45); border-radius: 3px;
+  background: transparent; color: var(--text-dim, #787b86); font-size: 13px; line-height: 1; cursor: pointer;
+}
+.pine-pal-plus:hover { color: var(--text, #d1d4dc); border-color: var(--blue, #2962ff); }
+.pine-pal-opacity { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.pine-pal-olabel { flex: 0 0 auto; font-size: 11px; color: var(--text-dim, #787b86); }
+.pine-pal-slider { flex: 1 1 auto; accent-color: var(--blue, #2962ff); height: 18px; cursor: pointer; }
+.pine-pal-num {
+  flex: 0 0 52px; width: 52px; height: 24px; background: var(--input-bg, #0f1116);
+  color: var(--text, #d1d4dc); border: 1px solid var(--border, #2a2e39); border-radius: 4px;
+  padding: 0 4px; font-size: 11px; outline: none; text-align: right;
+}
+/* ---------- ROUND78: broker-offset row at the bottom of Pine dialogs ---------- */
+.pine-tz-sec { margin-top: 12px; }
+.pine-tz-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 2px; }
+.pine-tz-info { font-size: 12px; color: var(--text, #d1d4dc); }
+.pine-tz-inp {
+  width: 84px; height: 26px; margin-left: auto; background: var(--input-bg, #0f1116);
+  color: var(--text, #d1d4dc); border: 1px solid var(--border, #2a2e39); border-radius: 4px;
+  padding: 0 6px; font-size: 12px; outline: none;
+}
+.pine-tz-hint { font-size: 10.5px; line-height: 1.45; color: var(--text-dim, #787b86); margin: 2px 0 6px; }
+
+/* ---------- ROUND143: TV Inputs/Style/Visibility tabs in Pine dialogs ---------- */
+.pine-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border, #2a2e39); margin: 2px 0 10px; }
+.pine-tab {
+  border: 0; background: transparent; color: var(--text-dim, #787b86);
+  font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+  padding: 7px 12px 8px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.pine-tab:hover { color: var(--text, #d1d4dc); }
+.pine-tab.on { color: var(--text, #d1d4dc); border-bottom-color: var(--blue, #2962ff); }
+.pine-style { max-height: 380px; overflow-y: auto; }
+.pine-vis { max-height: 380px; overflow-y: auto; }
+.pine-style-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+.pine-style-name { flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--text, #d1d4dc); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pine-style-glyph { font-size: 10.5px; color: var(--text-dim, #787b86); max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pine-style-sel {
+  flex: 0 0 auto; height: 24px; background: var(--input-bg, #0f1116); color: var(--text, #d1d4dc);
+  border: 1px solid var(--border, #2a2e39); border-radius: 4px; padding: 0 4px; font-size: 11.5px; outline: none;
+}
+.pine-sw-sm { width: 34px; height: 22px; }
+.pine-eye-btn {
+  flex: 0 0 auto; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px;
+  background: transparent; color: var(--text-dim, #787b86); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.pine-eye-btn:hover { background: var(--panel2); color: var(--text, #d1d4dc); }
+.pine-eye-btn.off { opacity: 0.45; }
+.pine-eye-btn svg { width: 16px; height: 16px; }
+.pine-style-empty { color: var(--text-dim, #787b86); font-size: 12px; padding: 8px 2px; }
+.pine-def-row { margin-top: 10px; }
+.pine-def-menu {
+  position: fixed; z-index: 10050; min-width: 200px; padding: 4px;
+  background: var(--panel-bg, #1e222d); border: 1px solid var(--border2, #363a45);
+  border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.pine-def-item {
+  display: block; width: 100%; text-align: left; border: 0; background: transparent;
+  color: var(--text, #d1d4dc); font-size: 12px; font-family: inherit; cursor: pointer;
+  padding: 7px 10px; border-radius: 4px;
+}
+.pine-def-item:hover { background: var(--panel2); }
+
+/* ===== CSP hardening (round 81): utility classes replacing inline style="" ===== */
+.u-invisible { visibility: hidden; }
+.u-checkbox-inline { width: auto; }
+.u-row-inline { flex-direction: row; align-items: center; gap: 8px; }
+.u-dlg-note { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
+.u-ml-auto-sm { margin-left: auto; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.u-fs12 { font-size: 12px; }
+.u-ml2 { margin-left: 2px; }
+.u-err-color { color: #f23645; }
+.n-imp-high i { background: #f23645; }
+.n-imp-med i { background: #f7c948; }
+.n-imp-low i { background: #787b86; }
+.n-imp-bar-on { opacity: 1; }
+.n-imp-bar-off { opacity: 0.22; }
+.dot-ok { background: #26a69a; }
+.dot-error { background: #f23645; }
+.dot-idle { background: #787b86; }
+
+/* round 82: small prompt dialog (replaces window.prompt(), unsupported in Electron) */
+.u-prompt-dlg { width: 340px; }
+.u-prompt-input { width: 100%; margin-bottom: 4px; }
+
+/* AUDIT FIX (UI/UX): the app relies on JS (ResizeObserver + toolbar overflow
+   collapsing) instead of CSS media queries for responsiveness — a deliberate
+   choice for a resizable desktop window, documented in the audit report. The
+   one gap this leaves is the "middle" width range (below ~960px, above the
+   720px hard floor) where several floating dialogs and panel paddings were
+   still using the same fixed spacing as the full-width layout, making them
+   feel cramped/clipped before the JS overflow logic has anywhere to put
+   things. This breakpoint only TIGHTENS spacing at narrow widths — it adds
+   no new layout behavior and cannot regress anything above 960px. */
+@media (max-width: 960px) {
+  .modal, .dlg, .u-prompt-dlg { max-width: calc(100vw - 24px); }
+  #right-panel { min-width: 0; }
+  .u-dlg-note { font-size: 11px; }
+}

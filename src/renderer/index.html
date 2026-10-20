@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <!-- round 28 security: strict CSP — no inline scripts, no remote origins.
+       ws://127.0.0.1:8777 is the local provider feed; file: keeps the app
+       working when loaded from disk (Electron) as well as from http (tests).
+       round 81: 'unsafe-inline' removed from style-src — every dynamic color/
+       position that used to be written as style="..." inside innerHTML is now
+       set via individual CSSOM property assignment (el.style.background = x),
+       which the browser does not treat as an inline-style violation. See
+       docs/SECURITY-ROUND81.md for the full list of files touched. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' file:; img-src 'self' file: data:; font-src 'self' file: data:; connect-src 'self' file: ws://127.0.0.1:* ws://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>OJ Chart</title>
+  <link rel="icon" href="assets/logo.png">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/panels.css">
+  <link rel="stylesheet" href="css/trade.css">
+  <link rel="stylesheet" href="css/replaytrade.css">
+</head>
+<body>
+  <!-- ============ LOGIN ============ -->
+  <div id="login-screen">
+    <!-- ROUND125 (user request): the window has NO OS title bar anymore
+         (frame:false) — while the tab strip does not exist yet, this slim
+         transparent bar keeps the drag surface and carries the same
+         min / max / close buttons at the right end (TV-Desktop). -->
+    <div id="login-titlebar">
+      <div class="strip-spacer"></div>
+      <div class="win-controls">
+        <button class="wc-btn wc-min" title="Minimize"></button>
+        <button class="wc-btn wc-max" title="Maximize"></button>
+        <button class="wc-btn wc-close" title="Close"></button>
+      </div>
+    </div>
+    <!-- BUG-001: two-column split (branding LEFT, form RIGHT) on large
+         screens; every control keeps its ID and order — login.js logic is
+         untouched and the logout / failed states land in the form column -->
+    <div class="login-card">
+      <div class="login-logo login-brand-col">
+        <img class="login-logo-img" src="assets/logo.png" alt="OJ Chart" draggable="false">
+        <div class="login-title">OJ Chart</div>
+      </div>
+      <div class="login-form-col">
+      <div class="login-cards">
+        <div class="provider-card selected" id="card-demo">
+          <div class="pc-icon" id="pc-demo-icon"></div>
+          <div class="pc-name">Demo Server</div>
+          <div class="pc-desc">Simulated market data.<br>Works instantly, any symbol.</div>
+        </div>
+        <div class="provider-card" id="card-mt5">
+          <div class="pc-icon" id="pc-mt5-icon"></div>
+          <div class="pc-name">MetaTrader 5</div>
+          <div class="pc-desc">Live data from your broker<br>(live or demo account).</div>
+        </div>
+      </div>
+      <div id="mt5-fields" class="hidden">
+        <label>Login<input type="text" id="mt5-login" placeholder="Account number" spellcheck="false"></label>
+        <label>Password
+          <div class="pw-wrap">
+            <input type="password" id="mt5-password" placeholder="Password" autocomplete="off">
+            <button type="button" id="pw-eye" class="pw-eye" title="Show / Hide password" tabindex="-1"></button>
+          </div>
+        </label>
+        <label>Server<input type="text" id="mt5-server" placeholder="e.g. MetaQuotes-Demo" spellcheck="false"></label>
+        <label>Terminal path <span class="opt">(optional)</span><input type="text" id="mt5-path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" spellcheck="false"></label>
+        <label class="remember-row"><input type="checkbox" id="mt5-remember" checked> <span>Remember this account</span></label>
+      </div>
+      <!-- ROUND97 (user request): the login-screen broker server scan box
+           (#srv-scan — Network Rescan + access-server list with pings) was
+           removed. The same feature remains available where it belongs, in
+           the in-app broker-servers menu (bottom bar, toolbar.js). The
+           Server field above is untouched (connect path reads it); the
+           scan helpers in login.js stay null-guarded no-ops. -->
+      <!-- ROUND84 (user request): the login-screen "Chart refresh rate" box was
+           removed — it remains available where it belongs, in the in-app
+           broker-servers menu (bottom bar). The persisted mt5_refresh_rate
+           value is still honored by connect/scan (login.js savedRefreshRate). -->
+      <div id="saved-accounts"></div>
+      <button id="login-connect">Connect</button>
+      <div id="login-status"></div>
+      <button id="login-back" class="hidden" title="Return to the running chart session">&#8592; Back to chart</button>
+      </div><!-- /login-form-col -->
+    </div>
+  </div>
+
+  <!-- ============ APP ============ -->
+  <div id="app" class="hidden">
+    <!-- ROUND121 (user request): Windows 11 / TradingView-Desktop style chart
+         tabs — one tab per chart page, each with its OWN symbol. Built and
+         owned by chart/tabs.js: the strip holds the tab list + the "+" button;
+         a switch rebuilds the grid through the same machinery as a layout
+         change (Manager.setLayout with explicit pane records). -->
+    <div id="tab-strip" role="tablist" aria-label="Chart tabs">
+      <div id="tab-list" role="presentation"></div>
+      <button class="tab-add" id="tab-add-btn" title="New chart tab (Ctrl+T)"></button>
+      <!-- ROUND122: visible only in a detached (solo) window — sends the tab
+           back to the main window's strip (Chrome "Move tab to window"). -->
+      <button class="tab-dock" id="tab-dock-btn" title="Move tab to main window"></button>
+      <!-- ROUND125 (user request): TradingView-Desktop for Windows shell —
+           the OS title bar is gone; the empty strip area drags the window
+           (double-click toggles maximize, like every Windows title bar) and
+           the integrated OS buttons sit flush at the strip's right end.
+           Wired by ui/wincontrols.js for the host AND detached windows. -->
+      <div class="strip-spacer" id="strip-spacer"></div>
+      <div class="win-controls" id="win-controls">
+        <button class="wc-btn wc-min" title="Minimize"></button>
+        <button class="wc-btn wc-max" title="Maximize"></button>
+        <button class="wc-btn wc-close" title="Close"></button>
+      </div>
+    </div>
+    <header id="top-toolbar">
+      <div id="tb-left-wrap">
+        <button class="tb-btn tb-scroll hidden" id="tb-scroll-l" title="Scroll left"></button>
+        <div id="tb-left">
+        <!-- ROUND132: TV top-bar grouping — one thin separator between every
+             LOGICAL group (symbol | intervals | style | indicators | layout |
+             alert+replay | goto+session | undo+redo | compare), exactly like
+             the TradingView fullscreen toolbar reference. -->
+        <button class="tb-btn tb-pill" id="symbol-btn" title="Symbol Search">
+          <span id="symbol-btn-label">EURUSD</span><span class="ic" id="symbol-search-ic"></span>
+        </button>
+        <div class="tb-sep"></div>
+        <div id="tf-fav-bar"></div>
+        <button class="tb-btn" id="tf-menu-btn" title="Timeframe"></button>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" id="style-btn" title="Chart Style"></button>
+        <div id="style-quick"></div>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" id="indicators-btn" title="Indicators (/)"></button>
+        <button class="tb-btn" id="pine-btn" title="Pine Editor"></button>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" id="layout-btn" title="Layout"></button>
+        <button class="tb-btn" id="savelayout-btn" title="Save Layout (Ctrl+S)"></button>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" id="alert-btn" title="Create Alert"></button>
+        <button class="tb-btn" id="replay-btn" title="Bar Replay"></button>
+        <div class="tb-sep"></div>
+        <!-- ROUND86 (user request): Go to Date + Custom Session (stitched hours) -->
+        <button class="tb-btn" id="goto-date-btn" title="Go to Date"></button>
+        <button class="tb-btn" id="session-btn" title="Custom Session"></button>
+        <div class="tb-sep"></div>
+          <button class="tb-btn tb-off" id="undo-btn" title="Undo (Ctrl+Z)"></button>
+          <button class="tb-btn tb-off" id="redo-btn" title="Redo (Ctrl+Y)"></button>
+          <div class="tb-sep"></div>
+          <button class="tb-btn" id="compare-btn" title="Compare symbol"></button>
+        </div>
+        <button class="tb-btn tb-scroll hidden" id="tb-scroll-r" title="Scroll right"></button>
+      </div>
+      <div class="flex-spacer"></div>
+      <button class="tb-btn" id="snapshot-btn" title="Snapshot"></button>
+      <button class="tb-btn" id="settings-btn" title="Chart Settings"></button>
+      <button class="tb-btn" id="dw-btn" title="Data Window"></button>
+      <button class="tb-btn" id="theme-btn" title="Theme"></button>
+      <div id="conn-status"><span class="dot green"></span><span id="conn-label">Connected</span></div>
+    </header>
+
+    <div id="main">
+      <div id="left-toolbar"></div>
+
+      <div id="charts-area">
+        <div id="charts-grid" data-layout="1"></div>
+        <div id="fav-float" class="hidden"></div>
+        <div id="ctx-toolbar" class="hidden"></div>
+        <div id="replay-bar" class="hidden"></div>
+      </div>
+
+      <div id="right-panel">
+        <div class="rp-split" id="rp-split" title="Drag to resize panel — double-click to reset"></div>
+        <div id="right-content">
+          <div class="rtab" id="tab-watchlist">
+            <div class="rhead">
+              <span class="wl-title">Watchlist</span>
+              <span class="wl-head-btns">
+                <button class="mini-btn" id="wl-add-btn" title="Add symbol"></button>
+                <button class="mini-btn" id="wl-table-btn" title="Table view"></button>
+                <button class="mini-btn" id="wl-view-btn" title="Watchlist settings"></button>
+                <button class="mini-btn rt-close" title="Close panel"></button>
+              </span>
+            </div>
+            <div id="wl-add-row" class="hidden">
+              <input type="text" id="wl-add-input" placeholder="Search symbol..." spellcheck="false" autocomplete="off">
+              <div id="wl-add-results"></div>
+            </div>
+            <div id="wl-list"></div>
+          </div>
+          <div class="rtab hidden" id="tab-alerts">
+            <div class="rhead">Alerts
+              <button class="mini-btn" id="alert-new-btn" title="New alert"></button>
+              <button class="mini-btn rt-close" title="Close panel"></button>
+            </div>
+            <div id="alert-list"></div>
+            <div id="al-stack">
+              <div id="trade-notify-log"></div>
+              <div id="trade-alert-settings"></div>
+              <div id="alert-sound-settings"></div>
+            </div>
+          </div>
+          <div class="rtab hidden" id="tab-datawindow">
+            <div class="rhead">Data Window
+              <button class="mini-btn rt-close" title="Close panel"></button>
+            </div>
+            <div id="dw-rows"></div>
+          </div>
+          <div class="rtab hidden" id="tab-objects">
+            <div class="rhead">Object Tree
+              <button class="mini-btn" id="obj-trash" title="Remove all objects"></button>
+              <button class="mini-btn rt-close" title="Close panel"></button>
+            </div>
+            <div id="obj-list"></div>
+          </div>
+          <div class="rtab hidden" id="tab-timesales">
+            <div class="rhead" id="ts-head">Time &amp; Sales
+              <button class="mini-btn rt-close" title="Close panel"></button>
+            </div>
+            <div class="ts-cols"><span>Time</span><span>Bid</span><span>Ask</span><span>Last</span><span>Vol</span></div>
+            <div id="ts-list"></div>
+          </div>
+          <div class="rtab hidden" id="tab-diagnostics">
+            <div class="rhead">Diagnostics
+              <span class="wl-head-btns">
+                <button class="mini-btn" id="dg-selftest" title="Run self-test"></button>
+                <button class="mini-btn" id="dg-probe" title="Symbol data probe: last history closes vs the live tick"></button>
+                <button class="mini-btn" id="dg-export" title="Export log (file)"></button>
+                <button class="mini-btn" id="dg-clear" title="Clear view"></button>
+                <button class="mini-btn rt-close" title="Close panel"></button>
+              </span>
+            </div>
+            <div id="dg-stats"></div>
+            <div id="dg-data"></div>
+            <div id="dg-filters">
+              <div id="dg-levels">
+                <button class="dg-lvl active" data-lvl="debug" title="Debug">DBG</button>
+                <button class="dg-lvl active" data-lvl="info" title="Info">INFO</button>
+                <button class="dg-lvl active" data-lvl="warn" title="Warnings">WARN</button>
+                <button class="dg-lvl active" data-lvl="error" title="Errors">ERR</button>
+              </div>
+              <select id="dg-cat" title="Category"></select>
+              <input type="text" id="dg-search" placeholder="Filter..." spellcheck="false" autocomplete="off">
+              <button class="mini-btn" id="dg-pause" title="Pause live view"></button>
+            </div>
+            <div id="dg-list"></div>
+            <!-- ROUND193: Pine Logs viewer (log.info/warning/error entries) -->
+            <div id="dg-pine-sec">
+              <div id="dg-pine-head"><span>Pine Logs</span><span id="dg-pine-count"></span></div>
+              <div id="dg-pine-list"></div>
+            </div>
+          </div>
+          <div class="rtab hidden" id="tab-news">
+            <div class="rhead">Economic News
+              <button class="mini-btn" id="news-refresh" title="Refresh"></button>
+              <button class="mini-btn rt-close" title="Close panel"></button>
+            </div>
+            <!-- ROUND131: chart visibility and the panel list are DECOUPLED —
+                 "Show on chart" drives ONLY the chart painting; the calendar
+                 list always renders. "Vertical lines" toggles just the
+                 dashed per-event lines inside the chart view. -->
+            <div class="news-master">
+              <label class="sw-row news-sw">
+                <input type="checkbox" id="news-on"><i></i><span>Show on chart</span>
+              </label>
+              <label class="sw-row news-sw" id="news-lines-row">
+                <input type="checkbox" id="news-lines"><i></i><span>Vertical lines</span>
+              </label>
+              <label class="sw-row news-sw">
+                <input type="checkbox" id="news-hilite"><i></i><span>Time pills on axis</span>
+              </label>
+              <label class="sw-row news-sw">
+                <input type="checkbox" id="news-hover"><i></i><span>Hover titles</span>
+              </label>
+              <span id="news-count" class="news-count"></span>
+            </div>
+            <div id="news-filters">
+              <div class="nf-sec">
+                <div class="nf-title">Show days</div>
+                <div class="nf-row" id="news-days"></div>
+              </div>
+              <div class="nf-sec">
+                <div class="nf-title">Impact</div>
+                <div class="nf-row" id="news-impacts"></div>
+              </div>
+              <div class="nf-sec">
+                <div class="nf-title">Currency</div>
+                <div class="nf-row" id="news-ccys"></div>
+              </div>
+            </div>
+            <div id="news-list"></div>
+          </div>
+          <!-- ROUND112 (user request): Trading & Replay Trading merged into
+               ONE tab with a Demo/Live switch. Demo trades the live market
+               AND Bar Replay (backtest); Live trades the broker account.
+               ROUND120 (user requests 6+7): ONE unified ticket (#trade-ticket,
+               created/moved by trade/ticket.js) serves BOTH modes — the
+               same element is re-homed between the two bodies on every mode
+               flip; #tr-demo additionally carries the demo account settings
+               + cash ledger built by replaytrade.js. Demo positions /
+               orders / history live in the Tool Box, which follows the same
+               switch. -->
+          <div class="rtab hidden" id="tab-trade">
+            <div class="rhead">Trading
+              <span class="wl-head-btns">
+                <span class="tr-mode" id="tr-mode">
+                  <button type="button" class="tr-modeb" data-m="demo" title="Demo account — trades the LIVE MARKET and BAR REPLAY (backtest)">Demo</button>
+                  <button type="button" class="tr-modeb" data-m="live" title="Your broker account (MetaTrader)">Live</button>
+                </span>
+                <button class="mini-btn" id="rtt-gear" title="Demo account settings (balance / leverage / spread / stop-out)"></button>
+                <button class="mini-btn rt-close" title="Close panel"></button>
+              </span>
+            </div>
+            <div id="tr-demo" class="hidden"></div>
+            <div id="tr-live" class="hidden"></div>
+          </div>
+            <!-- ROUND179: the Strategy Tester moved to the bottom dock
+                 (#strat-dock: Overview / List-of-trades tabs). The rail icon
+                 now toggles the dock (see rightpanel.js special-case). -->
+          </div>
+        <div id="right-tabs">
+          <button class="rt-btn" data-tab="watchlist" title="Watchlist"></button>
+          <button class="rt-btn" data-tab="alerts" title="Alerts"></button>
+          <button class="rt-btn" data-tab="objects" title="Object Tree"></button>
+          <button class="rt-btn" data-tab="trade" title="Trading — demo &amp; live accounts (switch inside)"></button>
+          <button class="rt-btn" data-tab="tester" title="Strategy Tester (bottom dock)"></button>
+          <button class="rt-btn" data-tab="datawindow" title="Data Window"></button>
+          <button class="rt-btn" data-tab="timesales" title="Time &amp; Sales"></button>
+          <button class="rt-btn" data-tab="diagnostics" title="Diagnostics"></button>
+          <button class="rt-btn" data-tab="news" title="Economic News"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROUND85 (user request): live trading dock — order execution to
+         MetaTrader, live account bar, Positions / Orders / History with
+         full trade management. Built by trade/dock.js; visibility+height
+         persist (mt5_tr_dock keys). -->
+    <div id="trade-dock" class="hidden"></div>
+
+    <!-- ROUND179 (user request): Strategy bottom dock — the tester home now.
+         Overview tab (key stats + performance + breakdown) and List-of-trades
+         tab share one sticky toolbar (testing period + capital). Expand,
+         collapse, top-edge resize and visibility persist (mt5_strat keys).
+         Content sections are the same #tst-* nodes panels/tester.js fills. -->
+    <div id="strat-dock" class="hidden">
+      <div id="sd-resize" title="Drag to resize — double-click to reset"></div>
+      <div id="sd-head">
+        <span id="sd-title">Strategy Tester</span>
+        <span class="tst-row" id="sd-instrow"><span>Strategy</span><select id="tst-inst"></select></span>
+        <span id="sd-tabs">
+          <button type="button" class="sd-tab on" data-sdtab="overview">Overview</button>
+          <button type="button" class="sd-tab" data-sdtab="trades">List of trades</button>
+        </span>
+        <span class="dlg-spacer"></span>
+        <button class="mini-btn" id="sd-refresh" title="Refresh report"></button>
+        <button class="mini-btn" id="sd-expand" title="Expand / restore"></button>
+        <button class="mini-btn" id="sd-collapse" title="Collapse"></button>
+        <button class="mini-btn" id="sd-close" title="Close panel"></button>
+      </div>
+      <div id="sd-toolbar">
+        <label class="sd-tb"><span>Testing period</span>
+          <select id="sd-range">
+            <option value="available">Available chart range</option>
+            <option value="d7">Last 7 days</option>
+            <option value="d30">Last 30 days</option>
+            <option value="d90">Last 90 days</option>
+            <option value="d365">Last 365 days</option>
+            <option value="history">Entire history</option>
+            <option value="custom">Custom date range</option>
+          </select>
+        </label>
+        <label class="sd-tb sd-custom hidden" id="sd-custom"><span>From</span><input type="date" id="sd-from"><span>To</span><input type="date" id="sd-to"></label>
+        <label class="sd-tb"><span>Capital</span><input type="number" id="sd-cap" min="1" step="any"></label>
+        <label class="sd-tb"><span>Currency</span>
+          <select id="sd-cur">
+            <option>USD</option><option>EUR</option><option>GBP</option><option>JPY</option><option>CHF</option><option>AUD</option><option>CAD</option>
+          </select>
+        </label>
+        <button class="mini-btn" id="sd-apply" title="Apply testing period and capital">Apply</button>
+        <label class="sd-tb sd-check" title="Show strategy entry/exit flags on the chart"><input type="checkbox" id="sd-marks" checked><span>Trades on chart</span></label>
+      </div>
+      <div id="sd-body">
+        <div id="sd-overview">
+          <div id="tst-head"></div>
+          <div id="tst-summary"></div>
+          <!-- ROUND194: tester Performance Summary (TV All/Long/Short table) -->
+          <div id="tst-perfsum"></div>
+          <div id="tst-perf"></div>
+          <div id="tst-groups"></div>
+          <!-- ROUND183: tester Trades analysis (Distribution/Streaks/Time) -->
+          <div id="tst-analysis"></div>
+        </div>
+        <div id="sd-trades" class="hidden">
+          <div id="tst-pos"></div>
+          <div id="tst-trades"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer id="bottom-toolbar">
+      <button class="bt-btn" id="zoom-out-btn" title="Zoom Out"></button>
+      <button class="bt-btn" id="zoom-in-btn" title="Zoom In"></button>
+      <button class="bt-btn" id="zoom-fit-btn" title="Fit"></button>
+      <div class="tb-sep"></div>
+      <button class="bt-btn bt-text" id="scale-log-btn" title="Logarithmic scale">log</button>
+      <button class="bt-btn bt-text" id="scale-pct-btn" title="Percentage scale">%</button>
+      <button class="bt-btn" id="free-btn" title="Free Transform — move the chart freely in both directions"></button>
+      <div class="flex-spacer"></div>
+      <button class="bt-btn bt-text" id="srv-btn" title="Broker servers">
+        <span class="ic" id="srv-ic"></span><span id="srv-label">Servers</span>
+      </button>
+      <div class="tb-sep"></div>
+      <span id="tz-clock" title="Current time in the selected timezone"></span>
+      <button class="bt-btn bt-text" id="tz-btn" title="Timezone">
+        <span class="ic" id="tz-ic"></span><span id="tz-label">UTC</span>
+      </button>
+    </footer>
+  </div>
+
+  <!-- dialogs -->
+  <div id="popup-layer" class="hidden"></div>
+  <div id="acc-menu"></div>
+  <div id="toasts"></div>
+
+  <!-- Phase 2 (ES Modules): the vendor UMD build stays a classic script so it
+       executes (and sets window.LightweightCharts) BEFORE the deferred module
+       graph; app.js is the single ES-module entry point — every renderer
+       module is reached through static imports (no window.* globals). -->
+  <script src="vendor/lightweight-charts.standalone.production.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
