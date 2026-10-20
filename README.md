@@ -60,6 +60,18 @@ TradingView-style charting desktop app (Electron) powered by MetaTrader 5 data �
 - **Trading** (live MT5 or the built-in demo engine): unified order ticket with SL/TP and risk modes, one-click trading, positions/pending orders dock (partial close, SL/TP modify, cancel), strategy tester and replay trading — see `src/renderer/js/trade/`, `src/renderer/js/panels/tester.js` and `src/renderer/js/panels/replay.js`.
 - Timezone picker at the bottom-right of the chart — the full TradingView timezone list; applies to the time axis, crosshair and Data Window.
 
+## Testing & CI
+
+`npm run verify` (same as `npm test`) is the quality gate and runs four checks:
+
+1. **`check:syntax`** — parses every `.js`/`.mjs` file as an ES module.
+2. **`check:imports`** — resolves every relative `import`/`export ... from`/dynamic `import()` to a real file.
+3. **`check:py`** — byte-compiles all `provider/*.py` with the first available interpreter (`python`, `python3`, `py -3`).
+4. **`smoke`** — starts `provider/demo.py` on `ws://127.0.0.1:8899`, serves `src/` on `http://127.0.0.1:8888`, logs in to the demo server inside a hidden **offscreen Electron** window (`scripts/checks/smoke-electron.cjs`) and asserts: `#app` visible, login hidden, bars loaded, `canvas` present, zero console errors, zero failed requests. The screenshot lands in `docs/_smoke.png` (git-ignored).
+
+Ports can be overridden with `SMOKE_WEB_PORT` / `SMOKE_WS_PORT`; `SMOKE_TIMEOUT_MS` changes the harness timeout.
+CI (`.github/workflows/ci.yml`) runs the full gate on Windows and the two static gates on Linux.
+
 ## Building a real installer
 
 This ships with an `electron-builder` configuration (see `package.json` → `build`), so instead of handing out this raw source folder you can build a signed, installable package:
