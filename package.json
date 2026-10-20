@@ -7,7 +7,13 @@
     "start": "electron .",
     "dist:win": "electron-builder --win nsis",
     "dist:mac": "electron-builder --mac dmg",
-    "dist:linux": "electron-builder --linux AppImage"
+    "dist:linux": "electron-builder --linux AppImage",
+    "verify": "npm run check:syntax && npm run check:imports && npm run check:py && npm run smoke",
+    "check:syntax": "node scripts/checks/check-syntax.mjs",
+    "check:imports": "node scripts/checks/check-imports.mjs",
+    "check:py": "node scripts/checks/check-python.mjs",
+    "smoke": "node scripts/checks/smoke-boot.mjs",
+    "test": "npm run verify"
   },
   "author": "Farzad",
   "license": "MIT",
