@@ -181,3 +181,25 @@ npm run dist:mac
 macOS notarization additionally needs `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` in the environment; electron-builder performs the notarization step automatically when all three are present.
 
 **Never commit certificates, passwords or exported key material.** The repo `.gitignore` already excludes `*.pfx`, `*.p12`, `*.cer`, `*.key` and `*.pem` in case one is exported into the working tree by mistake.
+
+### Release checklist
+
+`scripts/release.mjs` performs the repetitive parts of a release so they cannot drift apart:
+
+```bash
+node scripts/release.mjs --dry-run          # print the plan, write nothing
+node scripts/release.mjs                    # patch bump (1.9.212 -> 1.9.213)
+node scripts/release.mjs --bump minor       # 1.9.212 -> 1.10.0
+node scripts/release.mjs --version 2.0.0    # explicit version
+node scripts/release.mjs --message "Fix login retry"   # changelog bullet (repeatable via newlines)
+```
+
+It refuses to run on a dirty tree (override with `--allow-dirty`) or when the tag already exists, runs `npm run verify` unless `--no-verify` is passed, then:
+
+1. writes the new version to `package.json` and `src/core/logger.js` (`APP_VERSION`),
+2. prepends an entry to the matching `changelog/v<major>.<minor>.md`,
+3. updates the `CHANGELOG.md` index,
+4. commits `Release x.y.z` and creates tag `vx.y.z`,
+5. builds the installer for the current OS (`--no-build` stops after the tag).
+
+The equivalent npm alias is `npm run release -- --bump minor`. The script never pushes; push the commit and tag yourself once the installer is checked.
