@@ -350,7 +350,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 [x] F5.3  آرشیو مستندات راندها                (P2)
 [x] F3.1  بازساختاردهی scripts/               (P2)
 [x] F3.2  حذف ۶ گروه تکراری                   (P2)
-[ ] F3.3  حذف فایل‌های یک‌بارمصرف             (P2)
+[x] F3.3  حذف فایل‌های یک‌بارمصرف             (P2)
 [ ] F3.4  تفکیک CHANGELOG                     (P2)
 [ ] F4.1  حذف console.*                       (P3)
 [ ] F4.2  تریاژ catchهای خالی                 (P3)
