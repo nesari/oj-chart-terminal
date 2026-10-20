@@ -359,7 +359,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 [x] F6.2  Linux                                (P3)
 [x] F6.3  تشخیص Python در ویندوز              (P3)
 [ ] F7.1  بیلد و نصب ویندوز                   (P3)
-[ ] F7.2  مستند امضای کد                      (P3)
+[x] F7.2  مستند امضای کد                      (P3)
 [ ] F7.3  چک‌لیست انتشار                      (P3)
 ```
 

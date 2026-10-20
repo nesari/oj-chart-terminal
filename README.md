@@ -152,3 +152,32 @@ npm run dist:linux   # -> dist/OJ Chart Terminal.AppImage
 ```
 
 Note: the Windows/macOS builds are **unsigned** by default (no code-signing certificate is included in this repo). Unsigned installers will trigger a Windows SmartScreen / macOS Gatekeeper warning on first run. For real end-user distribution, obtain a code-signing certificate and pass it to electron-builder (`CSC_LINK` / `CSC_KEY_PASSWORD` env vars) before running the commands above.
+
+### Code signing (optional, release builds)
+
+electron-builder reads the certificate from the environment — nothing is stored in the repository:
+
+| Variable | Meaning |
+|---|---|
+| `CSC_LINK` | Path to the `.pfx`/`.p12` file, an `https://` URL, or a base64-encoded certificate |
+| `CSC_KEY_PASSWORD` | Password protecting that certificate |
+
+Windows (PowerShell):
+
+```powershell
+$env:CSC_LINK = 'C:\certs\ojchart.pfx'
+$env:CSC_KEY_PASSWORD = 'the-certificate-password'
+npm run dist:win
+```
+
+macOS/Linux shell:
+
+```bash
+export CSC_LINK=/secure/ojchart.p12
+export CSC_KEY_PASSWORD='the-certificate-password'
+npm run dist:mac
+```
+
+macOS notarization additionally needs `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` in the environment; electron-builder performs the notarization step automatically when all three are present.
+
+**Never commit certificates, passwords or exported key material.** The repo `.gitignore` already excludes `*.pfx`, `*.p12`, `*.cer`, `*.key` and `*.pem` in case one is exported into the working tree by mistake.
