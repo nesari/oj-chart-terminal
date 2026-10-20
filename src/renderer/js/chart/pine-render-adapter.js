@@ -19,6 +19,7 @@
  */
 
 import { U } from '../core/util.js';
+import { Log } from '../../../core/logger.js';
 import { App } from '../../../core/state.js';
 import { Manager } from './manager.js';
 import { sessionRegionEnds } from '../../../core/session-math.js';
@@ -26,7 +27,7 @@ import { arrowHeight, magRange } from '../../../core/pine/arrow.js';
 import { drawKindOn } from '../../../core/pine/stdlib/objects.js';
 
 const LWC = window.LightweightCharts;
-try { console.log('[pine-render-adapter] ROUND136 gap-fix build loaded'); } catch (e) {}
+try { Log.info('chart', 'pine-render-adapter ROUND136 gap-fix build loaded'); } catch (e) {}
 
 const LWC_LINE_STYLE = { solid: 0, dotted: 1, dashed: 2, largedashed: 3 };
 const SIZE_PX = { tiny: 8, small: 10, normal: 12, large: 15, huge: 19, auto: 12 };

@@ -10,6 +10,7 @@
  */
 
 import { U } from '../core/util.js';
+import { Log } from '../../../core/logger.js';
 import { icon } from '../ui/icons.js';
 import { TZ } from '../../../core/timezone.js';
 import { Theme } from '../core/theme.js';
@@ -168,7 +169,7 @@ const DEFAULTS = {
        factory default — a missing key here means the Default template can
        never reset it. Surfaced loudly instead of silently diverging. */
     if (DEFAULTS[key] === undefined) {
-      console.warn(`[settings] "${key}" has no factory default — add it to Settings.DEFAULTS (BUG-014 guard)`);
+      try { Log.warn('chart', 'settings key has no factory default', { key }); } catch (e) {}
     }
     Settings.conf[key] = val;
     persist();

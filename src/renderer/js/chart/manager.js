@@ -310,7 +310,7 @@ const LWC = window.LightweightCharts;
       }
       out.push({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume || 0 });
     }
-    if (dropped || merged) console.warn(`[data-guard] ${symbol} ${tfId}: dropped=${dropped} merged=${merged}`);
+    if (dropped || merged) { try { Log.warn('data', 'data-guard: sanitized bars', { symbol, tf: tfId, dropped, merged }); } catch (e) {} }
     return out;
   }
   Manager.sanitizeBars = sanitizeBars;
@@ -1566,7 +1566,6 @@ const LWC = window.LightweightCharts;
          clear it; the pane becomes honestly empty and self-heals via ticks
          (onTick -> scheduleStaleReload -> loadBars) once history syncs. */
       if (!bars.length) {
-        console.warn(`[data-guard] ${pane.symbol} ${pane.tf}: no history after retries — clearing the stale series (R26)`);
         try { Log && Log.warn('chart', 'no history after retries — stale series cleared', { symbol: pane.symbol, tf: pane.tf }); } catch (e) {} // round 28
         resetPriceZoom(pane);
         pane.bars = []; pane.barTimes = [];
@@ -1595,7 +1594,7 @@ const LWC = window.LightweightCharts;
       } catch (feedErr) {
         // last-resort retry with a re-sanitized copy; if even this fails the
         // pane keeps its previous series (no legend/series divergence)
-        console.warn('setPaneData failed, retrying sanitized:', feedErr);
+        try { Log.warn('data', 'setPaneData failed, retrying sanitized', { symbol: pane.symbol, tf: pane.tf, error: feedErr }); } catch (e) {}
         bars = sanitizeBars(bars, pane.symbol, pane.tf);
         setPaneData(pane, bars);
       }
@@ -1624,7 +1623,7 @@ const LWC = window.LightweightCharts;
         if (sd && sd.length && last) {
           const sc = sd[sd.length - 1].close;
           if (isFinite(sc) && isFinite(last.close) && Math.abs(sc - last.close) > 1e-9) {
-            console.warn(`[data-guard] ${pane.symbol} series/legend divergence: series=${sc} legend=${last.close}`);
+            try { Log.warn('data', 'series/legend divergence', { symbol: pane.symbol, tf: pane.tf, series: sc, legend: last.close }); } catch (e) {}
           }
         }
       } catch (e) {}
@@ -1648,7 +1647,6 @@ const LWC = window.LightweightCharts;
       updateLegend(pane, null);
       Watchlist.highlightActive();
     } catch (e) {
-      console.warn('loadBars failed', e);
       try { if (Log) { AppErr ? AppErr.wrap(e, 'UNKNOWN', { where: 'loadBars', symbol: pane.symbol, tf: pane.tf }).log() : Log.fromError(e, 'chart', { symbol: pane.symbol, tf: pane.tf }); } } catch (er) {} // round 28
     } finally {
       if (seq === pane._seq) {
@@ -1718,7 +1716,7 @@ const LWC = window.LightweightCharts;
       updateLegend(pane, null);
       if (added < chunk) pane._olderDone = true; // short page = end of provider history
     } catch (e) {
-      console.warn('loadOlder failed', e);
+      try { Log.warn('data', 'loadOlder failed', { symbol: pane.symbol, tf: pane.tf, error: e }); } catch (er) {}
     } finally {
       pane._olderLoading = false;
       Manager.updateOlderPill(pane);
@@ -2874,7 +2872,7 @@ const LWC = window.LightweightCharts;
          bars_req timeout, which releases the flag by itself) */
       if (pane.loading) {
         if (pane._loadStartedAt && Date.now() - pane._loadStartedAt > 60000) {
-          console.warn(`[axis-guard] ${pane.symbol}: loading flag stuck >60s — releasing (R26)`);
+          try { Log.warn('chart', 'axis-guard: loading flag stuck >60s - releasing', { symbol: pane.symbol, tf: pane.tf }); } catch (e) {}
           pane.loading = false;
           setPaneLoading(pane, false);
         } else continue;
@@ -2886,7 +2884,7 @@ const LWC = window.LightweightCharts;
         let n = 0;
         try { const sd = pane.series.data ? pane.series.data() : null; n = sd ? sd.length : 0; } catch (e) {}
         if (n > 0) {
-          console.warn(`[axis-guard] ${pane.symbol}: series holds ${n} bars while pane.bars is empty — clearing (R26)`);
+          try { Log.warn('chart', 'axis-guard: series holds bars while pane.bars is empty - clearing', { symbol: pane.symbol, tf: pane.tf, seriesBars: n }); } catch (e) {}
           try { pane.series.setData([]); } catch (e) {}
           pane.barTimes = [];
         }
@@ -2917,7 +2915,7 @@ const LWC = window.LightweightCharts;
       const point = U.pointSize(pane.digits || 5);
       /* 1) series/legend divergence — never legitimate */
       if (!transformed && sl != null && isFinite(sl) && Math.abs(sl - bl) > point / 2) {
-        console.warn(`[axis-guard] ${pane.symbol}: series(${sl}) vs legend(${bl}) — re-feeding (BUG-E class)`);
+        try { Log.warn('chart', 'axis-guard: series/legend divergence - re-feeding', { symbol: pane.symbol, tf: pane.tf, series: sl, legend: bl }); } catch (e) {}
         resetPriceZoom(pane);
         try { setPaneData(pane, pane.bars); } catch (e) {}
         Manager.applyPriceLines(pane);
@@ -2951,11 +2949,11 @@ const LWC = window.LightweightCharts;
                   pane._histMismatch = { hist: bl, live: px, at: Date.now(), loads: pane._histStrike };
                   Manager.updateHistWarn(pane);
                 } else {
-                  console.warn(`[axis-guard] ${pane.symbol}: legend(${bl}) vs live tick(${px}) — reloading history (R26)`);
+                  try { Log.warn('chart', 'axis-guard: legend/live tick divergence - reloading history', { symbol: pane.symbol, tf: pane.tf, legend: bl, tick: px }); } catch (e) {}
                   scheduleStaleReload(pane);
                 }
               } else {
-                console.warn(`[axis-guard] ${pane.symbol}: series(${sl}) vs live tick(${px}) — re-feeding (R26)`);
+                try { Log.warn('chart', 'axis-guard: series/live tick divergence - re-feeding', { symbol: pane.symbol, tf: pane.tf, series: sl, tick: px }); } catch (e) {}
                 resetPriceZoom(pane);
                 try { setPaneData(pane, pane.bars); } catch (e) {}
                 Manager.applyPriceLines(pane);
@@ -2970,7 +2968,7 @@ const LWC = window.LightweightCharts;
       }
       /* 2) stale-era manual window (belt & braces for unknown paths) */
       if (pane.pz && pane.pz.active && pane.pz.at && pane._loadedAt && pane.pz.at < pane._loadedAt) {
-        console.warn(`[axis-guard] ${pane.symbol}: stale price-zoom window from before the reload — reset`);
+        try { Log.warn('chart', 'axis-guard: stale price-zoom window - reset', { symbol: pane.symbol, tf: pane.tf }); } catch (e) {}
         resetPriceZoom(pane);
       }
       /* 3) axis window excludes the live price while the window predates the

@@ -3,7 +3,7 @@
  *
  * Error codes follow the official Pine Script error-style: compile errors are
  * prefixed CE (Could not extract / Compile), runtime errors RE. Line/col are
- * 1-based like the official console. ZERO DOM / host references here — this
+ * 1-based like the official Pine editor. ZERO DOM / host references here - this
  * module is part of the platform-agnostic core.
  *
  * @module core/pine/errors

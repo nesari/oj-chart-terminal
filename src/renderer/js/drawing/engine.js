@@ -8,6 +8,7 @@
  */
 
 import { U } from '../core/util.js';
+import { Log } from '../../../core/logger.js';
 import { TZ } from '../../../core/timezone.js';
 import { Theme } from '../core/theme.js';
 import { App } from '../../../core/state.js';
@@ -1623,7 +1624,7 @@ const HIT = 7;
         const x = this._xOf(chain[i]);
         if (!isFinite(x) || x < -2 || x > v.pw + 2) continue;
         const lab = texts[i];
-        if (!lab || typeof lab.full !== 'string') { console.warn('[tax-ext] non-string label', i, JSON.stringify(lab), App.tz, N); continue; }
+        if (!lab || typeof lab.full !== 'string') { try { Log.warn('drawing', 'tax-ext non-string label', { index: i, label: lab, tz: App.tz, count: N }); } catch (e) {} continue; }
         emit(i, lab.full, x, chainStarts.has(i) ? 'l' : 'r');
       }
       /* pass 2 — interior stride labels, centered, overlap-guarded (the
@@ -1633,7 +1634,7 @@ const HIT = 7;
         const x = this._xOf(chain[i]);
         if (!isFinite(x) || x < -2 || x > v.pw + 2) continue;
         const lab = texts[i];
-        if (!lab || typeof lab.full !== 'string') { console.warn('[tax-ext] non-string label', i, JSON.stringify(lab), App.tz, N); continue; }
+        if (!lab || typeof lab.full !== 'string') { try { Log.warn('drawing', 'tax-ext non-string label', { index: i, label: lab, tz: App.tz, count: N }); } catch (e) {} continue; }
         const tryPlace = (txt) => {
           const w = txt.length * 6.4 + 6;
           if (!fits(x - w / 2, x + w / 2)) return false;
