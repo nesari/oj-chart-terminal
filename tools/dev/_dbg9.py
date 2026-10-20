@@ -13,7 +13,7 @@ prov = subprocess.Popen([r'C:/Users/amirh/AppData/Local/Programs/Python/Python31
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env={**os.environ, 'MT5_WS_PORT': str(PORT_WS)})
 time.sleep(2)
 from playwright.sync_api import sync_playwright
-FIX = pathlib.Path(ROOT) / 'fixtures' / 'pine'
+FIX = pathlib.Path(ROOT) / 'src' / 'renderer' / 'assets' / 'pine-samples'
 smc = (FIX / 'sample-SmartMoneyConcepts.pine').read_text(encoding='utf-8')
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path='C:/Program Files/Google/Chrome/Application/chrome.exe', args=['--no-sandbox'])

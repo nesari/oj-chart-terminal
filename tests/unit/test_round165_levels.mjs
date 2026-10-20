@@ -147,7 +147,7 @@ plot(size.small == "small" ? 1 : 0, title="e2")
 
 /* 5. SMC levels ON: no throw on any TF + PDH/PDL correctness on known grid */
 {
-  const src = readFileSync(new URL('../fixtures/pine/corpus/smartmoney.pine', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../../fixtures/pine/corpus/smartmoney.pine', import.meta.url), 'utf8');
   const c = compile(src);
   ok(c.ok, 'SMC compiles');
   if (c.ok) {

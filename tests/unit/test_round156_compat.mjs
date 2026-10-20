@@ -39,7 +39,7 @@ function makeBars(n, step) {
 
 /* 1) study() */
 {
-  const src = readFileSync(join(HERE, '..', '..', 'fixtures', 'pine', 'sample-Supertrend.pine'), 'utf8');
+  const src = readFileSync(join(HERE, '..', '..', 'src', 'renderer', 'assets', 'pine-samples', 'sample-Supertrend.pine'), 'utf8');
   const c = compile(src);
   ok(c.ok, 'v4 study() script compiles');
   ok(c.meta && c.meta.title === 'Supertrend' && c.meta.overlay === true, 'study title/overlay honored');

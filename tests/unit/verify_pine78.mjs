@@ -25,7 +25,7 @@ import { toColor, PineColor, NA } from '../../src/core/pine/types.js';
 import { timestamp } from '../../src/core/pine/stdlib/time.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SRC786 = readFileSync(join(HERE, '..', '..', 'fixtures', 'pine', '786-zones.pine'), 'utf8');
+const SRC786 = readFileSync(join(HERE, '..', '..', 'fixtures', 'pine', 'corpus', '786-zones.pine'), 'utf8');
 
 let pass = 0, fail = 0;
 const ok = (cond, label) => {

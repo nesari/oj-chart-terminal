@@ -19,7 +19,7 @@ import subprocess, sys, time, threading, http.server, functools, os, socket
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SHOTS = os.path.join(ROOT, 'docs', 'shots-legacy')
-FIXTURE = os.path.join(ROOT, 'fixtures', 'pine', '786-zones.pine')
+FIXTURE = os.path.join(ROOT, 'fixtures', 'pine', 'corpus', '786-zones.pine')
 PORT_HTTP, PORT_WS = 8899, 8777
 FAILS = []
 try:

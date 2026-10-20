@@ -71,7 +71,7 @@ def main():
             page.wait_for_timeout(1200)
             page.click('#pine-btn')
             page.wait_for_selector('#pine-editor:not(.hidden)', timeout=5000)
-            with open(os.path.join(ROOT, 'fixtures', 'pine', '786-zones.pine'), 'r', encoding='utf-8') as f:
+            with open(os.path.join(ROOT, 'fixtures', 'pine', 'corpus', '786-zones.pine'), 'r', encoding='utf-8') as f:
                 src786 = f.read()
             page.evaluate("""(src) => {
               const ta = document.getElementById('pe-ta');

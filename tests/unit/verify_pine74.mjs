@@ -59,7 +59,7 @@ for (const f of files) {
 /* the USER's own 786 Zones lives OUTSIDE the app tree (round 88: it must
    never ship inside the package) — compiled here under its fixture name */
 {
-  const src = readFileSync(join(FIXTURES, '786-zones.pine'), 'utf8');
+  const src = readFileSync(join(FIXTURES, 'corpus', '786-zones.pine'), 'utf8');
   const c = compile(src);
   compiled['786-zones.pine'] = c;
   ok(c.ok, 'compile 786-zones.pine (user file, external path)' + (c.ok ? ' [' + c.meta.title + ']' : ' -> ' + JSON.stringify(c.errors)));

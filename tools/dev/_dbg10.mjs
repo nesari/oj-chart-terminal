@@ -1,6 +1,6 @@
 import { compile } from '../../src/core/pine/compile.js';
 import { readFileSync } from 'node:fs';
-const src = readFileSync('fixtures/pine/sample-Supertrend.pine', 'utf8');
+const src = readFileSync('src/renderer/assets/pine-samples/sample-Supertrend.pine', 'utf8');
 const c = compile(src, { tfSec: 60, symbol: 'EURUSD' });
 console.log('overlay=', c.meta.overlay, 'title=', c.meta.title);
 const rt = c.createInstance({ tfSec: 60, symbol: 'EURUSD', mintick: 1e-5 });

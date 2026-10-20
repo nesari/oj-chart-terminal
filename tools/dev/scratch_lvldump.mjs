@@ -1,7 +1,7 @@
 /** SCRATCH — dump SMC level labels on known grid. */
 import { readFileSync } from 'node:fs';
 import { compile } from '../../src/core/pine/compile.js';
-const src = readFileSync(new URL('../fixtures/pine/corpus/smartmoney.pine', import.meta.url), 'utf8');
+const src = readFileSync(new URL('../../fixtures/pine/corpus/smartmoney.pine', import.meta.url), 'utf8');
 const c = compile(src);
 const p0 = c.createInstance({ tfSec: 900, symbol: 'XAUUSD' });
 const t00 = 1790600400 - (1790600400 % 900);

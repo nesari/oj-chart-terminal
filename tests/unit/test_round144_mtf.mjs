@@ -62,7 +62,7 @@ for (let i = 0; i < 8; i++) {
 
 {
   /* full Supertrend in the HTF frame + remap: chart-length, single-fire */
-  const src = readFileSync(join(HERE, '..', '..', 'fixtures', 'pine', 'sample-Supertrend.pine'), 'utf8');
+  const src = readFileSync(join(HERE, '..', '..', 'src', 'renderer', 'assets', 'pine-samples', 'sample-Supertrend.pine'), 'utf8');
   const c = compile(src);
   ok(c.ok, 'supertrend compiles');
   const big = [];

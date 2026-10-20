@@ -79,7 +79,7 @@ def main():
             page.wait_for_selector('#app:not(.hidden)', timeout=45000)
             page.wait_for_timeout(3500)
 
-            FIX = ROOT / 'fixtures' / 'pine'
+            FIX = ROOT / 'src' / 'renderer' / 'assets' / 'pine-samples'
 
             print('\u2014 [1] CM_MacD_Ult_MTF: separate sub-pane \u2014')
             r = page.evaluate(ADD_SCRIPT, {'name': 'CM_MacD round134', 'src': (FIX / 'sample-CM_MacD_Ult_MTF.pine').read_text(encoding='utf-8')})

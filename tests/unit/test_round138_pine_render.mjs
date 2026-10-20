@@ -19,7 +19,7 @@ import { dirname, join } from 'path';
 import { compile } from '../../src/core/pine/compile.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SRC_ST = readFileSync(join(HERE, '..', '..', 'fixtures', 'pine', 'sample-Supertrend.pine'), 'utf8');
+const SRC_ST = readFileSync(join(HERE, '..', '..', 'src', 'renderer', 'assets', 'pine-samples', 'sample-Supertrend.pine'), 'utf8');
 
 let pass = 0, fail = 0;
 const ok = (cond, label) => {

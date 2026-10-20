@@ -126,7 +126,7 @@ plot(leg(3), title="l3")
 
 /* 3. SMC end-to-end counts below the polluted level (fixed seeds) */
 {
-  const src = readFileSync(new URL('../fixtures/pine/corpus/smartmoney.pine', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../../fixtures/pine/corpus/smartmoney.pine', import.meta.url), 'utf8');
   const c = compile(src);
   ok(c.ok, 'SMC compiles');
   if (c.ok) {

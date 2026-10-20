@@ -59,7 +59,7 @@ const ok = (cond, label) => {
 
 /* shape on a real SMC run (synthetic trend, 1500 bars) */
 {
-  const src = readFileSync(new URL('../fixtures/pine/corpus/smartmoney.pine', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../../fixtures/pine/corpus/smartmoney.pine', import.meta.url), 'utf8');
   const cmp = compile(src);
   ok(cmp.ok, 'SMC compiles');
   if (cmp.ok) {

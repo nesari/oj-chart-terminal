@@ -68,7 +68,7 @@ def main():
             page.wait_for_selector('#app:not(.hidden)', timeout=45000)
             page.wait_for_timeout(3500)  # demo feed settle
 
-            FIX = ROOT / 'fixtures' / 'pine'
+            FIX = ROOT / 'src' / 'renderer' / 'assets' / 'pine-samples'
             samples = ['sample-SmartMoneyConcepts.pine', 'sample-SqueezeMomentum.pine',
                        'sample-Supertrend.pine', 'sample-CM_MacD_Ult_MTF.pine']
 

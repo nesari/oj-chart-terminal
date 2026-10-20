@@ -16,6 +16,7 @@ import { compile } from '../../src/core/pine/compile.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = join(HERE, '..', '..', 'fixtures', 'pine');
+const SAMPLES = join(HERE, '..', '..', 'src', 'renderer', 'assets', 'pine-samples');
 
 let pass = 0, fail = 0;
 const ok = (cond, label) => {
@@ -33,10 +34,10 @@ const synthBars = (n) => {
 };
 
 console.log('\n[1] corpus compile (user samples — target: ALL green)');
-const files = readdirSync(FIXTURES).filter((f) => f.startsWith('sample-') && f.endsWith('.pine'));
+const files = readdirSync(SAMPLES).filter((f) => f.startsWith('sample-') && f.endsWith('.pine'));
 const compiled = {};
 for (const f of files) {
-  const src = readFileSync(join(FIXTURES, f), 'utf8');
+  const src = readFileSync(join(SAMPLES, f), 'utf8');
   const c = compile(src);
   compiled[f] = c;
   ok(c.ok, 'compile ' + f + (c.ok ? ' [' + c.meta.title + ']' : ' -> ' + (c.errors[0] && c.errors[0].message).slice(0, 90)));
@@ -72,7 +73,7 @@ for (const f of engFiles) {
 
 console.log('\n[4] ROUND134: rendering parity checks');
 {
-  const src = readFileSync(join(FIXTURES, 'sample-Supertrend.pine'), 'utf8');
+  const src = readFileSync(join(SAMPLES, 'sample-Supertrend.pine'), 'utf8');
   const c = compile(src);
   const inst = c.createInstance({ tfSec: 60, symbol: 'TEST' });
   inst.runAll(synthBars(400));
@@ -82,7 +83,7 @@ console.log('\n[4] ROUND134: rendering parity checks');
   }
   ok(badText.length === 0, 'no literal "undefined" in shape texts (got: ' + JSON.stringify([...new Set(badText)]) + ')');
   // overlay default: study() w/o overlay must be a SEPARATE pane (TV default)
-  const c2 = compile(readFileSync(join(FIXTURES, 'sample-CM_MacD_Ult_MTF.pine'), 'utf8'));
+  const c2 = compile(readFileSync(join(SAMPLES, 'sample-CM_MacD_Ult_MTF.pine'), 'utf8'));
   ok(c2.meta.overlay === false, 'CM_MacD_Ult_MTF (study, no overlay) -> pane, not main');
   ok(c.meta.overlay === true, 'Supertrend (overlay=true) -> main pane');
 }
