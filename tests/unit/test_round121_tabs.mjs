@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * ROUND121 — chart tabs (TradingView-Desktop / Windows-11 style):
  *   · a strip ABOVE the top toolbar, one tab per chart page, each tab an
@@ -20,8 +21,8 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const read = (p) => fs.readFileSync(ROOT + p, 'utf8');
+const ROOT = fileURLToPath(new URL('../..', import.meta.url));
+const read = (p) => readSource(p);
 let N = 0, BAD = 0;
 function check(name, cond, extra) {
   N++;
@@ -76,7 +77,7 @@ check('_syncTick guards: no active tab, empty panes (mid-rebuild/boot), missing 
 check('_syncTick persists ONLY when the serialized state actually changed (no idle writes)',
   /_syncTick\(\) \{[\s\S]*?if \(a === b\) return;[\s\S]*?rec\.layout = next\.layout;[\s\S]*?rec\.panes = next\.panes;[\s\S]*?this\._persist\(\);/.test(tabs));
 check('beforeunload captures the active tab (quit keeps the last edits)',
-  /window\.addEventListener\('beforeunload', \(\) => \{[\s\S]*?try \{ this\.capture\(\); \} catch \(e\) \{\}[\s\S]*?\}\);/.test(tabs));
+  /window\.addEventListener\('beforeunload', \(\) => \{[\s\S]*?this\.capture\(\);[\s\S]*?\}\);/.test(tabs));
 check('freshness (_syncTick span) never releases feed refs nor touches manager hot paths',
   !/releaseSub/.test(tabs.slice(tabs.indexOf('_syncTick() {'), tabs.indexOf('onTick(symbol, price) {'))));
 

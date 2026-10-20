@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * test_round145_series_guard.mjs — ROUND145 "Value is null" hunt
  *
@@ -15,7 +16,7 @@ import { dirname, join } from 'path';
 import { firstBadRow } from '../../src/core/util.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SRC = (p) => readFileSync(join(HERE, '..', p), 'utf8');
+const SRC = (p) => readSource(p);
 
 let pass = 0, fail = 0;
 const ok = (cond, label) => {

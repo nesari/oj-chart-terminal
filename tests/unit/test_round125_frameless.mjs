@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * ROUND125 — frameless TradingView-Desktop window shell (user request):
  *
@@ -36,8 +37,8 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const read = (p) => fs.readFileSync(ROOT + p, 'utf8');
+const ROOT = fileURLToPath(new URL('../..', import.meta.url));
+const read = (p) => readSource(p);
 let N = 0, BAD = 0;
 function check(name, cond, extra) {
   N++;
@@ -58,13 +59,14 @@ const appCode = appjs.replace(/\/\*[\s\S]*?\*\//g, '');
 const wcCode = wincontrols.replace(/\/\*[\s\S]*?\*\//g, '');
 
 console.log('— ROUND125 · main.js: frameless windows (host + detached) —');
-check('createWindow boots the HOST window with frame:false',
-  /mainWindow = new BrowserWindow\(\{[\s\S]{0,900}?frame: false,/.test(mainCode));
-check('the tabs:undock DETACHED window boots with frame:false too',
-  /win = new BrowserWindow\(\{[\s\S]{0,1200}?frame: false,/.test(mainCode));
-check('both frame:false options carry the ROUND125 rationale comment',
-  /ROUND125 \(user request\): TradingView-Desktop for Windows has NO native[\s\S]{0,300}?frame: false,/.test(main) &&
-  /ROUND125: detached windows wear the same TV-Desktop shell[\s\S]{0,300}?frame: false,/.test(main));
+check('createWindow boots the HOST window frameless on Windows/Linux (windowChrome)',
+  /function windowChrome\(\) \{[\s\S]*?return \{ frame: false \};/.test(mainCode) &&
+  /mainWindow = new BrowserWindow\(\{[\s\S]{0,1600}?\.\.\.windowChrome\(\),/.test(mainCode));
+check('the tabs:undock DETACHED window uses the same chrome',
+  /win = new BrowserWindow\(\{[\s\S]{0,1600}?\.\.\.windowChrome\(\),/.test(mainCode));
+check('both windows carry the ROUND125 rationale comment (F6.1 macOS note)',
+  /ROUND125 \(user request\): TradingView-Desktop for Windows has NO native[\s\S]{0,600}?\.\.\.windowChrome\(\),/.test(main) &&
+  /ROUND125: detached windows wear the same TV-Desktop shell[\s\S]{0,600}?\.\.\.windowChrome\(\),/.test(main));
 
 console.log('— ROUND125 · main.js: window-control IPC (sender-scoped) —');
 check('win:minimize minimizes the SENDER window only',

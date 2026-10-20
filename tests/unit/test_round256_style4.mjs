@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * test_round256_style4.mjs — ROUND256 settings batch 4 (fib one-color,
  * trend-line toggles, levels line, wedge background).
@@ -13,10 +14,10 @@ const ok = (cond, label) => {
   else { fail++; console.log('  FAIL: ' + label); }
 };
 
-const tools = readFileSync('src/renderer/js/drawing/tools.js', 'utf8');
-const tools2 = readFileSync('src/renderer/js/drawing/tools2.js', 'utf8');
-const settings = readFileSync('src/renderer/js/drawing/settings.js', 'utf8');
-const state = readFileSync('src/core/state.js', 'utf8');
+const tools = readSource('src/renderer/js/drawing/tools.js');
+const tools2 = readSource('src/renderer/js/drawing/tools2.js');
+const settings = readSource('src/renderer/js/drawing/settings.js');
+const state = readSource('src/core/state.js');
 
 /* 1 — use one color (central mapping) */
 ok(tools.includes('d.opts.useOneColor && base'), 'levelsOf one-color mapping');

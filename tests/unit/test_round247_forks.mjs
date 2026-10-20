@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * test_round247_forks.mjs — ROUND247 pitchfork medians + regression/flattop spans.
  *
@@ -15,10 +16,10 @@ const ok = (cond, label) => {
   else { fail++; console.log('  FAIL: ' + label); }
 };
 
-const tools = readFileSync('src/renderer/js/drawing/tools.js', 'utf8');
-const tools2 = readFileSync('src/renderer/js/drawing/tools2.js', 'utf8');
-const settings = readFileSync('src/renderer/js/drawing/settings.js', 'utf8');
-const state = readFileSync('src/core/state.js', 'utf8');
+const tools = readSource('src/renderer/js/drawing/tools.js');
+const tools2 = readSource('src/renderer/js/drawing/tools2.js');
+const settings = readSource('src/renderer/js/drawing/settings.js');
+const state = readSource('src/core/state.js');
 
 /* 1 — TV-documented medians */
 ok(/kind === 'schiff'\) return \{ t: p0\.t, p: forkMid\(p0, p1\)\.p \}/.test(tools2),

@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * ROUND127 — five user fixes:
  *
@@ -17,8 +18,8 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const read = (p) => fs.readFileSync(ROOT + p, 'utf8');
+const ROOT = fileURLToPath(new URL('../..', import.meta.url));
+const read = (p) => readSource(p);
 let N = 0, BAD = 0;
 function check(name, cond, extra) {
   N++;
@@ -71,8 +72,9 @@ check('icon: main.js prefers the .ico on win32 (png stays the non-Windows fallba
   /const APP_ICON = \(process\.platform === 'win32' && fs\.existsSync\(APP_ICON_ICO\)\)[\s\S]*\? APP_ICON_ICO/.test(main));
 check('icon: BOTH windows (host + detached solo) take APP_ICON',
   (main.match(/icon: APP_ICON,/g) || []).length === 2);
-check('icon: win32 AUMID = the executable path (Electron unpackaged-app contract)',
-  /app\.setAppUserModelId\(process\.platform === 'win32' \? process\.execPath : 'OJChart Notification'\)/.test(main));
+check('icon: dev AUMID = executable path, packaged AUMID = brand id',
+  /app\.isPackaged \? 'com\.ojchart\.terminal' : process\.execPath/.test(main) &&
+  /app\.setAppUserModelId\(process\.platform === 'win32' \? aumid : 'OJchart Notification'\)/.test(main));
 check('icon: the one-time build script is part of the repo',
   fs.existsSync(ROOT + 'scripts/make_app_icon.py') && /make_app_icon/.test(main));
 

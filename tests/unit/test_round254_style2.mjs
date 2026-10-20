@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * test_round254_style2.mjs — ROUND254 settings batch 2 (position colors,
  * fork median, volprofile schema, gannbox bg/angles).
@@ -13,8 +14,8 @@ const ok = (cond, label) => {
   else { fail++; console.log('  FAIL: ' + label); }
 };
 
-const tools2 = readFileSync('src/renderer/js/drawing/tools2.js', 'utf8');
-const settings = readFileSync('src/renderer/js/drawing/settings.js', 'utf8');
+const tools2 = readSource('src/renderer/js/drawing/tools2.js');
+const settings = readSource('src/renderer/js/drawing/settings.js');
 
 /* 1 — position stop/target colors */
 ok(tools2.includes("d.opts.stopColor || (up ? '#f23645' : '#089981')"), 'stop color routing');

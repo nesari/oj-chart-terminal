@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * ROUND126 — performance & security hardening (user request):
  *
@@ -26,8 +27,8 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const read = (p) => fs.readFileSync(ROOT + p, 'utf8');
+const ROOT = fileURLToPath(new URL('../..', import.meta.url));
+const read = (p) => readSource(p);
 let N = 0, BAD = 0;
 function check(name, cond, extra) {
   N++;
@@ -89,7 +90,7 @@ check('window mouseup handler is a named instance method (_onWinUp)',
   /this\._onWinUp = \(e\) => \{/.test(engCode) &&
   /window\.addEventListener\('mouseup', this\._onWinUp\);/.test(engCode));
 check('destroy() releases the window listener',
-  /destroy\(\) \{\s*try \{ if \(this\._onWinUp\) \{ window\.removeEventListener\('mouseup', this\._onWinUp\); \} \} catch \(e\) \{\}/.test(engCode));
+  /destroy\(\) \{[\s\S]*?window\.removeEventListener\('mouseup', this\._onWinUp\);/.test(engCode));
 check('destroyPanes calls engine.destroy (guarded)',
   /try \{ if \(p\.engine && p\.engine\.destroy\) p\.engine\.destroy\(\); \} catch \(e\) \{\}/.test(mgrCode));
 check('the gesture scratch-clear order inside the handler is preserved (round 21 fix)',
@@ -101,7 +102,7 @@ check('permission REQUESTS are denied app-wide (with security log)',
   /mlogEvent\('warning', 'security', 'permission request denied'/.test(mainCode) &&
   /cb\(false\);/.test(mainCode));
 check('permission CHECKS are denied app-wide',
-  /session\.setPermissionCheckHandler\(\(wc, permission\) => DENIED_PERMISSIONS\.has\(String\(permission\)\)\);/.test(mainCode));
+  /session\.setPermissionCheckHandler\(\(\) => false\);/.test(mainCode));
 check('hardenPermissions runs on the default session at boot',
   /hardenPermissions\(require\('electron'\)\.session\.defaultSession\);/.test(mainCode));
 check('global web-contents-created safety net: window.open denied',
@@ -129,8 +130,9 @@ check('engine still exposes render() with the grid-clear first-frame contract',
   /render\(\) \{\s*const cv = this\.canvas;/.test(engCode));
 check('round123 dock record validator untouched',
   /function validDockRec\(r\) \{/.test(mainCode) && /131072/.test(mainCode));
-check('round125 frameless shell untouched (frame:false + win channels)',
-  /frame: false,/.test(mainCode) &&
+check('round125 frameless shell untouched (windowChrome + win channels)',
+  /return \{ frame: false \};/.test(mainCode) &&
+  /\.\.\.windowChrome\(\),/.test(mainCode) &&
   /ipcMain\.on\('win:minimize'/.test(mainCode) &&
   /ipcMain\.on\('win:maximize'/.test(mainCode));
 

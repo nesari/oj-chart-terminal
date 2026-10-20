@@ -8,10 +8,11 @@
     "dist:win": "electron-builder --win nsis",
     "dist:mac": "electron-builder --mac dmg",
     "dist:linux": "electron-builder --linux AppImage",
-    "verify": "npm run check:syntax && npm run check:imports && npm run check:py && npm run smoke",
+    "verify": "npm run check:syntax && npm run check:imports && npm run check:py && npm run test:unit && npm run smoke",
     "check:syntax": "node scripts/checks/check-syntax.mjs",
     "check:imports": "node scripts/checks/check-imports.mjs",
     "check:py": "node scripts/checks/check-python.mjs",
+    "test:unit": "node scripts/checks/run-unit.mjs",
     "smoke": "node scripts/checks/smoke-boot.mjs",
     "test": "npm run verify",
     "release": "node scripts/release.mjs"

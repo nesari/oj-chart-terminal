@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * test_round245_fibs.mjs — ROUND245 Fibs/Cycles/Sine geometry.
  *
@@ -15,9 +16,9 @@ const ok = (cond, label) => {
   else { fail++; console.log('  FAIL: ' + label); }
 };
 
-const tools = readFileSync('src/renderer/js/drawing/tools.js', 'utf8');
-const tools2 = readFileSync('src/renderer/js/drawing/tools2.js', 'utf8');
-const settings = readFileSync('src/renderer/js/drawing/settings.js', 'utf8');
+const tools = readSource('src/renderer/js/drawing/tools.js');
+const tools2 = readSource('src/renderer/js/drawing/tools2.js');
+const settings = readSource('src/renderer/js/drawing/settings.js');
 
 /* 1 — fib extension: full level set + two-sided extend */
 for (const r of ['0.236', '0.382', '0.786', '1.272', '2,', '3.618']) {

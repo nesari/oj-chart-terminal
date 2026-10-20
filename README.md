@@ -102,7 +102,8 @@ flowchart LR
 1. **`check:syntax`** — parses every `.js`/`.mjs` file as an ES module.
 2. **`check:imports`** — resolves every relative import/export to a real file.
 3. **`check:py`** — byte-compiles all `provider/*.py`.
-4. **`smoke`** — boots `provider/demo.py`, serves `src/`, logs into the demo server in a hidden **offscreen Electron** window and asserts app visible, login hidden, bars loaded, canvases present, zero console errors and zero failed requests.
+4. **`test:unit`** — runs the 140 Node suites in `tests/unit/` (chart, drawing, Pine engine, IPC contracts).
+5. **`smoke`** — boots `provider/demo.py`, serves `src/`, logs into the demo server in a hidden **offscreen Electron** window and asserts app visible, login hidden, bars loaded, canvases present, zero console errors and zero failed requests.
 
 CI (`.github/workflows/ci.yml`) runs the full gate on Windows and the static gates on Linux for every push and pull request.
 
@@ -247,7 +248,8 @@ npm run dist:linux   # dist/OJchart.AppImage
 ۱. **`check:syntax`** — پارس همه‌ی فایل‌های `.js`/`.mjs` به‌عنوان ماژول ES.
 ۲. **`check:imports`** — حل شدن همه‌ی import/exportهای نسبی به فایل واقعی.
 ۳. **`check:py`** — کامپایل همه‌ی `provider/*.py`.
-۴. **`smoke`** — اجرای `provider/demo.py`، سرو `src/`، ورود دمو در یک پنجره‌ی **Electron آفسکرین** و بررسی: اپ دیده شود، لاگین مخفی، کندل‌ها لود شوند، canvas موجود باشد، صفر خطای کنسول و صفر درخواست ناموفق.
+۴. **`test:unit`** — اجرای ۱۴۰ مجموعه‌ی Node در `tests/unit/` (چارت، ابزار ترسیم، موتور Pine، قراردادهای IPC).
+۵. **`smoke`** — اجرای `provider/demo.py`، سرو `src/`، ورود دمو در یک پنجره‌ی **Electron آفسکرین** و بررسی: اپ دیده شود، لاگین مخفی، کندل‌ها لود شوند، canvas موجود باشد، صفر خطای کنسول و صفر درخواست ناموفق.
 
 CI (`.github/workflows/ci.yml`) برای هر push و pull request کل گیت را روی ویندوز و گیت‌های استاتیک را روی لینوکس اجرا می‌کند.
 

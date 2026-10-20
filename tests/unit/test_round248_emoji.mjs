@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * test_round248_emoji.mjs — ROUND248 Icons (emoji) tool wiring.
  *
@@ -15,12 +16,12 @@ const ok = (cond, label) => {
   else { fail++; console.log('  FAIL: ' + label); }
 };
 
-const tools = readFileSync('src/renderer/js/drawing/tools.js', 'utf8');
-const tools2 = readFileSync('src/renderer/js/drawing/tools2.js', 'utf8');
-const ui = readFileSync('src/renderer/js/drawing/ui.js', 'utf8');
-const icons = readFileSync('src/renderer/js/ui/icons.js', 'utf8');
-const settings = readFileSync('src/renderer/js/drawing/settings.js', 'utf8');
-const css = readFileSync('src/renderer/css/app.css', 'utf8');
+const tools = readSource('src/renderer/js/drawing/tools.js');
+const tools2 = readSource('src/renderer/js/drawing/tools2.js');
+const ui = readSource('src/renderer/js/drawing/ui.js');
+const icons = readSource('src/renderer/js/ui/icons.js');
+const settings = readSource('src/renderer/js/drawing/settings.js');
+const css = readSource('src/renderer/css/app.css');
 
 /* 1 — emoji catalogue */
 ok(tools.includes('const EMOJI_CATS = ['), 'EMOJI_CATS defined');

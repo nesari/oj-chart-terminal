@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * test_round244_elliott.mjs — ROUND244 Elliott anchors + price ratios + schemas.
  *
@@ -16,8 +17,8 @@ const ok = (cond, label) => {
   else { fail++; console.log('  FAIL: ' + label); }
 };
 
-const tools2 = readFileSync('src/renderer/js/drawing/tools2.js', 'utf8');
-const settings = readFileSync('src/renderer/js/drawing/settings.js', 'utf8');
+const tools2 = readSource('src/renderer/js/drawing/tools2.js');
+const settings = readSource('src/renderer/js/drawing/settings.js');
 
 /* 1 — pts matches the label count on every Elliott + pattern tool */
 const re = /polyTool\('([\w]+)', '[^']*', '[\w]+', (\d+), \[([^\]]*)\], (true|false)\)/g;

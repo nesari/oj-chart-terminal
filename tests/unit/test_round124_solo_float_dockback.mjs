@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * ROUND124 — three user-reported fixes around tabs / undock:
  *
@@ -47,8 +48,8 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const read = (p) => fs.readFileSync(ROOT + p, 'utf8');
+const ROOT = fileURLToPath(new URL('../..', import.meta.url));
+const read = (p) => readSource(p);
 let N = 0, BAD = 0;
 function check(name, cond, extra) {
   N++;
@@ -73,7 +74,7 @@ check('the solo branch boots Trade (live bridge state) + TradeOverlay + OneClick
 check('the solo branch wires the demo delegate + route facade AFTER the engine',
   /TradeOverlay\.init\(\);[\s\S]{0,400}?ReplayTrade\.init\(\);\s*\n\s*TradeRoute\.setDemoDelegate\(ReplayTrade\);\s*\n\s*TradeRoute\.init\(\);/.test(appCode));
 check('the solo branch watches the persisted Demo/Live switch (refreshMode)',
-  /setInterval\(\(\) => \{ try \{ TradeRoute\.refreshMode\(\); \} catch \(e\) \{\} \}, 2500\);/.test(appCode));
+  /setInterval\(\(\) => \{ try \{ TradeRoute\.refreshMode\(\); \} catch \(e\) \{[^}]*\} \}, 2500\);/.test(appCode));
 check('host-only surfaces stay out of the solo branch (no ticket/dock/alerts/history)',
   (() => {
     const m = /\} else \{[\s\S]*?Trade\.init\(\);[\s\S]*?\n    \}/.exec(appCode);
@@ -150,7 +151,7 @@ check('refreshMode adopts a persisted flip SILENTLY (no toast, no write)',
   /refreshMode\(\) \{[\s\S]*?const next = m === 'demo' \? 'demo' : 'live';[\s\S]*?if \(next === this\.mode\) return;[\s\S]*?this\.mode = next;\s*\n\s*this\._paintUI\(\);/.test(route) &&
   !/refreshMode\(\) \{[\s\S]*?U\.lsSet/.test(route));
 check('set() still persists + toasts (the main-window switch is untouched)',
-  /set\(mode, silent\) \{[\s\S]*?try \{ U\.lsSet\(K_MODE, m\); \} catch \(e\) \{\}[\s\S]*?UI\.toast/.test(route));
+  /set\(mode, silent\) \{[\s\S]*?U\.lsSet\(K_MODE, m\);[\s\S]*?UI\.toast/.test(route));
 
 console.log('');
 console.log(N + ' checks, ' + BAD + ' failed');

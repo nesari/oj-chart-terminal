@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * test_round246_uxflow.mjs — ROUND246 creation flows + annotations + gannbox.
  *
@@ -14,12 +15,12 @@ const ok = (cond, label) => {
   else { fail++; console.log('  FAIL: ' + label); }
 };
 
-const engine = readFileSync('src/renderer/js/drawing/engine.js', 'utf8');
-const toolbar = readFileSync('src/renderer/js/chart/toolbar.js', 'utf8');
-const ui = readFileSync('src/renderer/js/drawing/ui.js', 'utf8');
-const tools = readFileSync('src/renderer/js/drawing/tools.js', 'utf8');
-const tools2 = readFileSync('src/renderer/js/drawing/tools2.js', 'utf8');
-const settings = readFileSync('src/renderer/js/drawing/settings.js', 'utf8');
+const engine = readSource('src/renderer/js/drawing/engine.js');
+const toolbar = readSource('src/renderer/js/chart/toolbar.js');
+const ui = readSource('src/renderer/js/drawing/ui.js');
+const tools = readSource('src/renderer/js/drawing/tools.js');
+const tools2 = readSource('src/renderer/js/drawing/tools2.js');
+const settings = readSource('src/renderer/js/drawing/settings.js');
 
 /* 1 — staged Escape */
 ok(engine.includes('escStep()'), 'engine.escStep exists');

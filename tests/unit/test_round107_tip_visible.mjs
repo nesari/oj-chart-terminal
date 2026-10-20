@@ -27,7 +27,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OVERLAY = readFileSync(join(ROOT, 'src/renderer/js/trade/overlay.js'), 'utf8');
 const HISTORY = readFileSync(join(ROOT, 'src/renderer/js/trade/history.js'), 'utf8');
 const CSS = readFileSync(join(ROOT, 'src/renderer/css/trade.css'), 'utf8');

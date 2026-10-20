@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * test_round252_style1.mjs — ROUND252 settings batch 1 (labels, infoline,
  * parallel levels, background fills).
@@ -13,10 +14,10 @@ const ok = (cond, label) => {
   else { fail++; console.log('  FAIL: ' + label); }
 };
 
-const tools = readFileSync('src/renderer/js/drawing/tools.js', 'utf8');
-const tools2 = readFileSync('src/renderer/js/drawing/tools2.js', 'utf8');
-const settings = readFileSync('src/renderer/js/drawing/settings.js', 'utf8');
-const state = readFileSync('src/core/state.js', 'utf8');
+const tools = readSource('src/renderer/js/drawing/tools.js');
+const tools2 = readSource('src/renderer/js/drawing/tools2.js');
+const settings = readSource('src/renderer/js/drawing/settings.js');
+const state = readSource('src/core/state.js');
 
 /* 1 — anchored-line label toggles */
 ok(tools.includes('if (d.opts.priceLabels !== false) priceTag'), 'hline/hray/crossline price gate');
@@ -29,7 +30,7 @@ ok(/hline: \{[^}]*priceLabels: true/.test(state), 'hline factory default on');
 ok(/vline: \{[^}]*showTime: true/.test(state), 'vline factory default on');
 
 /* 2 — infoline full tab */
-ok(tools2.includes("import { TOOLS, segWithExtend } from './tools.js';"), 'segWithExtend import');
+ok(tools2.includes("import { TOOLS, segWithExtend } from '../tools.js';"), 'segWithExtend import');
 ok(tools2.includes('segWithExtend(v, a[0], a[1], b[0], b[1], !!d.opts.extendLeft, !!d.opts.extendRight)'),
   'infoline draw + hit extend');
 ok(/infoline: \[[\s\S]*?key: 'extendLeft'/.test(settings), 'infoline schema extends');

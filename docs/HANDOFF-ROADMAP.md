@@ -224,7 +224,7 @@ src/renderer/js/trade/      dock, ticket, oneclick, overlay, ...
 
 #### F5.3 — آرشیو مستندات راند‌ها
 - `docs/FEATURE-ROUND*.md` و `BUGFIX-ROUND*.md` (بیش از ۹۰ فایل) → `docs/archive/rounds/` با `git mv`.
-- نگه‌داشتن فقط اسناد زنده در ریشه‌ی `docs/`: `ARCHITECTURE.md`, `SECURITY.md`, `PINE-*`, `PHASE*`.
+- نگه‌داشتن فقط اسناد زنده در ریشه‌ی `docs/`: `ARCHITECTURE.md`, `SECURITY-ROUND81.md`, `PINE-*`, `HANDOFF-ROADMAP.md` (اسناد فاز/آدیت به `docs/archive/` رفتند).
 
 ---
 
@@ -232,8 +232,8 @@ src/renderer/js/trade/      dock, ticket, oneclick, overlay, ...
 
 #### F3.1 — بازساختاردهی `scripts/`
 ```
-tests/unit/      ← test_*.mjs / test_*.py
-tests/e2e/       ← e2e_*.mjs / e2e_*.py
+tests/unit/      ← test_*.mjs (active Node suites)
+tests/archive/   ← legacy e2e/*.py + unit/*.py (historical evidence)
 tools/dev/       ← probe_*, diag_*, repro_*, _dbg*, scratch_*, shot_*, shots*
 fixtures/pine/   ← pine-fixtures/*
 scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.py

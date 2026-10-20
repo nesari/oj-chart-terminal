@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * ROUND123 — two user-reported tab fixes:
  *
@@ -34,8 +35,8 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const read = (p) => fs.readFileSync(ROOT + p, 'utf8');
+const ROOT = fileURLToPath(new URL('../..', import.meta.url));
+const read = (p) => readSource(p);
 let N = 0, BAD = 0;
 function check(name, cond, extra) {
   N++;
@@ -89,7 +90,7 @@ check('the host boot path is unchanged (bootStrip runs synchronously)',
 check('undockTab hands the record to main in the undock payload too (deterministic claim)',
   /await window\.mt5Tabs\.undock\(\{ soloId, mode, rec \}\)/.test(tabs));
 check('a CLOSED detached window takes its tab with it (Chrome) — per-solo store dropped',
-  /if \(SOLO_ID\) \{ try \{ localStorage\.removeItem\(STORE_KEY\); \} catch \(e\) \{\} \}/.test(tabs));
+  /if \(SOLO_ID\) \{ try \{ localStorage\.removeItem\(STORE_KEY\); \} catch \(e\) \{[^}]*\} \}/.test(tabs));
 
 console.log('— ROUND123 · main-process side (validation + routing + memory handoff) —');
 check('validDockRec sanitizes the tab record (shape mirrors tabs.js validRec)',

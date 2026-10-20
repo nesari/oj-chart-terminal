@@ -17,7 +17,7 @@ import { execSync } from 'child_process';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TMP = join(HERE, '.tmp-esm88');
 mkdirSync(TMP, { recursive: true });
-copyFileSync(join(HERE, '..', 'src', 'core', 'session-math.js'), join(TMP, 'session-math.mjs'));
+copyFileSync(join(HERE, '..', '..', 'src', 'core', 'session-math.js'), join(TMP, 'session-math.mjs'));
 const src = await import(join(TMP, 'session-math.mjs') /* file URL friendly below */).catch(async () => {
   execSync(`node -e "process.stdout.write('')"`);
   return import('file://' + join(TMP, 'session-math.mjs'));

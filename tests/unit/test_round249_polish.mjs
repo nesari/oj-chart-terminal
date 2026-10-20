@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * test_round249_polish.mjs — ROUND249 freehand handles + bend controls ride.
  *
@@ -12,8 +13,8 @@ const ok = (cond, label) => {
   else { fail++; console.log('  FAIL: ' + label); }
 };
 
-const tools2 = readFileSync('src/renderer/js/drawing/tools2.js', 'utf8');
-const engine = readFileSync('src/renderer/js/drawing/engine.js', 'utf8');
+const tools2 = readSource('src/renderer/js/drawing/tools2.js');
+const engine = readSource('src/renderer/js/drawing/engine.js');
 
 /* 1 — freehand end handle maps to the LAST point */
 ok(/const j = i === 0 \? 0 : d\.points\.length - 1;\s*if \(d\.points\[j\]\)/.test(tools2),

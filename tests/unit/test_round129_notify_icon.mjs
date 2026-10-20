@@ -1,3 +1,4 @@
+import { readSource } from './source-utils.mjs';
 /**
  * ROUND129 — the trade-notification list moves BEHIND a bell icon + a
  * once-a-day automatic purge (user request):
@@ -15,8 +16,8 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const read = (p) => fs.readFileSync(ROOT + p, 'utf8');
+const ROOT = fileURLToPath(new URL('../..', import.meta.url));
+const read = (p) => readSource(p);
 let N = 0, BAD = 0;
 function check(name, cond, extra) {
   N++;
@@ -81,7 +82,7 @@ check('alerts: force=true bypasses the gate (first boot / tests)',
 check('alerts: the stamp is ALWAYS refreshed (a falsy stamp can never re-arm every tick)',
   /never persist a falsy stamp/.test(talerts) && /U\.lsSet\(K_PURGE, now\)/.test(code));
 check('alerts: the purge runs at BOOT',
-  /try \{ this\.purgeNlog\(\); \} catch \(e\) \{\}\s*\n\s*if \(!this\._purgeTimer\) \{/.test(code));
+  /try \{ this\.purgeNlog\(\); \} catch \(e\) \{[^}]*\}\s*\n\s*if \(!this\._purgeTimer\) \{/.test(code));
 check('alerts: and re-checks on a 30-min interval (guard against double timers)',
   /PURGE_EVERY_MS = 30 \* 60 \* 1000;/.test(code) &&
   /this\._purgeTimer = setInterval\(\(\) => \{\s*\n\s*try \{ this\.purgeNlog\(\); \} catch \(e\) \{\}\s*\n\s*\}, PURGE_EVERY_MS\);/.test(code));

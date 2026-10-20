@@ -19,7 +19,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { demoMargin } from '../../src/core/demo-math.js';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
+const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const read = (p) => fs.readFileSync(ROOT + p, 'utf8');
 let N = 0, BAD = 0;
 function check(name, cond, extra) {
