@@ -13,6 +13,15 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 MODE="${1:-demo}"
+# F6.2: keep any extra Electron flags the user passes (e.g. --no-sandbox on
+# distributions whose kernel/AppArmor policy blocks the SUID sandbox).
+ARGS=()
+if [ "$MODE" = "mt5" ]; then
+  ARGS+=(--mode=mt5)
+  shift || true
+elif [ "$MODE" = "demo" ]; then
+  shift || true
+fi
 
 if [ ! -x "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" ] && \
    [ ! -x "node_modules/.bin/electron" ]; then
@@ -28,8 +37,4 @@ if [ ! -x "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" ] &&
   fi
 fi
 
-if [ "$MODE" = "mt5" ]; then
-  npx electron . --mode=mt5
-else
-  npx electron .
-fi
+npx electron . "${ARGS[@]}" "$@"
