@@ -153,6 +153,8 @@ npm run dist:linux   # -> dist/OJ Chart Terminal.AppImage
 
 Note: the Windows/macOS builds are **unsigned** by default (no code-signing certificate is included in this repo). Unsigned installers will trigger a Windows SmartScreen / macOS Gatekeeper warning on first run. For real end-user distribution, obtain a code-signing certificate and pass it to electron-builder (`CSC_LINK` / `CSC_KEY_PASSWORD` env vars) before running the commands above.
 
+The data provider is Python, so `provider/**` is shipped outside the asar archive (`build.asarUnpack` in `package.json`): Python cannot read files inside `app.asar`, and the app resolves the unpacked copy at runtime. If you edit the bundler config, keep that entry — without it the installed app boots but the demo/MT5 provider never starts.
+
 ### Code signing (optional, release builds)
 
 electron-builder reads the certificate from the environment — nothing is stored in the repository:

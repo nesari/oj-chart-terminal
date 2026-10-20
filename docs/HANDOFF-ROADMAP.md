@@ -317,14 +317,14 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 
 پروژه وقتی «آماده توسعه» است که همه‌ی موارد زیر صادق باشند:
 
-- [ ] مخزن Git دارد، `.gitignore` سالم است، `node_modules` ردیابی نمی‌شود.
-- [ ] `npm run verify` (syntax + imports + python + smoke) روی ویندوز سبز است.
+- [x] مخزن Git دارد، `.gitignore` سالم است، `node_modules` ردیابی نمی‌شود.
+- [x] `npm run verify` (syntax + imports + python + smoke) روی ویندوز سبز است.
 - [ ] CI روی push اجرا می‌شود و سبز است.
-- [ ] هیچ باگ P0/P1 باز نمانده (F1.1 … F1.8 بسته).
-- [ ] README و ARCHITECTURE با واقعیت کد مطابق‌اند.
-- [ ] `scripts/` ساختارمند است و فایل‌های یک‌بارمصرف/تکراری حذف شده‌اند.
-- [ ] بیلد ویندوز (`dist:win`) نصب و اجرا می‌شود.
-- [ ] مسیرهای خطای حیاتی (boot، storage، IPC، provider) لاگ می‌شوند.
+- [x] هیچ باگ P0/P1 باز نمانده (F1.1 … F1.8 بسته).
+- [x] README و ARCHITECTURE با واقعیت کد مطابق‌اند.
+- [x] `scripts/` ساختارمند است و فایل‌های یک‌بارمصرف/تکراری حذف شده‌اند.
+- [x] بیلد ویندوز (`dist:win`) نصب و اجرا می‌شود.
+- [x] مسیرهای خطای حیاتی (boot، storage، IPC، provider) لاگ می‌شوند.
 
 ---
 
@@ -358,7 +358,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 [x] F6.1  macOS                                (P3)
 [x] F6.2  Linux                                (P3)
 [x] F6.3  تشخیص Python در ویندوز              (P3)
-[ ] F7.1  بیلد و نصب ویندوز                   (P3)
+[x] F7.1  بیلد و نصب ویندوز                   (P3)
 [x] F7.2  مستند امضای کد                      (P3)
 [x] F7.3  چک‌لیست انتشار                      (P3)
 ```

@@ -3,6 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { spawn, spawnSync } = require('node:child_process');
 const net = require('node:net'); // Node TCP client — Electron's net module has no connect()
+const { providerScript } = require('./src/platform/electron/provider-path.js');
 
 const PORT = 8777;
 let mainWindow = null;
@@ -262,6 +263,18 @@ function providerErrText(code) {
   return (err ? 'Provider error: ' + err : 'Provider exited with code ' + code) + (hint ? ' — ' + hint : '');
 }
 
+/* Provider scripts must live on the real filesystem: Python cannot read
+ * inside app.asar, and spawn() fails with ENOENT for a virtual (asar) cwd.
+ * electron-builder unpacks provider/** via build.asarUnpack (F7.1). */
+function providerScriptPath(name) {
+  return providerScript(name, {
+    packaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    rootDir: __dirname,
+    fileExists: fs.existsSync,
+  });
+}
+
 async function startProvider(payload) {
   try {
     // account identity of the provider being requested — a running provider
@@ -285,7 +298,7 @@ async function startProvider(payload) {
       for (let i = 0; i < 40; i++) { if (!(await portOpen(PORT))) break; await new Promise((r) => setTimeout(r, 150)); }
     }
     const mode = want.mode;
-    const script = path.join(__dirname, 'provider', mode === 'mt5' ? 'mt5.py' : 'demo.py');
+    const script = providerScriptPath(mode === 'mt5' ? 'mt5.py' : 'demo.py');
     const args = [script];
     if (mode === 'mt5') {
       args.push('--login', String((payload && payload.login) || ''));
@@ -314,7 +327,7 @@ async function startProvider(payload) {
     try {
       const childEnv = Object.assign({}, process.env);
       if (mode === 'mt5') childEnv.OJCHART_MT5_PASSWORD = String((payload && payload.password) || '');
-      providerProc = spawn(exe, exeArgs, { cwd: __dirname, windowsHide: true, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
+      providerProc = spawn(exe, exeArgs, { cwd: path.dirname(script), windowsHide: true, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
     } catch (e) {
       return { ok: false, error: pythonMissingHelp() };
     }

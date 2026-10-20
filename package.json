@@ -38,6 +38,9 @@
       "!fixtures/**",
       "!docs/**"
     ],
+    "asarUnpack": [
+      "provider/**/*"
+    ],
     "win": {
       "target": "nsis",
       "icon": "assets/app.ico"
