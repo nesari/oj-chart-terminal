@@ -156,7 +156,7 @@ const Log = {
   /** plain-text dump for the Export button (stable, human-readable) */
   exportText: () => {
     const s = Log.stats();
-    const L = ['MT5 Chart Terminal — diagnostics log', 'version   : ' + s.version, 'session   : ' + s.sessionId, 'boot (ms) : ' + new Date(s.bootAt).toISOString(), 'exported  : ' + new Date().toISOString(), 'uptime    : ' + Math.round(s.uptimeMs / 1000) + 's', 'entries   : ' + ring.length + ' (in ring), ' + s.total + ' (total), ' + s.dropped + ' dropped', 'levels    : ' + JSON.stringify(s.counts), '', 'seq | time | level | category | message | context', '-'.repeat(100)];
+    const L = ['OJchart — diagnostics log', 'version   : ' + s.version, 'session   : ' + s.sessionId, 'boot (ms) : ' + new Date(s.bootAt).toISOString(), 'exported  : ' + new Date().toISOString(), 'uptime    : ' + Math.round(s.uptimeMs / 1000) + 's', 'entries   : ' + ring.length + ' (in ring), ' + s.total + ' (total), ' + s.dropped + ' dropped', 'levels    : ' + JSON.stringify(s.counts), '', 'seq | time | level | category | message | context', '-'.repeat(100)];
     for (const e of ring) {
       let ctx = '';
       if (e.ctx !== undefined) { try { ctx = JSON.stringify(e.ctx); } catch (er) { ctx = '[unserializable]'; } }

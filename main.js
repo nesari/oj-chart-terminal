@@ -711,7 +711,7 @@ ipcMain.on('notify', (e, p) => {
   try {
     const t = vStr(String((p && p.title) == null ? '' : p.title), 120);
     const b = vStr(String((p && p.body) == null ? '' : p.body), 500);
-    if (Notification.isSupported()) new Notification({ title: t || 'OJ Chart', body: b || '', icon: ALERT_ICON, silent: false }).show();
+    if (Notification.isSupported()) new Notification({ title: t || 'OJchart', body: b || '', icon: ALERT_ICON, silent: false }).show();
   } catch (e) { mlogEvent('warn', 'alerts', 'notification display failed', { error: String(e && e.message || e) }) }
 });
 
@@ -816,9 +816,9 @@ app.whenReady().then(() => {
      own (assets/app.ico) instead of falling back to the electron.exe
      default logo. The toast keeps its bell image via the explicit
      ALERT_ICON above. */
-  try { app.setName('OJChart Notification'); } catch (e) {}
+  try { app.setName('OJchart Notification'); } catch (e) {}
   const aumid = app.isPackaged ? 'com.ojchart.terminal' : process.execPath;
-  try { app.setAppUserModelId(process.platform === 'win32' ? aumid : 'OJChart Notification'); } catch (e) {}
+  try { app.setAppUserModelId(process.platform === 'win32' ? aumid : 'OJchart Notification'); } catch (e) {}
   hardenPermissions(require('electron').session.defaultSession); // ROUND126
   pruneLogs();
   mlogEvent('info', 'app', 'main boot', { version: app.getVersion(), electron: process.versions.electron, node: process.versions.node, platform: process.platform });

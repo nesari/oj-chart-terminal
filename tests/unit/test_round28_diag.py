@@ -113,7 +113,7 @@ with sync_playwright() as p:
     # ---- T7: export payload ----
     t7 = pg.evaluate("""() => {
       const txt = window.__app.Log.exportText(), js = window.__app.Log.exportJson();
-      return { txtOk: txt.length > 400 && txt.includes('MT5 Chart Terminal') && txt.includes('session'),
+      return { txtOk: txt.length > 400 && txt.includes('OJchart') && txt.includes('session'),
                jsOk: js.length > 400 && JSON.parse(js).meta.sessionId === window.__app.Log.sessionId,
                rows: window.__app.Log.entries({ search: 'sec-probe' }).length >= 1 };
     }""")

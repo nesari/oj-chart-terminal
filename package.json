@@ -1,7 +1,7 @@
 {
   "name": "mt5-chart-terminal",
   "version": "1.9.212",
-  "description": "TradingView-style chart terminal powered by MetaTrader 5 data",
+  "description": "OJchart — TradingView-style chart terminal powered by MetaTrader 5 data",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -24,7 +24,7 @@
   },
   "build": {
     "appId": "com.ojchart.terminal",
-    "productName": "OJ Chart Terminal",
+    "productName": "OJchart",
     "files": [
       "main.js",
       "preload.js",

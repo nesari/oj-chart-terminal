@@ -124,7 +124,7 @@ class DemoBroker(Broker):
     def __init__(self):
         super().__init__()
         # ---- ROUND85: simulated trading account (in-memory, resets on restart)
-        self._t_acc = {'login': 100000, 'name': 'OJ Chart Demo', 'server': 'Demo',
+        self._t_acc = {'login': 100000, 'name': 'OJchart Demo', 'server': 'Demo',
                        'currency': 'USD', 'leverage': 100, 'balance': 10000.0,
                        'trade_allowed': True}
         self._t_pos = {}      # ticket -> position dict

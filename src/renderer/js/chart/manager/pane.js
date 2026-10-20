@@ -77,7 +77,7 @@ import { loadBars, loadOlder } from './history.js';
        the dark mark on the light chart (assets swapped on theme switch). */
     const brand = U.el('img', 'pane-brand', root);
     brand.src = (Theme && Theme.mode === 'light') ? 'assets/logo-dark.png' : 'assets/logo-light.png';
-    brand.alt = 'OJ Chart';
+    brand.alt = 'OJchart';
     brand.draggable = false;
     /* "Scroll to the most recent bar" (TV): bottom-right arrow, appears only
        when the view has been scrolled away from the live bar (engine.render

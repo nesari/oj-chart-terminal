@@ -1438,7 +1438,7 @@ class MT5Broker(Broker):
             req = {'action': mt5.TRADE_ACTION_DEAL, 'position': int(p.ticket), 'symbol': sym,
                    'volume': volume if volume > 0 else float(p.volume), 'type': closing_type,
                    'price': float(price), 'deviation': int(msg.get('deviation') if msg.get('deviation') is not None else 20),
-                   'magic': int(p.magic or 0), 'comment': 'close from OJ Chart',
+                   'magic': int(p.magic or 0), 'comment': 'close from OJchart',
                    'type_filling': self._norm_filling(info)}
             res, send_err = self._send_mt5(req)
             if send_err:

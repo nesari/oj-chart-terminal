@@ -1,4 +1,4 @@
-# CHANGELOG — MT5 Chart Terminal
+# CHANGELOG — OJchart
 
 This index keeps the release history split by major line. Each file contains the same entries
 that were previously in this single document, newest first.
