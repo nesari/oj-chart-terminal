@@ -320,6 +320,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 - [x] مخزن Git دارد، `.gitignore` سالم است، `node_modules` ردیابی نمی‌شود.
 - [x] `npm run verify` (syntax + imports + python + smoke) روی ویندوز سبز است.
 - [ ] CI روی push اجرا می‌شود و سبز است.
+  - این مخزن remote ندارد؛ workflow در `.github/workflows/` هست ولی سبز بودنش فقط بعد از push قابل تأیید است.
 - [x] هیچ باگ P0/P1 باز نمانده (F1.1 … F1.8 بسته).
 - [x] README و ARCHITECTURE با واقعیت کد مطابق‌اند.
 - [x] `scripts/` ساختارمند است و فایل‌های یک‌بارمصرف/تکراری حذف شده‌اند.
