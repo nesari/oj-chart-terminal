@@ -730,20 +730,17 @@ ipcMain.handle('copy-image', (e, dataUrl) => {
    permission request/check from any renderer is DENIED — a compromised
    renderer gains nothing by asking. Registered once on the default session
    (all app windows use it); denying checks keeps APIs like navigator
-   Permissions.query consistent for our own UI (it reports denied/granted
-   per browser defaults, no app code reads it). */
-const DENIED_PERMISSIONS = new Set([
-  'geolocation', 'media', 'audioCapture', 'videoCapture', 'desktopCapture',
-  'notifications', 'midi', 'midiSysex', 'pointerLock', 'fullscreen',
-  'openExternal', 'display-capture', 'background-sync', 'speech',
-]);
+   Permissions.query consistent for our own UI (it reports denied for every
+   permission, no app code reads it). */
 function hardenPermissions(session) {
   try {
     session.setPermissionRequestHandler((wc, permission, cb) => {
       mlogEvent('warning', 'security', 'permission request denied', { permission: String(permission).slice(0, 60) });
       cb(false);
     });
-    session.setPermissionCheckHandler((wc, permission) => DENIED_PERMISSIONS.has(String(permission)));
+    /* Returning true ALLOWS the permission (electron.d.ts) — so deny everything.
+       If a permission is ever needed, build an explicit allow-list instead. */
+    session.setPermissionCheckHandler(() => false);
   } catch (e) {}
 }
 
