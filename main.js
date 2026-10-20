@@ -776,7 +776,8 @@ app.whenReady().then(() => {
      default logo. The toast keeps its bell image via the explicit
      ALERT_ICON above. */
   try { app.setName('OJChart Notification'); } catch (e) {}
-  try { app.setAppUserModelId(process.platform === 'win32' ? process.execPath : 'OJChart Notification'); } catch (e) {}
+  const aumid = app.isPackaged ? 'com.ojchart.terminal' : process.execPath;
+  try { app.setAppUserModelId(process.platform === 'win32' ? aumid : 'OJChart Notification'); } catch (e) {}
   hardenPermissions(require('electron').session.defaultSession); // ROUND126
   pruneLogs();
   mlogEvent('info', 'app', 'main boot', { version: '1.9.212', electron: process.versions.electron, node: process.versions.node, platform: process.platform });

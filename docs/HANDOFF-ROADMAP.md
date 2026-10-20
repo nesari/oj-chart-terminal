@@ -334,7 +334,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 [x] F0.1  git init + .gitignore
 [x] F0.2  tag baseline
 [x] F1.1  permission check handler            (P0)
-[ ] F1.2  AppUserModelID packaged             (P1)
+[x] F1.2  AppUserModelID packaged             (P1)
 [ ] F1.3  version از app.getVersion()         (P1)
 [ ] F1.4  حذف __pycache__ از بیلد             (P1)
 [ ] F1.5  آیکون mac/linux                     (P1)
