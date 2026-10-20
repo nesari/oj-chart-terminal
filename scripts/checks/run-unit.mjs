@@ -14,7 +14,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIR = path.join(ROOT, 'tests', 'unit');
 const TIMEOUT_MS = 60_000;
-const CONCURRENCY = 4;
+/* Shared CI runners are usually 2 vCPU: keep some headroom for the
+   timing-sensitive suites instead of saturating both cores. */
+const CONCURRENCY = process.env.CI ? 2 : 4;
 
 const files = fs.readdirSync(DIR)
   .filter((f) => f.endsWith('.mjs') && f !== 'source-utils.mjs')
@@ -58,9 +60,11 @@ await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, wo
 
 const failed = results.filter((r) => r.code !== 0);
 for (const r of failed) {
-  const tail = (r.out + r.err).split(/\r?\n/).filter(Boolean).slice(-12).join('\n');
+  const lines = (r.out + r.err).split(/\r?\n/).filter(Boolean);
+  const marked = lines.filter((l) => l.includes('✗') || l.includes('FAIL'));
+  const detail = (marked.length ? marked : lines.slice(-12)).slice(0, 40);
   console.error(`\n✗ ${r.file} (exit ${r.code})`);
-  if (tail) console.error(tail);
+  if (detail.length) console.error(detail.join('\n'));
 }
 console.log(`\nunit gate: ${results.length - failed.length}/${results.length} suites passed`);
 if (failed.length) process.exit(1);
