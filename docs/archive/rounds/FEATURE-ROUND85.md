@@ -57,7 +57,7 @@
 
 ## 6. فایل‌های تغییر یافته / افزوده
 
-- جدید: `src/renderer/js/trade/{state,ticket,dock,overlay}.js`، `src/renderer/css/trade.css`، `docs/FEATURE-ROUND85.md`، `scripts/test_trade_rpc.py`، `scripts/test_trade_math.mjs`
+- جدید: `src/renderer/js/trade/{state,ticket,dock,overlay}.js`، `src/renderer/css/trade.css`، `docs/archive/rounds/FEATURE-ROUND85.md`، `scripts/test_trade_rpc.py`، `scripts/test_trade_math.mjs`
 - ویرایش: `provider/provider_common.py`، `provider/mt5.py`، `provider/demo.py`، `src/renderer/index.html`، `src/renderer/js/app.js`، `package.json` (1.9.35 → 1.9.36)، `CHANGELOG.md`
 
 نسخه: **1.9.36**

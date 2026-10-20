@@ -36,4 +36,4 @@ at openSettingsDialog (pine-ui.js:441) — هنگام کلیک روی چرخ‌�
 
 ## diff
 
-- **تغییر**: `core/pine/stdlib/inputs.js` (normalizeOptions + snap واقعی)، `chart/pine-ui.js` (شاخهٔ string + buildInput/inline-runها)، `css/app.css` (specificity برچسب + ردیف inline + عرض دیالوگ)، package.json (۱.۹.۲۷)؛ **جدید**: `docs/BUGFIX-ROUND76.md`، `scripts/e2e_pine76.py`؛ به‌علاوه CHANGELOG.
+- **تغییر**: `core/pine/stdlib/inputs.js` (normalizeOptions + snap واقعی)، `chart/pine-ui.js` (شاخهٔ string + buildInput/inline-runها)، `css/app.css` (specificity برچسب + ردیف inline + عرض دیالوگ)، package.json (۱.۹.۲۷)؛ **جدید**: `docs/archive/rounds/BUGFIX-ROUND76.md`، `scripts/e2e_pine76.py`؛ به‌علاوه CHANGELOG.

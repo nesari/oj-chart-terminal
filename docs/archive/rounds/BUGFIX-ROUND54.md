@@ -41,4 +41,4 @@ r52 ۳۴/۳۴، r51 ۳۱/۳۱، r50 ۷۲/۷۲، r49 ۳۱/۳۱، r45 ۱۸/۱۸، 
 
 ## آدیت diff نسبت به راند ۵۳
 
-در `src/` فقط `manager.js`. در ریشه: `package.json` (1.9.5)، `CHANGELOG.md`، `docs/BUGFIX-ROUND54.md`، `scripts/verify_round54.py` (+ دو پین فقط-تستی).
+در `src/` فقط `manager.js`. در ریشه: `package.json` (1.9.5)، `CHANGELOG.md`، `docs/archive/rounds/BUGFIX-ROUND54.md`، `scripts/verify_round54.py` (+ دو پین فقط-تستی).

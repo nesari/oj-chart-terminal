@@ -55,4 +55,4 @@
 ## آدیت diff
 
 - **تغییر**: `src/core/pine/interpreter.js` (copy-out در restore + ریست site.n در runBar)، `src/renderer/js/chart/pine-ui.js` (running/pendingRerun + مسیر chunked برای شکاف چندباره‌ای + اکسپوز rt در facade دیباگ)، package.json (۱.۹.۲۸)
-- **جدید**: `docs/BUGFIX-ROUND77.md`، `scripts/e2e_pine77.py`؛ به‌علاوه CHANGELOG
+- **جدید**: `docs/archive/rounds/BUGFIX-ROUND77.md`، `scripts/e2e_pine77.py`؛ به‌علاوه CHANGELOG

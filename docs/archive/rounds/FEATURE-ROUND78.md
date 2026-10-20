@@ -84,4 +84,4 @@
 
 ## آدیت diff
 - **تغییر:** `core/pine/types.js`، `core/pine/interpreter.js`، `core/pine/stdlib/time.js`، `core/pine/stdlib/request.js`، `core/pine/stdlib/objects.js`، `chart/pine-render-adapter.js`، `chart/pine-ui.js`، `css/app.css`، `package.json`، `scripts/e2e_pine76.py` (آپدیت مشروع شمارش رنگ)
-- **جدید:** `docs/FEATURE-ROUND78.md`، `scripts/verify_pine78.mjs`، `scripts/bench_pine78.mjs`، `scripts/e2e_pine78.py`
+- **جدید:** `docs/archive/rounds/FEATURE-ROUND78.md`، `scripts/verify_pine78.mjs`، `scripts/bench_pine78.mjs`، `scripts/e2e_pine78.py`

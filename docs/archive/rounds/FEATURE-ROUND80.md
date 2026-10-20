@@ -93,7 +93,7 @@
 ## فایل‌ها
 
 - تغییر: `src/renderer/js/chart/pine-render-adapter.js`، `src/core/pine/interpreter.js`، `src/renderer/js/chart/pine-ui.js`، `src/renderer/js/chart/manager.js`، `src/renderer/js/chart/toolbar.js`، `src/renderer/js/drawing/engine.js`، `src/renderer/js/drawing/ui.js`، `src/renderer/css/app.css`، `package.json`
-- جدید: `docs/FEATURE-ROUND80.md`، `scripts/verify_pine80.mjs`، `scripts/e2e_pine80.py`
+- جدید: `docs/archive/rounds/FEATURE-ROUND80.md`، `scripts/verify_pine80.mjs`، `scripts/e2e_pine80.py`
 
 ## یادداشت استفاده
 

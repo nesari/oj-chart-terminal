@@ -48,5 +48,5 @@
 ## آدیت diff نسبت به راند ۵۲
 
 - `src/` فقط: `src/renderer/js/drawing/engine.js`
-- `package.json` (1.9.3 → 1.9.4)، `CHANGELOG.md`، `docs/BUGFIX-ROUND53.md`
+- `package.json` (1.9.3 → 1.9.4)، `CHANGELOG.md`، `docs/archive/rounds/BUGFIX-ROUND53.md`
 - فقط-تستی: `scripts/verify_round53.py` (جدید)، پین نسخه در `verify_round52.py`، T4 + پین نسخه در `verify_round51.py`

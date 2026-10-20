@@ -85,4 +85,4 @@ weekends), M1 deep zoom, matching crosshair styles, panel resized wider.
   LWC style enum map), `src/renderer/js/ui/rightpanel.js` (resize + splitter visibility),
   `src/renderer/index.html` (splitter element), `src/renderer/css/app.css` (splitter styles),
   `src/renderer/js/app.js` (initResize call), `CHANGELOG.md`, `package.json` → 1.8.1
-- **Added**: `docs/BUGFIX-ROUND40.md`, `scripts/test_round40_axis_resize_cross.py`
+- **Added**: `docs/archive/rounds/BUGFIX-ROUND40.md`, `scripts/test_round40_axis_resize_cross.py`

@@ -130,7 +130,7 @@ The older phase scripts (`python3 scripts/test_phase2_modules.py`, `python3 scri
 - Strict CSP, sandboxed renderer, and every IPC payload is validated.
 - All web permissions are denied (`setPermissionRequestHandler` / `setPermissionCheckHandler`); the app only uses its own IPC for notifications.
 - Log contexts are auto-redacted (`password`/`token`/... never reach the log).
-- Details: `docs/SECURITY-ROUND81.md` and `docs/FEATURE-ROUND28.md`.
+- Details: `docs/SECURITY-ROUND81.md` and `docs/archive/rounds/FEATURE-ROUND28.md`.
 
 ## Diagnostics & logs
 

@@ -109,7 +109,7 @@ The date tab gained a mode radio:
 | `src/renderer/js/panels/session.js` | fetchChunk polling, base availability ladder, coverage toasts, dialog removed (merged), `SessionRange.pickBase` exposed |
 | `src/renderer/css/replaytrade.css` | `.gd-tabs/.gd-tab/.gd-modes/.gd-mode/#gd-mode-info` + `.gd-chip` styles |
 | `package.json` / `CHANGELOG.md` | 1.9.42 entry (fa) |
-| `docs/BUGFIX-ROUND86B.md` | this document |
+| `docs/archive/rounds/BUGFIX-ROUND86B.md` | this document |
 | `scripts/test_round86b_e2e_browser.py` | NEW e2e (31 checks) |
 
 Everything else — manager.js, replay.js, the real trade bridge, providers — is **untouched**

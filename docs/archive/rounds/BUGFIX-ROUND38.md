@@ -90,5 +90,5 @@ flyout, fibs flyout, drawn Gann Box, drawn Long Position.
 ## Files
 
 - **Modified**: `src/renderer/js/app.js` (one side-effect import + comment)
-- **Added**: `docs/BUGFIX-ROUND38.md`, `scripts/test_round38_toolbar_tools.py`, screenshot gallery
+- **Added**: `docs/archive/rounds/BUGFIX-ROUND38.md`, `scripts/test_round38_toolbar_tools.py`, screenshot gallery
 - **Version**: `package.json` → 1.7.9, `CHANGELOG.md` entry (Persian)

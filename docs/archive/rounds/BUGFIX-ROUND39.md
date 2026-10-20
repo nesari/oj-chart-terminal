@@ -109,7 +109,7 @@ with the alert items, arrow cursor, 720px window.
 
 ## Files
 
-- **Added**: `src/renderer/js/panels/news.js`, `docs/BUGFIX-ROUND39.md`,
+- **Added**: `src/renderer/js/panels/news.js`, `docs/archive/rounds/BUGFIX-ROUND39.md`,
   `scripts/test_round39_news_alerts.py`, screenshot gallery
 - **Modified**: `provider/provider_common.py` (calendar + `news` handler),
   `src/core/feed.js` (`news()`), `src/renderer/index.html` (rail tab + panel),

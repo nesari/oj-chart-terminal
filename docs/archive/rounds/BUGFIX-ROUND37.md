@@ -82,4 +82,4 @@ green) · round26 12/12 · round27 11/11 · round29 10/10.
 
 - Modified: `src/renderer/js/chart/toolbar.js`, `src/renderer/js/drawing/engine.js`,
   `src/renderer/css/app.css`, `CHANGELOG.md`, `package.json`
-- Added: `docs/BUGFIX-ROUND37.md`, `scripts/test_round37_tabs_vline.py`
+- Added: `docs/archive/rounds/BUGFIX-ROUND37.md`, `scripts/test_round37_tabs_vline.py`

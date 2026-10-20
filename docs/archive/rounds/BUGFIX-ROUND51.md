@@ -83,5 +83,5 @@ LWC است که LargeDashed را `[6,6]` می‌کشد.
 - `src/renderer/js/drawing/engine.js`، `src/renderer/js/chart/manager.js`،
   `src/renderer/js/panels/alerts.js`، `src/renderer/css/app.css`
 - `main.js`، `package.json` (1.9.2)، `assets/alert-icon.png` (جدید)
-- `CHANGELOG.md`، `docs/BUGFIX-ROUND51.md`، `scripts/verify_round51.py` +
+- `CHANGELOG.md`، `docs/archive/rounds/BUGFIX-ROUND51.md`، `scripts/verify_round51.py` +
   `scripts/diag_pan51.py` + به‌روزرسانی تست‌منتظر رگرسیون‌ها

@@ -63,4 +63,4 @@ r54 ۴۵/۴۵، r53 ۵۰/۵۰، r52 ۳۴/۳۴، r51 ۳۱/۳۱ (دوبار)، r50
 
 ## آدیت diff نسبت به راند ۵۴
 
-در `src/`: فقط `index.html` + `js/ui/login.js` + `css/app.css`. پرووایدر: `provider_common.py` + `demo.py` + `mt5.py`. ریشه: `package.json` (1.9.6)، `CHANGELOG.md`، `docs/FEATURE-ROUND55.md`، `scripts/verify_round55.py` (+ پین‌ها/ری‌ترای فقط-تستی در verify_round51/52/53/54).
+در `src/`: فقط `index.html` + `js/ui/login.js` + `css/app.css`. پرووایدر: `provider_common.py` + `demo.py` + `mt5.py`. ریشه: `package.json` (1.9.6)، `CHANGELOG.md`، `docs/archive/rounds/FEATURE-ROUND55.md`، `scripts/verify_round55.py` (+ پین‌ها/ری‌ترای فقط-تستی در verify_round51/52/53/54).

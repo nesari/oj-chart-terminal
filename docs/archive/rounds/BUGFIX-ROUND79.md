@@ -54,4 +54,4 @@ const key = this._paintKey(from, to);   // از/به صحیح
 ## آدیت diff
 
 - **تغییر**: `src/renderer/js/chart/pine-render-adapter.js` (کلید اعشاری + `_vertKey` + اشتراک رویداد محدوده در `attach` + استخراج `_paintIfKeyChanged`)، `package.json` (۱.۹٫۳۰)، CHANGELOG.
-- **جدید**: `docs/BUGFIX-ROUND79.md` (همین سند)، `scripts/e2e_pine79.py`.
+- **جدید**: `docs/archive/rounds/BUGFIX-ROUND79.md` (همین سند)، `scripts/e2e_pine79.py`.

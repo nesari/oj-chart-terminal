@@ -91,6 +91,6 @@
 
 ## ۴. آدیت diff
 
-- **جدید:** `src/core/pine/` (۱۵ فایل)، `chart/pine-ui.js`، `chart/pine-render-adapter.js`، `panels/pine-editor.js`، `panels/pine-scripts-store.js`، `scripts/verify_pine74.mjs`، `scripts/pine-fixtures/*.pine` (۵ فیکسچر)، `docs/PINE-ENGINE-PLAN.md`، `docs/FEATURE-ROUND74.md`
+- **جدید:** `src/core/pine/` (۱۵ فایل)، `chart/pine-ui.js`، `chart/pine-render-adapter.js`، `panels/pine-editor.js`، `panels/pine-scripts-store.js`، `scripts/verify_pine74.mjs`، `scripts/pine-fixtures/*.pine` (۵ فیکسچر)، `docs/PINE-ENGINE-PLAN.md`، `docs/archive/rounds/FEATURE-ROUND74.md`
 - **تغییر:** `core/indicators.js` (فقط refactor: kernels از `pine/stdlib/ta.js` import می‌شوند — ریاضی دست‌نخورده)، `chart/manager.js` ( delegation pine: recompute/tick/frame/serialize/restore/drop + frac برای pineScripts + فریم رندر کانواس pine)، `chart/toolbar.js` (دکمهٔ pine-btn)، `ui/icons.js` (آیکون pine)، `app.js` (init/فاساد `__app`)، `index.html` (دکمهٔ نوار بالا)، `css/app.css` (ادیتور/زیرپن pine)
 - به‌علاوه: `package.json` (۱.۹.۲۵)، CHANGELOG، README (حذف خط «این بیلد عمداً بدون اندیکاتور/ادیتور Pine است»)
