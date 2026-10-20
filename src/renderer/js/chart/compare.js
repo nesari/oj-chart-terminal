@@ -126,8 +126,9 @@ const PALETTE = ['#f7c948', '#e91e63', '#9c27b0', '#00bcd4', '#ff9800'];
     U.clear(box);
     for (const c of pane._compares) {
       const chip = U.el('span', 'cmp-chip', box);
-      chip.innerHTML = `<i></i>${c.symbol}`;
-      chip.querySelector('i').style.background = c.color; // CSP: CSSOM not style="" attr
+      const dot = U.el('i', '', chip);
+      chip.appendChild(document.createTextNode(c.symbol));
+      dot.style.background = c.color; // CSP: CSSOM not style="" attr
       const x = U.el('button', 'cmp-x', chip);
       x.innerHTML = icon('x');
       x.title = 'Remove ' + c.symbol;
@@ -145,8 +146,11 @@ const PALETTE = ['#f7c948', '#e91e63', '#9c27b0', '#00bcd4', '#ff9800'];
       if (has) {
         for (const c of pane._compares) {
           const it = U.el('button', 'pu-item', p);
-          it.innerHTML = `<span class="ic">■</span><span>${c.symbol}</span>`;
-          it.querySelector('.ic').style.color = c.color; // CSP: CSSOM not style="" attr
+          const ic = U.el('span', 'ic', it);
+          ic.textContent = '■';
+          const nm = U.el('span', '', it);
+          nm.textContent = c.symbol;
+          ic.style.color = c.color; // CSP: CSSOM not style="" attr
           const tr = U.el('button', 'pu-star pu-trash', it);
           tr.innerHTML = icon('trash');
           tr.title = 'Remove';
@@ -182,7 +186,10 @@ const PALETTE = ['#f7c948', '#e91e63', '#9c27b0', '#00bcd4', '#ff9800'];
           for (const s of hits.slice(0, 8)) {
             if (pane && pane._compares && pane._compares.some((c) => c.symbol === s)) continue;
             const it = U.el('button', 'pu-item', res);
-            it.innerHTML = `<span class="ic">${icon('search')}</span><span>${s}</span>`;
+            const ic = U.el('span', 'ic', it);
+            ic.innerHTML = icon('search');
+            const nm = U.el('span', '', it);
+            nm.textContent = s;
             it.addEventListener('click', () => {
               Toolbar.closePopup();
               addCompare(App.activePane, s);

@@ -56,8 +56,8 @@ const DOM_CAP = 600;
     row.dataset.seq = e.seq;
     row.innerHTML =
       '<span class="dg-t">' + timeLabel(e.t) + '</span>' +
-      '<span class="dg-l">' + e.lvl.toUpperCase() + '</span>' +
-      '<span class="dg-c">' + e.cat + '</span>' +
+      '<span class="dg-l">' + U.esc(String(e.lvl).toUpperCase()) + '</span>' +
+      '<span class="dg-c">' + U.esc(e.cat) + '</span>' +
       '<span class="dg-m"></span>';
     row.querySelector('.dg-m').textContent = e.msg;
     if (e.ctx !== undefined) {

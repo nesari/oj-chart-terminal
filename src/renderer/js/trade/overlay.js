@@ -481,15 +481,15 @@ const TradeOverlay = {
      helpers so the hover tag and the drag chip can never disagree. */
   _tipHtml(pane, st, l) {
     const dg = (Trade.specSync(st.symbol) || {}).digits || 5;
-    const sym = st.symbol || pane.symbol || '';
+    const sym = U.esc(st.symbol || pane.symbol || '');
     const money = (v) => '<div class="tht-row tht-money ' +
       (v > 0.004 ? 'pos' : (v < -0.004 ? 'neg' : '')) + '">' + fmtMoney(v) + '</div>';
     if (l.kind === 'entry') {
       const pos = Trade.positions.find((p) => p.ticket === l.ticket);
       if (!pos) return '';
       const v = Trade.profitOf(pos);
-      return '<div class="tht-row"><b>' + (pos.type === 0 ? 'BUY' : 'SELL') + ' ' + pos.volume +
-        ' · ' + sym + '</b><span class="tht-dim">#' + pos.ticket + '</span></div>' +
+      return '<div class="tht-row"><b>' + (pos.type === 0 ? 'BUY' : 'SELL') + ' ' + U.esc(pos.volume) +
+        ' · ' + sym + '</b><span class="tht-dim">#' + U.esc(pos.ticket) + '</span></div>' +
         money(v) +
         '<div class="tht-hint">↕ drag to set ' + (pos.type === 0 ? 'TP (up) / SL (down)' : 'SL (up) / TP (down)') + '</div>';
     }
@@ -503,13 +503,13 @@ const TradeOverlay = {
       const ref = pos || (ord ? this._orderPos(ord) : null);
       const d = ref ? this._dist(st.symbol, ref.open, l.price) : null;
       const ctx = pos
-        ? '<div class="tht-row tht-dim">' + (pos.type === 0 ? 'BUY' : 'SELL') + ' ' + pos.volume +
+        ? '<div class="tht-row tht-dim">' + (pos.type === 0 ? 'BUY' : 'SELL') + ' ' + U.esc(pos.volume) +
           ' → ' + Number(pos.open).toFixed(dg) + '</div>'
-        : (ord ? '<div class="tht-row tht-dim">' + (OT_NAME[ord.type] || 'Order') + ' ' + ord.volume +
+        : (ord ? '<div class="tht-row tht-dim">' + (OT_NAME[ord.type] || 'Order') + ' ' + U.esc(ord.volume) +
           ' → ' + Number(ord.price).toFixed(dg) + '</div>' : '');
       return '<div class="tht-row"><b class="' + (l.kind === 'sl' ? 'tht-sl' : 'tht-tp') + '">' +
         l.kind.toUpperCase() + ' ' + Number(l.price).toFixed(dg) + ' · ' + sym + '</b>' +
-        (pos ? '<span class="tht-dim">#' + pos.ticket + '</span>' : '<span class="tht-dim">pending</span>') + '</div>' +
+        (pos ? '<span class="tht-dim">#' + U.esc(pos.ticket) + '</span>' : '<span class="tht-dim">pending</span>') + '</div>' +
         (v != null ? money(v) : '') +
         (d ? '<div class="tht-row tht-dim">' + d.txt + '</div>' : '') +
         ctx +
@@ -517,8 +517,8 @@ const TradeOverlay = {
     }
     if (l.kind === 'order') {
       const o = Trade.orders.find((x) => x.ticket === l.ticket);
-      return '<div class="tht-row"><b class="tht-ord">' + (o ? (OT_NAME[o.type] || '') + ' ' + o.volume : 'Order') +
-        ' · ' + sym + '</b>' + (o ? '<span class="tht-dim">#' + o.ticket + '</span>' : '') + '</div>' +
+      return '<div class="tht-row"><b class="tht-ord">' + (o ? (OT_NAME[o.type] || '') + ' ' + U.esc(o.volume) : 'Order') +
+        ' · ' + sym + '</b>' + (o ? '<span class="tht-dim">#' + U.esc(o.ticket) + '</span>' : '') + '</div>' +
         '<div class="tht-row tht-dim">' + Number(l.price).toFixed(dg) + '</div>';
     }
     return '';

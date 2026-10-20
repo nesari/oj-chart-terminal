@@ -36,6 +36,7 @@
  * @module trade/history
  */
 import { App } from '../../../core/state.js';
+import { U } from '../core/util.js';
 import { Trade } from './state.js';
 import { TradeRoute } from './route.js';
 import { TZ } from '../../../core/timezone.js';
@@ -156,8 +157,8 @@ function pairsOf(deals, symbol) {
 function tipLine(inDeal, outDeal, symbol) {
   const net = (outDeal.profit || 0) + (outDeal.commission || 0) + (outDeal.swap || 0);
   const c = (inDeal.comment || '').trim();
-  return (c ? c + ' ' : '') + '#' + inDeal.ticket + ' -> #' + outDeal.ticket +
-    ', profit ' + (net >= 0 ? '' : '-') + Math.abs(net).toFixed(2) + ', ' + symbol;
+  return (c ? U.esc(c) + ' ' : '') + '#' + U.esc(inDeal.ticket) + ' -> #' + U.esc(outDeal.ticket) +
+    ', profit ' + (net >= 0 ? '' : '-') + Math.abs(net).toFixed(2) + ', ' + U.esc(symbol);
 }
 
 const TradeHistory = {
@@ -546,7 +547,7 @@ const TradeHistory = {
     if (cursorPrice != null && isFinite(cursorPrice)) {
       html += '<div class="tht-row">' + Number(cursorPrice).toFixed(dg) + '</div>';
     }
-    html += '<div class="tht-row tht-dim">' + od.volume + ' &middot; ' +
+    html += '<div class="tht-row tht-dim">' + U.esc(od.volume) + ' &middot; ' +
       fmtT(idl.time) + ' &rarr; ' + fmtT(od.time) + '</div>';
     tip.innerHTML = html;
     /* ROUND107 ROOT FIX: '' only clears the inline display — the class rule

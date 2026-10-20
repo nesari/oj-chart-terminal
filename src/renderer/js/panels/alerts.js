@@ -700,7 +700,7 @@ let audioCtx = null;
     const dlg = U.el('div', 'dialog', back);
     const isTime = a.kind === 'time';
     const CONDS = ['Crossing Up', 'Crossing Down', 'Crossing', 'Greater Than', 'Less Than'];
-    dlg.innerHTML = `<h3>${a.created && Alerts.list.includes(a) ? 'Manage' : 'New'} Alert — ${a.symbol}<button class="mini-btn dlg-x">${icon('x')}</button></h3>` +
+    dlg.innerHTML = `<h3>${a.created && Alerts.list.includes(a) ? 'Manage' : 'New'} Alert — ${U.esc(a.symbol)}<button class="mini-btn dlg-x">${icon('x')}</button></h3>` +
       (isTime
         ? `<div class="dlg-row"><label>Trigger at (${App.tz === 'broker' ? 'server time' : App.tz})<input type="datetime-local" id="ma-time" value="${chartToWall(a.time)}" spellcheck="false"></label></div>`
         : `<div class="dlg-row"><label>Condition<select id="ma-cond">${CONDS.map((c) => `<option${c === a.cond ? ' selected' : ''}>${c}</option>`).join('')}</select></label></div>
@@ -889,7 +889,7 @@ let audioCtx = null;
     const sub = isBand && band ? `${fmt(band.bottom)} – ${fmt(band.top)}` : band ? fmt(band.top) : '';
     dlg2.innerHTML = `<h3>${d.alert ? 'Edit' : 'Create'} Alert — ${toolName}</h3>
       <div class="dlg-row u-dlg-note">
-        <span>${d.symbol || (pane && pane.symbol) || ''} ${sub ? '· zone ' + sub : ''}</span>
+        <span>${U.esc(d.symbol || (pane && pane.symbol) || '')} ${sub ? '· zone ' + sub : ''}</span>
       </div>
       <div class="dlg-row"><label>Condition<select id="da-cond">
         ${CONDS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}

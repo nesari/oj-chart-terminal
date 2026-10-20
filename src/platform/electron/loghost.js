@@ -62,7 +62,16 @@ export function installElectronHost() {
       if (!box) return;
       const t = document.createElement('div');
       t.className = 'toast err';
-      t.innerHTML = '<div class="t-body">⚠ ' + String(text).slice(0, 160) + '<br><span style="opacity:.7;font-size:11px">Details: Diagnostics panel</span></div>';
+      const body = document.createElement('div');
+      body.className = 't-body';
+      body.appendChild(document.createTextNode('⚠ ' + String(text).slice(0, 160)));
+      body.appendChild(document.createElement('br'));
+      const more = document.createElement('span');
+      more.style.opacity = '.7';
+      more.style.fontSize = '11px';
+      more.textContent = 'Details: Diagnostics panel';
+      body.appendChild(more);
+      t.appendChild(body);
       box.appendChild(t);
       setTimeout(() => { try { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; } catch (e) {} }, 5200);
       setTimeout(() => { try { t.remove(); } catch (e) {} }, 5600);
