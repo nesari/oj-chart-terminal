@@ -331,8 +331,8 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 ## ۵) چک‌لیست پیشرفت
 
 ```
-[ ] F0.1  git init + .gitignore
-[ ] F0.2  tag baseline
+[x] F0.1  git init + .gitignore
+[x] F0.2  tag baseline
 [ ] F1.1  permission check handler            (P0)
 [ ] F1.2  AppUserModelID packaged             (P1)
 [ ] F1.3  version از app.getVersion()         (P1)
