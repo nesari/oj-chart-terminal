@@ -342,7 +342,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 [x] F1.7  رفع تزریق HTML در compare/watchlist (P1)
 [x] F1.8  تصحیح README                        (P1)
 [x] F2.1  اسکریپت‌های npm                     (P1)
-[ ] F2.2  چهار check اسکریپت                  (P1)
+[x] F2.2  چهار check اسکریپت                  (P1)
 [ ] F2.3  CI workflow                         (P1)
 [ ] F2.4  ثبت smoke harness                   (P1)
 [ ] F5.1  بازنویسی README                     (P2)
