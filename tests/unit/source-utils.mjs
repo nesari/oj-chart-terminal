@@ -23,5 +23,5 @@ export function readSource(rel) {
       }
     }
   }
-  return out;
+  return out.replace(/\r\n/g, '\n');
 }

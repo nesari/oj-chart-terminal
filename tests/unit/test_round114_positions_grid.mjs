@@ -9,8 +9,8 @@ const ok = (cond, name) => {
   else { fail++; console.log('  ✗ ' + name); }
 };
 
-const dockSrc = fs.readFileSync('src/renderer/js/trade/dock.js', 'utf8');
-const ocSrc = fs.readFileSync('src/renderer/js/trade/oneclick.js', 'utf8');
+const dockSrc = fs.readFileSync('src/renderer/js/trade/dock.js', 'utf8').replace(/\r\n/g, '\n');
+const ocSrc = fs.readFileSync('src/renderer/js/trade/oneclick.js', 'utf8').replace(/\r\n/g, '\n');
 
 /* ---- mirrors of the pure functions (kept in sync with the sources) ---- */
 const POS_COLS_IDS = ['time', 'symbol', 'ticket', 'type', 'volume', 'oprice', 'sl', 'tp',
