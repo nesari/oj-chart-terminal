@@ -23,6 +23,7 @@
       "preload.js",
       "src/**/*",
       "provider/**/*",
+      "!provider/__pycache__/**",
       "assets/**/*",
       "!scripts/**",
       "!docs/**"
