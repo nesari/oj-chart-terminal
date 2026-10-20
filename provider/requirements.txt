@@ -1,0 +1,7 @@
+# Runtime dependencies of the Python data provider (demo + MT5).
+# Install with: python -m pip install -r provider/requirements.txt
+websockets>=13
+
+# Real MT5 data additionally needs the Windows-only MetaTrader5 package:
+#   python -m pip install MetaTrader5
+# It is intentionally not listed here so demo mode works on every OS.

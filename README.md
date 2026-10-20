@@ -9,8 +9,8 @@ A lightweight TradingView-style charting terminal for Windows, built with Electr
 - macOS keeps the native traffic-light window controls (`titleBarStyle: 'hiddenInset'`); Windows and Linux use the frameless shell whose minimize/maximize/close buttons live at the right end of the tab strip.
 - Node.js LTS (https://nodejs.org)
 - Python 3.8+ (`python`/`python3` must be available in PATH)
-- For real MT5 data: MetaTrader 5 terminal installed + `pip install MetaTrader5 websockets`
-- For demo mode only: `pip install websockets`
+- Provider dependencies: `python -m pip install -r provider/requirements.txt` (installs `websockets`)
+- For real MT5 data: MetaTrader 5 terminal installed + `python -m pip install MetaTrader5`
 
 ## Run (development / from source)
 
@@ -119,7 +119,7 @@ The older phase scripts (`python3 tests/unit/test_phase2_modules.py`, `python3 t
 
 ## Troubleshooting
 
-- If the window opens but cannot connect: make sure `pip install websockets` worked and no other app occupies port **8777**.
+- If the window opens but cannot connect: make sure `python -m pip install -r provider/requirements.txt` worked and no other app occupies port **8777**.
 - Provider crash log: `%TEMP%\mt5_provider_crash.log`.
 - Drawing data / favorites / alerts / saved layouts / Pine scripts are stored locally in the app's `localStorage`
   (keys like `mt5_drawings`, `mt5_watchlist`, `mt5_settings`, `mt5_tool_tpl`, `mt5_pine_scripts`, ...) — plain JSON,
