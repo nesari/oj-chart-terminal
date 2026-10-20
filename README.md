@@ -166,6 +166,7 @@ The script refuses a dirty tree (override: `--allow-dirty`) or an existing tag, 
 ### 📚 Documentation
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — module boundaries and data flow
+- [`docs/README.md`](docs/README.md) — documentation index (living docs + archive)
 - [`docs/PINE-ENGINE-PLAN.md`](docs/PINE-ENGINE-PLAN.md) — Pine Script v6 engine
 - [`docs/HANDOFF-ROADMAP.md`](docs/HANDOFF-ROADMAP.md) — engineering roadmap
 - [`CHANGELOG.md`](CHANGELOG.md) — release history by major line
