@@ -34,11 +34,11 @@
     },
     "mac": {
       "target": "dmg",
-      "icon": "assets/logo.png"
+      "icon": "assets/icon-1024.png"
     },
     "linux": {
       "target": "AppImage",
-      "icon": "assets/logo.png"
+      "icon": "assets/icon-1024.png"
     },
     "nsis": {
       "oneClick": false,
