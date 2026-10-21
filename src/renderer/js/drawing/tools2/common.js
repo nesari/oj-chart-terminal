@@ -74,6 +74,15 @@ const HIT = 7;
     }
     return best < minDist;
   }
+  /* Ray-cast fill test for closed shapes; P is already in screen space. */
+  function insidePoly(x, y, P) {
+    let hit = false;
+    for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+      const xi = P[i][0], yi = P[i][1], xj = P[j][0], yj = P[j][1];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1e-9) + xi) hit = !hit;
+    }
+    return hit;
+  }
   function applyStroke(ctx, d) {
     ctx.strokeStyle = d.opts.color || '#2962ff';
     ctx.lineWidth = d.opts.width || 2;
@@ -223,4 +232,4 @@ const HIT = 7;
   forkTool('pitchfork_ms', 'Modified Schiff Pitchfork', 'pitchfork', 'mschiff');
   forkTool('pitchfork_i', 'Inside Pitchfork', 'pitchfork', 'inside');
 
-export { ptXY, normRect, arrowHead, drawAnnotation, polyPts, distToPath, applyStroke, fillAlphaOf, fillColorOf, chipLabel, forkMid, forkOrigin, forkMedianEnd, forkProngStarts, forkSegs, forkDraw, forkTool };
+export { ptXY, normRect, arrowHead, drawAnnotation, polyPts, distToPath, insidePoly, applyStroke, fillAlphaOf, fillColorOf, chipLabel, forkMid, forkOrigin, forkMedianEnd, forkProngStarts, forkSegs, forkDraw, forkTool };

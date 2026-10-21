@@ -264,6 +264,34 @@ import { Log } from '../../../core/logger.js';
       { kind: 'fill', label: 'Background' },
       { kind: 'check', key: 'showAngles', label: 'Angles' },
     ],
+    /* ROUND257: Gann Square / Fixed and Gann Fan had no schema at all — the
+       dialog fell back to a single line row, so diagonals, labels and the
+       fan's 1x1 colour were not editable. */
+    gannsquare: [
+      { kind: 'line' },
+      { kind: 'color', key: 'diagColor', label: 'Diagonal 1' },
+      { kind: 'color', key: 'diag2Color', label: 'Diagonal 2' },
+      { kind: 'number', key: 'timeLevels', label: 'Time levels', min: 1, max: 32 },
+      { kind: 'number', key: 'priceLevels', label: 'Price levels', min: 1, max: 32 },
+      { kind: 'check', key: 'showLabels', label: 'Labels' },
+      { kind: 'check', key: 'reverse', label: 'Reverse' },
+      { kind: 'fill', label: 'Background' },
+    ],
+    gannsquaref: [
+      { kind: 'line' },
+      { kind: 'color', key: 'diagColor', label: 'Diagonal 1' },
+      { kind: 'color', key: 'diag2Color', label: 'Diagonal 2' },
+      { kind: 'number', key: 'timeLevels', label: 'Time levels', min: 1, max: 32 },
+      { kind: 'number', key: 'priceLevels', label: 'Price levels', min: 1, max: 32 },
+      { kind: 'check', key: 'showLabels', label: 'Labels' },
+      { kind: 'check', key: 'reverse', label: 'Reverse' },
+      { kind: 'fill', label: 'Background' },
+    ],
+    gannfan: [
+      { kind: 'line' },
+      { kind: 'color', key: 'mainColor', label: '1x1 color', fallback: '#2962ff' },
+      { kind: 'check', key: 'showLabels', label: 'Ratio labels' },
+    ],
     /* round 58: TV Fibonacci flyout additions — Style tabs mirror TV */
     fibtz: [
       { kind: 'line' },
@@ -628,9 +656,16 @@ import { Log } from '../../../core/logger.js';
       document.removeEventListener('keydown', onKey);
       if (dlg) { dlg.remove(); dlg = null; }
       if (commit) {
+        const wasTemp = isTemp;
         delete d.opts.temp;
         App.drawings.save();
         persistLast();
+        /* Text/Note are added to the store before their settings dialog opens
+           so they can be previewed live. Commit is the real creation — push
+           the same undo step _finish() pushes for every other tool. */
+        if (wasTemp && App.undo) {
+          App.undo.push({ kind: 'add', symbol: d.symbol, d: JSON.parse(JSON.stringify(d)) });
+        }
       } else {
         /* restore snapshot in place — the drawing object identity must not change */
         const so = JSON.parse(JSON.stringify(snap.opts));

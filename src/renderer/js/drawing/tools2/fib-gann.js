@@ -114,7 +114,19 @@ import { applyStroke, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, norm
     hitBody(v, d) {
       return (x, y) => {
         const [a, b] = polyPts(v, d);
-        return U.distSeg(x, y, a[0], a[1], b[0], b[1]) < 6;
+        const rx = Math.abs(b[0] - a[0]), ry = Math.abs(b[1] - a[1]);
+        for (const lv of levelsOfF(d, [0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.618, 2.618])) {
+          if (lv.on === false) continue;
+          const ex = rx * lv.r, ey = ry * lv.r;
+          if (ex < 0.5 || ey < 0.5) continue;
+          const P = [];
+          for (let k = 0; k <= 64; k++) {
+            const th = (k / 64) * Math.PI * 2;
+            P.push([a[0] + Math.cos(th) * ex, a[1] + Math.sin(th) * ey]);
+          }
+          if (distToPath(x, y, P, 6)) return true;
+        }
+        return false;
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
@@ -316,7 +328,9 @@ import { applyStroke, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, norm
         const t2 = U.logicalToTime(v.times, l2);
         const p2 = d.points[0].p + dP * a * 4000;
         const E = [v.xOf(t2), v.yOf(p2)];
-        ctx.strokeStyle = isMain ? '#2962ff' : 'rgba(120,123,134,.7)';
+        ctx.save();
+        ctx.globalAlpha = isMain ? 1 : 0.62;
+        ctx.strokeStyle = isMain ? (d.opts.mainColor || '#2962ff') : (d.opts.color || '#787b86');
         ctx.lineWidth = isMain ? (d.opts.width || 1) + 0.4 : (d.opts.width || 1);
         ctx.setLineDash([]);
         const seg = U.clipLine(O[0], O[1], E[0], E[1], v.pw, v.ph);
@@ -325,6 +339,7 @@ import { applyStroke, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, norm
           ctx.fillStyle = ctx.strokeStyle;
           ctx.fillText(`${a}x${b}`, (seg ? seg[2] : E[0]) - 22, (seg ? seg[3] : E[1]) - 3);
         }
+        ctx.restore();
       }
       ctx.restore();
     },
@@ -532,7 +547,22 @@ import { applyStroke, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, norm
     hitBody(v, d) {
       return (x, y) => {
         const [a, b] = polyPts(v, d);
-        return U.distSeg(x, y, a[0], a[1], b[0], b[1]) < 6;
+        const r0 = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        if (r0 < 0.5) return false;
+        const th0 = Math.atan2(b[1] - a[1], b[0] - a[0]);
+        const k = isFinite(d.opts.coeff) ? Math.max(1.01, d.opts.coeff) : 1.6180339887;
+        const turns = isFinite(d.opts.turns) ? U.clamp(d.opts.turns, 1, 8) : 3;
+        const grow = Math.log(k) / (Math.PI / 2);
+        const steps = Math.min(720, Math.max(96, Math.round(turns * 72)));
+        let prev = null;
+        for (let i = 0; i <= steps; i++) {
+          const th = (i / steps) * turns * Math.PI * 2;
+          const r = r0 * Math.exp(grow * th);
+          const p = [a[0] + Math.cos(th0 + th) * r, a[1] + Math.sin(th0 + th) * r];
+          if (prev && U.distSeg(x, y, prev[0], prev[1], p[0], p[1]) < 6) return true;
+          prev = p;
+        }
+        return false;
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
@@ -582,14 +612,23 @@ import { applyStroke, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, norm
       return (x, y) => {
         const [a, b] = polyPts(v, d);
         const dx = b[0] - a[0], dy = b[1] - a[1];
+        if (d.opts.showTrend !== false && U.distSeg(x, y, a[0], a[1], b[0], b[1]) < 5) return true;
+        const full = d.opts.fullscreen === true;
+        const phiB = Math.atan2(Math.sign(dy) || 1, Math.sign(dx) || 1);
         for (const lv of levelsOfF(d, [0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.618, 2.618])) {
           if (lv.on === false) continue;
-          const k = lv.r;
-          const ex = Math.abs(dx) || 1, ey = Math.abs(dy) || 1;
-          const nx = (x - a[0]) / (ex * k), ny = (y - a[1]) / (ey * k);
-          if (Math.abs(Math.hypot(nx, ny) - 1) < 0.05) return true;
+          const rx = Math.max(0.5, Math.abs(dx) * lv.r);
+          const ry = Math.max(0.5, Math.abs(dy) * lv.r);
+          const a0 = full ? 0 : phiB - Math.PI / 2;
+          const a1 = full ? Math.PI * 2 : phiB + Math.PI / 2;
+          const P = [];
+          for (let k = 0; k <= 64; k++) {
+            const th = a0 + ((a1 - a0) * k) / 64;
+            P.push([a[0] + Math.cos(th) * rx, a[1] + Math.sin(th) * ry]);
+          }
+          if (distToPath(x, y, P, 6)) return true;
         }
-        return U.distSeg(x, y, a[0], a[1], b[0], b[1]) < 5;
+        return false;
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },

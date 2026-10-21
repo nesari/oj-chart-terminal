@@ -380,9 +380,11 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       ctx.moveTo(A[0], A[1]);
       ctx.arc(A[0], A[1], r, a0, a0 + sweep, sweep < 0);
       ctx.closePath();
-      ctx.globalAlpha = fillAlphaOf(d);
-      ctx.fillStyle = fillColorOf(d);
-      ctx.fill();
+      if (d.opts.fill !== false) {
+        ctx.globalAlpha = fillAlphaOf(d);
+        ctx.fillStyle = fillColorOf(d);
+        ctx.fill();
+      }
       ctx.globalAlpha = 1;
       applyStroke(ctx, d);
       ctx.stroke();
@@ -589,7 +591,13 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       }
     },
     handles(v, d) { return polyPts(v, d); },
-    hitBody(v, d) { return measurerHit(v, d); },
+    hitBody(v, d) {
+      return (x, y) => {
+        const n = normRect(d);
+        const xL = v.xOf(n.tL), xR = v.xOf(n.tR);
+        return x >= Math.min(xL, xR) - 5 && x <= Math.max(xL, xR) + 5 && y >= 0 && y <= v.ph;
+      };
+    },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
   };
   TOOLS.datepricerange = {

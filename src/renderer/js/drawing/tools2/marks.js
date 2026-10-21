@@ -57,9 +57,20 @@ import { TH } from './analysis.js';
     hitBody(v, d) {
       return (x, y) => {
         const [a, b, c] = polyPts(v, d);
-        return U.distSeg(x, y, a[0], a[1], b[0], b[1]) < 6 ||
-               U.distSeg(x, y, c[0], c[1], b[0], b[1]) < 6 ||
-               U.distSeg(x, y, a[0], a[1], c[0], c[1]) < 6;
+        if (U.distSeg(x, y, a[0], a[1], c[0], c[1]) < 6) return true;
+        const a0 = Math.atan2(a[1] - b[1], a[0] - b[0]);
+        const a1 = Math.atan2(c[1] - b[1], c[0] - b[0]);
+        let da = a1 - a0;
+        while (da > Math.PI) da -= Math.PI * 2;
+        while (da < -Math.PI) da += Math.PI * 2;
+        const T = (v.w + v.h) * 3;
+        for (const lv of levelsOfF(d, [0, 0.382, 0.5, 0.618, 1])) {
+          if (lv.on === false) continue;
+          const ang = a0 + da * U.clamp(lv.r, 0, 1);
+          const seg = U.clipLine(b[0], b[1], b[0] + Math.cos(ang) * T, b[1] + Math.sin(ang) * T, v.pw, v.ph);
+          if (seg && U.distSeg(x, y, seg[0], seg[1], seg[2], seg[3]) < 6) return true;
+        }
+        return false;
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
@@ -81,12 +92,17 @@ import { TH } from './analysis.js';
       const bw = lw + 16;
       const bx = A[0], by = A[1] - bh / 2;
       applyStroke(ctx, d);
-      ctx.fillStyle = d.opts.fillColor || d.opts.color || '#2962ff';
-      ctx.globalAlpha = typeof d.opts.fillOpacity === 'number' ? d.opts.fillOpacity : 0.9;
+      if (d.opts.fill !== false) {
+        ctx.save();
+        ctx.fillStyle = d.opts.fillColor || d.opts.color || '#2962ff';
+        ctx.globalAlpha = typeof d.opts.fillOpacity === 'number' ? d.opts.fillOpacity : 0.9;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 6); else ctx.rect(bx, by, bw, bh);
+        ctx.fill();
+        ctx.restore();
+      }
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 6); else ctx.rect(bx, by, bw, bh);
-      ctx.fill();
-      ctx.globalAlpha = 1;
       ctx.stroke();
       // leader line + arrow to B
       ctx.beginPath(); ctx.moveTo(bx + bw / 2, by + bh / 2); ctx.lineTo(B[0], B[1]); ctx.stroke();
@@ -160,10 +176,12 @@ import { TH } from './analysis.js';
       ctx.lineWidth = Math.max(2, d.opts.width || 2);
       ctx.setLineDash([]);
       ctx.beginPath(); ctx.moveTo(x, y + s / 2); ctx.lineTo(x, y - s / 2); ctx.stroke();
-      ctx.fillStyle = d.opts.fillColor || d.opts.color || '#2962ff';
-      ctx.beginPath();
-      ctx.moveTo(x, y - s / 2); ctx.lineTo(x + s * 0.8, y - s / 4); ctx.lineTo(x, y);
-      ctx.closePath(); ctx.fill();
+      if (d.opts.fill !== false) {
+        ctx.fillStyle = d.opts.fillColor || d.opts.color || '#2962ff';
+        ctx.beginPath();
+        ctx.moveTo(x, y - s / 2); ctx.lineTo(x + s * 0.8, y - s / 4); ctx.lineTo(x, y);
+        ctx.closePath(); ctx.fill();
+      }
       ctx.restore();
       drawAnnotation(v, d, x + s, y + 3, { x0: x + s, x1: x + s, y0: y, y1: y + s });
     },

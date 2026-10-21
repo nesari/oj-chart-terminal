@@ -106,15 +106,21 @@ const HIT = 7;
     _lOf(x) { return this.pane.chart.timeScale().coordinateToLogical(x); }
     /* ROUND246: FRACTIONAL logical for magnet-off placement — this LWC build
        rounds coordinateToLogical to whole bars, which would pin every
-       "free" anchor to a bar anyway. The visible range maps linearly over
-       the canvas width, so the fraction survives. Falls back to _lOf. */
+       "free" anchor to a bar anyway. Map through the *plot* coordinates
+       (the price axis is NOT part of the time scale) instead of the full
+       canvas width; the old /clientWidth math shifted every free-placed
+       anchor left by the price-axis width. Falls back to _lOf. */
     _lFreeOf(x) {
       try {
         const ts = this.pane.chart.timeScale();
         const lr = ts.getVisibleLogicalRange();
-        const w = this.canvas.clientWidth;
-        if (!lr || !w || !(lr.to > lr.from)) return this._lOf(x);
-        return lr.from + (x / w) * (lr.to - lr.from);
+        if (!lr || !(lr.to > lr.from)) return this._lOf(x);
+        /* logicalToCoordinate can only accept integers in this LWC build:
+           use two integer anchors and interpolate between them. */
+        const l0 = Math.floor(lr.from), l1 = Math.ceil(lr.to);
+        const x0 = ts.logicalToCoordinate(l0), x1 = ts.logicalToCoordinate(l1);
+        if (x0 == null || x1 == null || !(x1 > x0)) return this._lOf(x);
+        return l0 + ((x - x0) / (x1 - x0)) * (l1 - l0);
       } catch (e) { return this._lOf(x); }
     }
 
@@ -1333,11 +1339,21 @@ const HIT = 7;
 
     _hitTest(x, y) {
       const v = this.view();
+      /* Hidden drawings are not painted by the render loop — they must not
+         be selectable/draggable either (Object Tree eye, Visibility tab,
+         "hide all drawings"). */
+      if (App.hideAll) return null;
       const items = App.drawings.list(this.pane.symbol);
+      const visible = (d) => {
+        if (!d || d.hidden) return false;
+        try {
+          return !DrawSettings || !DrawSettings.isVisible || DrawSettings.isVisible(d, v.tfSec);
+        } catch (e) { return true; }
+      };
       // selected drawing handles first
       if (App.selection && App.selection.pane === this.pane) {
         const sd = App.selection.d;
-        if (items.includes(sd)) {
+        if (items.includes(sd) && visible(sd)) {
           let hs = [];
           try { hs = TOOLS[sd.type].handles(v, sd) || []; } catch (e) {}
           for (let i = 0; i < hs.length; i++) {
@@ -1347,7 +1363,7 @@ const HIT = 7;
       }
       for (let k = items.length - 1; k >= 0; k--) {
         const d = items[k];
-        if (d.hidden) continue;
+        if (!visible(d)) continue;
         const def = TOOLS[d.type];
         if (!def) continue;
         let hs = [];

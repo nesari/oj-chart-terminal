@@ -11,7 +11,7 @@ import { icon } from '../../ui/icons.js';
 import { Theme } from '../../core/theme.js';
 import { App } from '../../../../core/state.js';
 import { TOOLS, segWithExtend } from '../tools.js';
-import { applyStroke, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, normRect, polyPts, ptXY } from './common.js';
+import { applyStroke, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, normRect, polyPts, ptXY, insidePoly } from './common.js';
 import { FIBC_LEVELS, FIB_TZ_LEVELS, vLineFib } from './fib-gann.js';
 
   /* ---------------- Poly-line patterns (Elliott + harmonics) ---------------- */
@@ -438,7 +438,10 @@ import { FIBC_LEVELS, FIB_TZ_LEVELS, vLineFib } from './fib-gann.js';
     },
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {
-      return (x, y) => distToPath(x, y, polyPts(v, d), 6);
+      return (x, y) => {
+        const P = polyPts(v, d);
+        return distToPath(x, y, P, 6) || (!!d.opts.fill && P.length > 2 && insidePoly(x, y, P));
+      };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
   };
@@ -563,8 +566,15 @@ import { FIBC_LEVELS, FIB_TZ_LEVELS, vLineFib } from './fib-gann.js';
       return (x, y) => {
         const P = polyPts(v, d);
         if (P.length < 2) return false;
-        if (P[2]) return quadHit(x, y, P[0], P[2], P[1]);
-        return U.distSeg(x, y, P[0][0], P[0][1], P[1][0], P[1][1]) < 6;
+        const edge = P[2] ? quadHit(x, y, P[0], P[2], P[1])
+          : U.distSeg(x, y, P[0][0], P[0][1], P[1][0], P[1][1]) < 6;
+        if (edge) return true;
+        if (!d.opts.fill || P.length < 2) return false;
+        const S = [];
+        for (let k = 0; k <= 24; k++) {
+          S.push(P[2] ? quadPt(P[0], P[2], P[1], k / 24) : (k ? P[1] : P[0]));
+        }
+        return insidePoly(x, y, S);
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
@@ -604,11 +614,19 @@ import { FIBC_LEVELS, FIB_TZ_LEVELS, vLineFib } from './fib-gann.js';
       return (x, y) => {
         const P = polyPts(v, d);
         if (P.length < 2) return false;
-        if (!P[2]) return U.distSeg(x, y, P[0][0], P[0][1], P[1][0], P[1][1]) < 6;
+        if (!P[2]) {
+          const edge = U.distSeg(x, y, P[0][0], P[0][1], P[1][0], P[1][1]) < 6;
+          return edge || (!!d.opts.fill && insidePoly(x, y, [P[0], P[1]]));
+        }
         if (quadHit(x, y, P[0], P[2], P[1])) return true;
         const D = P[3] || P[1];
         const c2 = [2 * P[1][0] - P[2][0], 2 * P[1][1] - P[2][1]];
-        return quadHit(x, y, P[1], c2, D);
+        if (quadHit(x, y, P[1], c2, D)) return true;
+        if (!d.opts.fill) return false;
+        const S = [];
+        for (let k = 0; k <= 24; k++) S.push(quadPt(P[0], P[2], P[1], k / 24));
+        for (let k = 1; k <= 24; k++) S.push(quadPt(P[1], c2, D, k / 24));
+        return insidePoly(x, y, S);
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
@@ -621,7 +639,7 @@ import { FIBC_LEVELS, FIB_TZ_LEVELS, vLineFib } from './fib-gann.js';
     pitchfork_s: Object.assign({ color: '#2962ff', width: 2, style: 'solid', extendLeft: false, extendRight: true }, ANN),
     pitchfork_ms: Object.assign({ color: '#2962ff', width: 2, style: 'solid', extendLeft: false, extendRight: true }, ANN),
     pitchfork_i: Object.assign({ color: '#2962ff', width: 2, style: 'solid', extendLeft: false, extendRight: true }, ANN),
-    fibchannel: Object.assign({ color: '#2962ff', width: 1, style: 'solid', showRatio: true, levels: FIBC_LEVELS.map((r) => ({ r, c: '#2962ff', on: true })) }, ANN),
+    fibchannel: Object.assign({ color: '#2962ff', width: 1, style: 'solid', extendLeft: false, extendRight: true, showRatio: true, levels: FIBC_LEVELS.map((r) => ({ r, c: '#2962ff', on: true })) }, ANN),
     fibcircles: Object.assign({ color: '#2962ff', width: 1, style: 'solid', showRatio: true, levels: [0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.618, 2.618].map((r) => ({ r, c: '#2962ff', on: true })) }, ANN),
     gannbox: Object.assign({ color: '#787b86', width: 1, style: 'solid', diagColor: '#2962ff', diag2Color: '#f23645', timeLevels: 8, priceLevels: 8, showLabels: true, reverse: false, showAngles: false }, ANN),
     gannsquare: Object.assign({ color: '#787b86', width: 1, style: 'solid', diagColor: '#2962ff', diag2Color: '#f23645' }, ANN),
@@ -635,12 +653,12 @@ import { FIBC_LEVELS, FIB_TZ_LEVELS, vLineFib } from './fib-gann.js';
     fibarcs: Object.assign({ color: '#2962ff', width: 1, style: 'solid', showRatio: true, fullscreen: false, showTrend: true, levels: [0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.618, 2.618].map((r) => ({ r, c: '#2962ff', on: true })) }, ANN),
     fibwedge: Object.assign({ color: '#2962ff', width: 2, style: 'solid', levels: [0.382, 0.5, 0.618].map((r) => ({ r, c: '#2962ff', on: true })) }, ANN),
     pitchfan: Object.assign({ color: '#2962ff', width: 2, style: 'solid', showRatio: true, levels: [0, 0.382, 0.5, 0.618, 1].map((r) => ({ r, c: '#2962ff', on: true })) }, ANN),
-    callout: Object.assign({ color: '#2962ff', width: 1, style: 'solid', fillColor: '#2962ff', fillOpacity: 0.9, fontSize: 12, text: 'Callout' }, ANN),
+    callout: Object.assign({ color: '#2962ff', width: 1, style: 'solid', fill: true, fillColor: '#2962ff', fillOpacity: 0.9 }, ANN, { fontSize: 12, text: 'Callout' }),
     arrowmarku: Object.assign({ color: '#f23645', width: 2, markSize: 22 }, ANN),
     arrowmarkd: Object.assign({ color: '#089981', width: 2, markSize: 22 }, ANN),
     arrowmarkl: Object.assign({ color: '#f7c948', width: 2, markSize: 22 }, ANN),
     arrowmarkr: Object.assign({ color: '#f7c948', width: 2, markSize: 22 }, ANN),
-    flagmark: Object.assign({ color: '#2962ff', width: 2, markSize: 26, fillColor: '#2962ff' }, ANN),
+    flagmark: Object.assign({ color: '#2962ff', width: 2, markSize: 26, fill: true, fillColor: '#2962ff' }, ANN),
     /* ROUND248 (TV parity): Icons category — one glyph per drawing. */
     emoji: { ch: '👍', size: 24 },
     positionl: { color: '#089981', width: 1, style: 'solid' },
@@ -680,7 +698,7 @@ import { FIBC_LEVELS, FIB_TZ_LEVELS, vLineFib } from './fib-gann.js';
     posforecast: Object.assign({ color: '#2962ff', width: 1, style: 'solid', coeff: 2, fillOpacity: 0.16 }, ANN),
     barspattern: Object.assign({ color: '#2962ff', width: 2, style: 'solid', mirror: false, fill: true, fillColor: '#2962ff', fillOpacity: 0.12 }, ANN),
     ghostfeed: Object.assign({ color: '#2962ff', width: 1, style: 'solid', bars: 20 }, ANN),
-    sector: Object.assign({ color: '#2962ff', width: 1, style: 'solid', fillColor: '#2962ff', fillOpacity: 0.15 }, ANN),
+    sector: Object.assign({ color: '#2962ff', width: 1, style: 'solid', fill: true, fillColor: '#2962ff', fillOpacity: 0.15 }, ANN),
     avwap: Object.assign({ color: '#f7c948', width: 2, style: 'solid', source: 'hlc3' }, ANN),
     avolprofile: Object.assign({ color: '#2962ff', width: 1, style: 'solid', bins: 24 }, ANN),
     pricerange: Object.assign({ color: '#2962ff', width: 1, style: 'solid', fillColor: '#2962ff', fillOpacity: 0.12, showLabel: true }, ANN),

@@ -276,6 +276,17 @@ const HIT = 7;
     return { tL, tR, pT, pB };
   }
 
+  /* Ray-cast point-in-polygon (screen points). Used by filled shapes whose
+     interior must behave like the painted fill, not only their outline. */
+  function insidePoly(x, y, P) {
+    let hit = false;
+    for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+      const xi = P[i][0], yi = P[i][1], xj = P[j][0], yj = P[j][1];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1e-9) + xi) hit = !hit;
+    }
+    return hit;
+  }
+
   const TOOLS = {};
 
   /* ---------------- trend line / arrow / ray / extended ---------------- */
@@ -297,10 +308,18 @@ const HIT = 7;
     if (mode === 'arrow') arrowHead(ctx, x2, y2, x1, y1, 8 + d.opts.width * 2);
   }
 
-  function lineBody(view, d) {
+  function lineBody(view, d, eL, eR) {
     const [x1, y1] = ptXY(view, d.points[0]);
     const [x2, y2] = ptXY(view, d.points[1]);
-    return (x, y) => U.distSeg(x, y, x1, y1, x2, y2) < Math.max(5, 4 + d.opts.width);
+    /* eL/eR let Ray/Extended/Arrow share this body test. When omitted the
+       tool's own Extend toggles are used, so an extended trend line is
+       grabbable along the painted extension too (not only A..B). */
+    if (eL === undefined) eL = !!d.opts.extendLeft;
+    if (eR === undefined) eR = !!d.opts.extendRight;
+    let seg = [x1, y1, x2, y2];
+    if (eL || eR) seg = segWithExtend(view, x1, y1, x2, y2, !!eL, !!eR);
+    const m = Math.max(5, 4 + (d.opts.width || 2));
+    return (x, y) => U.distSeg(x, y, seg[0], seg[1], seg[2], seg[3]) < m;
   }
 
   TOOLS.trend = {
@@ -343,7 +362,7 @@ const HIT = 7;
     name: 'Arrow', icon: 'arrowline', pts: 2,
     draw(v, d, sel) { lineDraw(v, d, sel, 'arrow'); },
     handles(v, d) { return [ptXY(v, d.points[0]), ptXY(v, d.points[1])]; },
-    hitBody: lineBody,
+    hitBody(v, d) { return lineBody(v, d, false, false); },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
   };
 
@@ -351,7 +370,7 @@ const HIT = 7;
     name: 'Ray', icon: 'ray', pts: 2,
     draw(v, d, sel) { lineDraw(v, d, sel, 'ray'); },
     handles(v, d) { return [ptXY(v, d.points[0]), ptXY(v, d.points[1])]; },
-    hitBody: lineBody,
+    hitBody(v, d) { return lineBody(v, d, false, true); },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
   };
 
@@ -359,7 +378,7 @@ const HIT = 7;
     name: 'Extended Line', icon: 'extended', pts: 2,
     draw(v, d, sel) { lineDraw(v, d, sel, 'inf'); },
     handles(v, d) { return [ptXY(v, d.points[0]), ptXY(v, d.points[1])]; },
-    hitBody: lineBody,
+    hitBody(v, d) { return lineBody(v, d, true, true); },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
   };
 
@@ -436,6 +455,11 @@ const HIT = 7;
           const s = segWithExtend(v, P[0][0] + ox * fx, P[0][1] + oy * fx,
             P[1][0] + ox * fx, P[1][1] + oy * fx, eL, eR);
           if (U.distSeg(x, y, s[0], s[1], s[2], s[3]) < m) return true;
+        }
+        if (d.opts.fill) {
+          const s1 = segWithExtend(v, P[0][0], P[0][1], P[1][0], P[1][1], eL, eR);
+          const s2 = segWithExtend(v, P[0][0] + ox, P[0][1] + oy, P[1][0] + ox, P[1][1] + oy, eL, eR);
+          return insidePoly(x, y, [[s1[0], s1[1]], [s1[2], s1[3]], [s2[2], s2[3]], [s2[0], s2[1]]]);
         }
         return false;
       };
@@ -537,7 +561,8 @@ const HIT = 7;
         if (x < x0 - 4 || x > x1e + 4) return false;
         const dS = U.distSeg(x, y, xa, ya, xb, yb);
         const dF = U.distSeg(x, y, xa, yF, xb, yF);
-        return Math.min(dS, dF) < Math.max(5, 4 + d.opts.width);
+        if (Math.min(dS, dF) < Math.max(5, 4 + d.opts.width)) return true;
+        return !!d.opts.fill && insidePoly(x, y, [[xa, ya], [xb, yb], [xb, yF], [xa, yF]]);
       };
     },
     dragHandle(v, d, i, pt) {
@@ -772,7 +797,8 @@ const HIT = 7;
         const n = normRect(d);
         const xL = v.xOf(n.tL), xR = v.xOf(n.tR);
         const yT = v.yOf(n.pT), yB = v.yOf(n.pB);
-        const x0 = Math.min(xL, xR), x1 = Math.max(xL, xR);
+        const eL = !!d.opts.extendLeft, eR = !!d.opts.extendRight;
+        const x0 = eL ? 0 : Math.min(xL, xR), x1 = eR ? v.pw : Math.max(xL, xR);
         const y0 = Math.min(yT, yB), y1 = Math.max(yT, yB);
         if (x < x0 - 4 || x > x1 + 4 || y < y0 - 4 || y > y1 + 4) return false;
         // near an edge or inside border zone (TV: edges draggable)
@@ -871,9 +897,10 @@ const HIT = 7;
     hitBody(v, d) {
       return (x, y) => {
         const P = d.points.map((p) => ptXY(v, p));
-        return U.distSeg(x, y, P[0][0], P[0][1], P[1][0], P[1][1]) < 6 ||
+        const edge = U.distSeg(x, y, P[0][0], P[0][1], P[1][0], P[1][1]) < 6 ||
                U.distSeg(x, y, P[1][0], P[1][1], P[2][0], P[2][1]) < 6 ||
                U.distSeg(x, y, P[2][0], P[2][1], P[0][0], P[0][1]) < 6;
+        return edge || (!!d.opts.fill && insidePoly(x, y, P));
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
@@ -952,11 +979,16 @@ const HIT = 7;
     hitBody(v, d) {
       return (x, y) => {
         const x1 = v.xOf(d.points[0].t), x2 = v.xOf(d.points[1].t);
-        const xa = Math.min(x1, x2), xb = d.opts.extendRight ? v.pw : Math.max(x1, x2);
+        const xa = d.opts.extendLeft ? 0 : Math.min(x1, x2);
+        const xb = d.opts.extendRight ? v.pw : Math.max(x1, x2);
         if (x < xa - 4 || x > xb + 4) return false;
-        const p1 = d.points[0].p, p2 = d.points[1].p;
-        const top = v.yOf(Math.max(p1, p2)) - 5, bot = v.yOf(Math.min(p1, p2)) + 5;
-        return y >= top && y <= bot;
+        const prices = levelsOf(d, FIB_LEVELS)
+          .filter((lv) => lv.on !== false)
+          .map((lv) => levelPrice(d, lv.r));
+        if (!prices.length) return false;
+        const top = v.yOf(Math.max(...prices)) - 5;
+        const bot = v.yOf(Math.min(...prices)) + 5;
+        return y >= Math.min(top, bot) && y <= Math.max(top, bot);
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
@@ -1086,16 +1118,27 @@ const HIT = 7;
     dragHandle(v, d, i, pt) { d.points[0] = { t: pt.t, p: pt.p }; },
   };
 
+  /* Note geometry shared by draw + hit-testing so the selectable box always
+     matches the painted label (font size is a real setting now). */
+  function noteBox(v, d) {
+    const fs = isFinite(d.opts.fontSize) ? U.clamp(Math.round(d.opts.fontSize), 8, 24) : 11;
+    const label = String(d.opts.text || 'Note');
+    const ctx = v.ctx;
+    ctx.save();
+    ctx.font = `${fs}px "Segoe UI", Arial, sans-serif`;
+    const w = Math.min(220, ctx.measureText(label).width + 22);
+    ctx.restore();
+    const h = fs + 11;
+    return { x: v.xOf(d.points[0].t), y: v.yOf(d.points[0].p), w, h, fs, label };
+  }
   TOOLS.note = {
     name: 'Note', icon: 'note', pts: 1,
     draw(v, d, sel) {
       const ctx = v.ctx;
-      const x = v.xOf(d.points[0].t), y = v.yOf(d.points[0].p);
-      const label = String(d.opts.text || 'Note');
+      const b = noteBox(v, d);
+      const x = b.x, y = b.y, h = b.h, w = b.w, fs = b.fs;
       ctx.save();
-      ctx.font = '11px "Segoe UI", Arial, sans-serif';
-      const w = Math.min(220, ctx.measureText(label).width + 22);
-      const h = 22;
+      ctx.font = `${fs}px "Segoe UI", Arial, sans-serif`;
       ctx.setLineDash([]);
       // flag
       ctx.fillStyle = d.opts.color;
@@ -1115,14 +1158,21 @@ const HIT = 7;
       ctx.stroke();
       ctx.fillStyle = '#d1d4dc';
       ctx.textBaseline = 'middle';
-      ctx.fillText(label.length > 34 ? label.slice(0, 33) + '…' : label, x + 24, y + 0.5);
+      /* truncate to the painted bubble at the chosen font size */
+      const maxW = Math.max(12, w - 10);
+      let shown = b.label;
+      if (ctx.measureText(shown).width > maxW) {
+        while (shown.length > 1 && ctx.measureText(shown + '\u2026').width > maxW) shown = shown.slice(0, -1);
+        shown += '\u2026';
+      }
+      ctx.fillText(shown, x + 24, y + 0.5);
       ctx.restore();
     },
     handles(v, d) { return [[v.xOf(d.points[0].t), v.yOf(d.points[0].p)]]; },
     hitBody(v, d) {
       return (x, y) => {
-        const x0 = v.xOf(d.points[0].t), y0 = v.yOf(d.points[0].p);
-        return x >= x0 - 4 && x <= x0 + 250 && y >= y0 - 13 && y <= y0 + 13;
+        const b = noteBox(v, d);
+        return x >= b.x - 4 && x <= b.x + 14 + b.w && y >= b.y - b.h / 2 - 4 && y <= b.y + b.h / 2 + 4;
       };
     },
     dragHandle(v, d, i, pt) { d.points[0] = { t: pt.t, p: pt.p }; },
