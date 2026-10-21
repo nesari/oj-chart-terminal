@@ -66,7 +66,11 @@ import { Log } from '../../../core/logger.js';
     const g = visGroup(tfSec);
     if (g === 'ticks' || g === 'ranges') return true; // no tick/range charts in this app
     const v = vis[g];
-    if (!v || v.on === false) return false;
+    /* Missing groups are legacy/partial data, not an explicit "hidden":
+       older saved drawings predate later visibility groups and must stay on
+       their factory-visible default instead of disappearing there. */
+    if (!v) return true;
+    if (v.on === false) return false;
     const unit = VIS_SEC[g];
     const n = Math.max(1, Math.round(tfSec / unit));
     const min = isFinite(v.min) ? v.min : 1;
@@ -613,6 +617,16 @@ import { Log } from '../../../core/logger.js';
 
   /* last floating position of the tool-settings dialog (session-scoped, TV) */
   let DS_LAST_POS = null;
+  /* the dialog currently on screen, so the chart can cancel a temp Text/Note
+     when the user clicks elsewhere on the canvas */
+  let DS_ACTIVE = null;
+  DrawSettings.closeFor = function (drawing) {
+    if (DS_ACTIVE && DS_ACTIVE.d === drawing) {
+      DS_ACTIVE.close(false);
+      return true;
+    }
+    return false;
+  };
 
   /* replace all option fields of d.opts in place (template/default apply) */
   function replaceOpts(d, next) {
@@ -632,6 +646,8 @@ import { Log } from '../../../core/logger.js';
     const isTemp = !!(d.opts && d.opts.temp);
     let activeTab = (opts && opts.tab) || 'style';
     let dlg = null;
+    const session = { d, close: (commit) => close(commit) };
+    DS_ACTIVE = session;
 
     /* floating window (TV): appended straight to the body — no modal backdrop,
        the chart behind stays visible and interactive; dragged by its title */
@@ -657,6 +673,7 @@ import { Log } from '../../../core/logger.js';
       try { U.lsSet('mt5_tool_last_' + type, o); } catch (e) { Log.warn('drawing', 'last tool pref save failed', e) }
     }
     function close(commit) {
+      if (DS_ACTIVE === session) DS_ACTIVE = null;
       document.removeEventListener('keydown', onKey);
       if (dlg) { dlg.remove(); dlg = null; }
       if (commit) {
@@ -668,7 +685,10 @@ import { Log } from '../../../core/logger.js';
            so they can be previewed live. Commit is the real creation — push
            the same undo step _finish() pushes for every other tool. */
         if (wasTemp && App.undo) {
-          App.undo.push({ kind: 'add', symbol: d.symbol, d: JSON.parse(JSON.stringify(d)) });
+          /* If the temp object was already discarded (click-away/delete), Ok
+             must not leave a phantom add command behind. */
+          const alive = (App.drawings.list(d.symbol) || []).some((x) => x.id === d.id);
+          if (alive) App.undo.push({ kind: 'add', symbol: d.symbol, d: JSON.parse(JSON.stringify(d)) });
         } else if (App.undo) {
           /* ROUND258: Ok on an existing drawing changed its style/coordinates
              live, but the change was never registered in the undo stack. */
@@ -1154,10 +1174,13 @@ import { Log } from '../../../core/logger.js';
     }
 
     function buildVis() {
-      if (!d.opts.vis) d.opts.vis = defaultVis();
+      if (!d.opts.vis || typeof d.opts.vis !== 'object') d.opts.vis = defaultVis();
       U.el('div', 'ds-sec', body).textContent = 'SHOW ON INTERVALS';
       for (const f of VIS_DEFS) {
-        const v = d.opts.vis[f.key];
+        /* Legacy drawings can have a partial vis object; materialise the
+           missing group as visible instead of reading .on from undefined. */
+        let v = d.opts.vis[f.key];
+        if (!v || typeof v !== 'object') v = d.opts.vis[f.key] = { on: true, min: f.min, max: f.max };
         const r = U.el('div', 'ds-row ds-vis', body);
         const cb = U.el('span', 'ds-check' + (v.on !== false ? ' on' : ''), r);
         cb.innerHTML = '<i></i>';

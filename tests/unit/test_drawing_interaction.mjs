@@ -34,6 +34,7 @@ const base = new URL('../../src/renderer/js/drawing/', import.meta.url);
 const { TOOLS } = await import(new URL('tools.js', base).href);
 const { App } = await import(new URL('../../../core/state.js', base).href);
 await import(new URL('tools2.js', base).href);
+const { DrawSettings } = await import(new URL('settings.js', base).href);
 
 /* Screen space is deliberately simple: t -> x = t - 1000, p -> y = 2000 - p. */
 const ctx = {
@@ -206,6 +207,13 @@ console.log('\n-- factory/settings agreement --');
   ok(App.drawings.factoryOpts('sector').fill === true, 'sector Background factory default is on');
 }
 
+console.log('\n-- visibility defaults --');
+{
+  const legacy = { opts: { vis: { min: { on: false } } } };
+  ok(!DrawSettings.isVisible(legacy, 300), 'an explicitly hidden interval stays hidden');
+  ok(DrawSettings.isVisible(legacy, 3600), 'a visibility group missing from legacy data defaults to visible');
+}
+
 console.log('\n-- source contracts for interaction paths --');
 {
   const engine = fs.readFileSync('src/renderer/js/drawing/engine.js', 'utf8');
@@ -227,6 +235,12 @@ console.log('\n-- source contracts for interaction paths --');
     'Clone/Copy from the context bar pushes an undo step');
   ok(/const after = JSON\.parse\(JSON\.stringify\(\{ opts: d\.opts, points: d\.points \}\)\);[\s\S]{0,220}?kind: 'modify'/.test(settings),
     'Ok in drawing settings registers a modify undo step');
+  ok(/let v = d\.opts\.vis\[f\.key\];[\s\S]{0,170}?typeof v !== 'object'/.test(settings),
+    'Visibility tab materialises groups missing from legacy drawings');
+  ok(/DS_ACTIVE[\s\S]{0,260}?closeFor = function/.test(settings) && /DrawSettings\.closeFor\(sd\)/.test(engine),
+    'click-away cancels the uncommitted Text/Note dialog');
+  ok(/const alive = \(App\.drawings\.list\(d\.symbol\)[\s\S]{0,160}?App\.undo\.push/.test(settings),
+    'Ok on a discarded temp drawing leaves no phantom undo step');
   ok(/id === 'trash'[\s\S]{0,320}?App\.undo\.removeAll/.test(ui),
     'left-toolbar trash-all is undoable');
   ok(/id === 'eye'[\s\S]{0,420}?App\.hideAll && App\.selection[\s\S]{0,80}?App\.selection = null/.test(ui),

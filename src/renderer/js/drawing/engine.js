@@ -649,7 +649,9 @@ const HIT = 7;
       if (!App.stayDraw) App.tool = null;
       if (UI.onToolDone) UI.onToolDone();
       App.drawings.add(this.pane.symbol, t);
-      if (App.undo) App.undo.push({ kind: 'add', symbol: this.pane.symbol, d: t });
+      /* Snapshot the finished stroke: the live store object keeps mutating
+         when it is dragged later, and redo must replay the original drawing. */
+      if (App.undo) App.undo.push({ kind: 'add', symbol: this.pane.symbol, d: U.deepCopy(t) });
       App.selection = { pane: this.pane, d: t };
       if (UI.onSelectionChanged) UI.onSelectionChanged();
     }
@@ -786,7 +788,14 @@ const HIT = 7;
       if (Alerts.selected != null) Alerts.selected = null; /* ROUND51: click-away deselects */
       if (App.selection) {
         const sd = App.selection.d;
-        if (sd && sd.opts && sd.opts.temp) App.drawings.remove(sd.symbol, sd.id);
+        if (sd && sd.opts && sd.opts.temp) {
+          /* A click-away cancels the uncommitted Text/Note. Close its settings
+             dialog too, otherwise a later Ok pushes an undo add for an object
+             that is no longer in the store. */
+          if (!DrawSettings || !DrawSettings.closeFor || !DrawSettings.closeFor(sd)) {
+            App.drawings.remove(sd.symbol, sd.id);
+          }
+        }
         App.selection = null;
         if (UI.onSelectionChanged) UI.onSelectionChanged();
       }
