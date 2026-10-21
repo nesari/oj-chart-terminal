@@ -982,6 +982,9 @@ const HIT = 7;
         const xa = d.opts.extendLeft ? 0 : Math.min(x1, x2);
         const xb = d.opts.extendRight ? v.pw : Math.max(x1, x2);
         if (x < xa - 4 || x > xb + 4) return false;
+        /* the dashed A->B connector is painted when Trend Line is on */
+        if (d.opts.showTrend !== false &&
+            U.distSeg(x, y, x1, v.yOf(d.points[0].p), x2, v.yOf(d.points[1].p)) < 5) return true;
         const prices = levelsOf(d, FIB_LEVELS)
           .filter((lv) => lv.on !== false)
           .map((lv) => levelPrice(d, lv.r));

@@ -834,6 +834,11 @@ import { Log } from '../../../core/logger.js';
     }
 
     function buildFill(fld) {
+      /* Older Callout/Flag/Sector drawings predate the `fill` option but were
+         always painted filled. Preserve that look and show the checkbox as on
+         instead of offering a toggle that claims the fill is off. */
+      if (!('fill' in d.opts) && d.opts.bg === undefined &&
+          (type === 'callout' || type === 'flagmark' || type === 'sector')) d.opts.fill = true;
       const r = row(fld.label || 'Background');
       const box = inline(r);
       const isOn = () => !!(d.opts.fill || d.opts.bg);

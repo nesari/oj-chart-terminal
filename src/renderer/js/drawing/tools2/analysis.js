@@ -11,7 +11,7 @@ import { icon } from '../../ui/icons.js';
 import { Theme } from '../../core/theme.js';
 import { App } from '../../../../core/state.js';
 import { TOOLS, segWithExtend } from '../tools.js';
-import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, normRect, polyPts, ptXY } from './common.js';
+import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, insidePoly, normRect, polyPts, ptXY } from './common.js';
 
   function TH(k, fallback) { return (Theme.c) ? Theme.c(k) : fallback; }
 
@@ -306,7 +306,23 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
     },
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {
-      return (x, y) => distToPath(x, y, polyPts(v, d), 8);
+      return (x, y) => {
+        const bars = v.bars;
+        if (!bars || bars.length < 4) return false;
+        const [A, B, C] = d.points;
+        const i0 = Math.max(0, Math.round(U.timeToLogical(v.times, Math.min(A.t, B.t))));
+        const i1 = Math.min(bars.length - 1, Math.round(U.timeToLogical(v.times, Math.max(A.t, B.t))));
+        if (i1 - i0 < 1) return false;
+        const src = [];
+        for (let i = i0; i <= i1; i++) src.push(bars[i].close);
+        if (d.opts.mirror) src.reverse();
+        const sp = (v.spacing > 0 ? v.spacing : 8);
+        const xC = v.xOf(C.t), yC = v.yOf(C.p), base = src[0];
+        const P = src.map((c, k) => [xC + k * sp, yC + (v.yOf(C.p + (c - base)) - yC)]);
+        if (distToPath(x, y, P, 8)) return true;
+        if (!d.opts.fill || P.length < 2) return false;
+        return insidePoly(x, y, P.concat([[P[P.length - 1][0], yC], [P[0][0], yC]]));
+      };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
   };

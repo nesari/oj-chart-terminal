@@ -75,6 +75,8 @@ console.log('\n-- extended boxes / fibs --');
   const f = { type: 'fib', points: [P(1100, 1900), P(1300, 1800)], opts: { width: 1, extendLeft: true, extendRight: true } };
   ok(hit('fib', f, 20, 150), 'fib left extension is selectable');
   ok(hit('fib', f, 500, 150), 'fib right extension is selectable');
+  const fc = { type: 'fib', points: [P(1000, 1900), P(1200, 1800)], opts: { width: 1, showTrend: true, levels: [{ r: 0.5, c: '#2962ff', on: true }] } };
+  ok(hit('fib', fc, 50, 125), 'fib painted A-B connector is selectable outside the level band');
 }
 
 console.log('\n-- filled interiors --');
@@ -85,6 +87,8 @@ console.log('\n-- filled interiors --');
   ok(hit('polyline', line, 50, 50), 'filled polyline interior hit');
   const curve = { type: 'curve', points: [P(1000, 2000), P(1200, 2000), P(1100, 1800)], opts: { width: 2, fill: true } };
   ok(hit('curve', curve, 100, 50), 'filled curve interior hit');
+  const wedge = { type: 'fibwedge', points: [P(1000, 2000), P(1200, 2000), P(1100, 1800)], opts: { width: 2, fill: true } };
+  ok(hit('fibwedge', wedge, 100, 50), 'filled fib wedge interior hit');
 }
 
 console.log('\n-- date range is full-height --');
@@ -108,6 +112,17 @@ console.log('\n-- fib/gann bodies follow the painted rays --');
   ok(hit('pitchfan', pf, 107.6, 38.3), 'pitchfan middle ray is selectable');
   const sp = { type: 'fibspiral', points: [P(1000, 2000), P(1200, 2000)], opts: { coeff: 1.6180339887, turns: 3 } };
   ok(hit('fibspiral', sp, 0, 323.6), 'fib spiral quarter-turn is selectable');
+  ok(hit('fibspiral', sp, 100, 0), 'fib spiral defining trend is selectable');
+  const spNoTrend = { type: 'fibspiral', points: [P(1000, 2000), P(1200, 2000)], opts: { coeff: 1.6180339887, turns: 3, showTrend: false } };
+  ok(!hit('fibspiral', spNoTrend, 100, 0), 'hidden fib spiral trend is not selectable');
+}
+
+console.log('\n-- trend-based fib time follows Trend Line visibility --');
+{
+  const ft = { type: 'fibttime', points: [P(1000, 2000), P(1100, 1900), P(1200, 2000)], opts: { showTrend: true } };
+  ok(hit('fibttime', ft, 50, 50), 'visible fibttime trend is selectable');
+  const ftOff = { type: 'fibttime', points: [P(1000, 2000), P(1100, 1900), P(1200, 2000)], opts: { showTrend: false } };
+  ok(!hit('fibttime', ftOff, 50, 50), 'hidden fibttime trend is not selectable');
 }
 
 console.log('\n-- factory/settings agreement --');

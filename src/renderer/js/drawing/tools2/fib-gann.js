@@ -11,7 +11,7 @@ import { icon } from '../../ui/icons.js';
 import { Theme } from '../../core/theme.js';
 import { App } from '../../../../core/state.js';
 import { TOOLS, segWithExtend } from '../tools.js';
-import { applyStroke, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, normRect, polyPts, ptXY } from './common.js';
+import { applyStroke, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, insidePoly, normRect, polyPts, ptXY } from './common.js';
 
   /* ---------------- Fib Channel ---------------- */
   const FIBC_LEVELS = [0, 0.382, 0.5, 0.618, 1, 1.618, 2.618];
@@ -506,7 +506,7 @@ import { applyStroke, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, norm
           if (lv.on === false) continue;
           if (Math.abs(x - v.xOf(d.points[2].t + dtT * lv.r)) < 4) return true;
         }
-        return distToPath(x, y, [P[0], P[1]], 6);
+        return d.opts.showTrend !== false && distToPath(x, y, [P[0], P[1]], 6);
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
@@ -547,6 +547,8 @@ import { applyStroke, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, norm
     hitBody(v, d) {
       return (x, y) => {
         const [a, b] = polyPts(v, d);
+        /* the defining A->B trend is painted unless showTrend is off */
+        if (d.opts.showTrend !== false && U.distSeg(x, y, a[0], a[1], b[0], b[1]) < 6) return true;
         const r0 = Math.hypot(b[0] - a[0], b[1] - a[1]);
         if (r0 < 0.5) return false;
         const th0 = Math.atan2(b[1] - a[1], b[0] - a[0]);
@@ -678,7 +680,7 @@ import { applyStroke, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, norm
     hitBody(v, d) {
       return (x, y) => {
         const P = polyPts(v, d);
-        return distToPath(x, y, [P[0], P[1], P[2], P[0]], 6);
+        return distToPath(x, y, [P[0], P[1], P[2], P[0]], 6) || (!!d.opts.fill && insidePoly(x, y, P));
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
