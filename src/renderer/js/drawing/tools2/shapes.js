@@ -735,7 +735,15 @@ import { FIBC_LEVELS, FIB_TZ_LEVELS, vLineFib } from './fib-gann.js';
         ctx.stroke();
       },
       handles(v, d) { return d.points.length ? [d.points.map((p) => ptXY(v, p))[0], d.points.map((p) => ptXY(v, p))[d.points.length - 1]] : []; },
-      hitBody(v, d) { return (x, y) => distToPath(x, y, d.points.map((p) => ptXY(v, p)), Math.max(6, 3 + (d.opts.width || 2))); },
+      hitBody(v, d) {
+        return (x, y) => {
+          const P = d.points.map((p) => ptXY(v, p));
+          if (distToPath(x, y, P, Math.max(6, 3 + (d.opts.width || 2)))) return true;
+          /* ROUND258: Brush Background closes and fills the stroke, so its
+             interior must be selectable like every other filled shape. */
+          return !!(d.opts.fill && P.length > 2 && insidePoly(x, y, P));
+        };
+      },
       /* ROUND249: the two handles are FIRST and LAST point — the old code
          wrote d.points[i], so the "end" handle dragged the SECOND point. */
       dragHandle(v, d, i, pt) {

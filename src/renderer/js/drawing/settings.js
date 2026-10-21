@@ -256,6 +256,10 @@ import { Log } from '../../../core/logger.js';
        no way to set the partition counts, labels or reverse. */
     gannbox: [
       { kind: 'line' },
+      /* ROUND258: Gann Box paints the two corner diagonals too — expose the
+         same Diagonal 1/2 colors that Gann Square already had. */
+      { kind: 'color', key: 'diagColor', label: 'Diagonal 1' },
+      { kind: 'color', key: 'diag2Color', label: 'Diagonal 2' },
       { kind: 'number', key: 'timeLevels', label: 'Time levels', min: 1, max: 32 },
       { kind: 'number', key: 'priceLevels', label: 'Price levels', min: 1, max: 32 },
       { kind: 'check', key: 'showLabels', label: 'Labels' },
@@ -665,6 +669,13 @@ import { Log } from '../../../core/logger.js';
            the same undo step _finish() pushes for every other tool. */
         if (wasTemp && App.undo) {
           App.undo.push({ kind: 'add', symbol: d.symbol, d: JSON.parse(JSON.stringify(d)) });
+        } else if (App.undo) {
+          /* ROUND258: Ok on an existing drawing changed its style/coordinates
+             live, but the change was never registered in the undo stack. */
+          const after = JSON.parse(JSON.stringify({ opts: d.opts, points: d.points }));
+          if (JSON.stringify(after) !== JSON.stringify(snap)) {
+            App.undo.push({ kind: 'modify', symbol: d.symbol, id: d.id, before: snap, after });
+          }
         }
       } else {
         /* restore snapshot in place — the drawing object identity must not change */

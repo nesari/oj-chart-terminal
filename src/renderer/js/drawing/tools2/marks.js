@@ -118,7 +118,19 @@ import { TH } from './analysis.js';
       return (x, y) => {
         const [A, B] = polyPts(v, d);
         const text = String(d.opts.text || 'Callout');
-        return U.distSeg(x, y, A[0], A[1], B[0], B[1]) < 6 || (Math.abs(x - A[0]) < 90 && Math.abs(y - A[1]) < 24);
+        const ctx = v.ctx;
+        ctx.save();
+        ctx.font = `${d.opts.italic ? 'italic ' : ''}${d.opts.bold ? '700 ' : ''}${d.opts.fontSize || 12}px "Segoe UI", Arial, sans-serif`;
+        const lines = text.split('\n');
+        const lw = Math.max(...lines.map((l) => ctx.measureText(l).width), 30);
+        const bh = lines.length * ((d.opts.fontSize || 12) + 4) + 10;
+        const bw = lw + 16;
+        ctx.restore();
+        /* ROUND258: the bubble's real painted box (it grows with the text and
+           font size) instead of the old fixed 180x48 halo around the anchor. */
+        const inBubble = x >= A[0] - 4 && x <= A[0] + bw + 4 &&
+          y >= A[1] - bh / 2 - 4 && y <= A[1] + bh / 2 + 4;
+        return inBubble || U.distSeg(x, y, A[0], A[1], B[0], B[1]) < 6;
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },

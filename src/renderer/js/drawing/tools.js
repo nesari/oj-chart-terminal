@@ -651,7 +651,21 @@ const HIT = 7;
         const [P2a, P2b] = disjP2(g);
         const d1 = U.distSeg(x, y, g.A[0], g.A[1], g.B[0], g.B[1]);
         const d2 = U.distSeg(x, y, P2a[0], P2a[1], P2b[0], P2b[1]);
-        return Math.min(d1, d2) < Math.max(5, 4 + (d.opts.width2 || d.opts.width));
+        if (Math.min(d1, d2) < Math.max(5, 4 + (d.opts.width2 || d.opts.width))) return true;
+        /* the fill is only painted when both extension sides are off */
+        if (d.opts.fill && !d.opts.extendLeft && !d.opts.extendRight) {
+          const o0 = Math.max(0, Math.min(g.s, g.len));
+          const o1 = Math.min(g.len, g.s + g.len);
+          if (o1 - o0 > 1) {
+            return insidePoly(x, y, [
+              [g.A[0] + g.ux * o0, g.A[1] + g.uy * o0],
+              [g.A[0] + g.ux * o1, g.A[1] + g.uy * o1],
+              [g.A[0] + g.ux * o1 + g.nx * g.off, g.A[1] + g.uy * o1 + g.ny * g.off],
+              [g.A[0] + g.ux * o0 + g.nx * g.off, g.A[1] + g.uy * o0 + g.ny * g.off],
+            ]);
+          }
+        }
+        return false;
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
@@ -805,7 +819,15 @@ const HIT = 7;
         const dl = Math.abs(x - x0), dr = Math.abs(x - x1), dt = Math.abs(y - y0), db = Math.abs(y - y1);
         const m = Math.max(5, 3 + d.opts.width);
         const inside = x > x0 + m && x < x1 - m && y > y0 + m && y < y1 - m;
-        if (inside && !d.opts.fill) return false; // hollow rect: only border + edges grab
+        if (inside && !d.opts.fill) {
+          /* ROUND258: the Middle line is painted inside a hollow Box, so it
+             must stay grabbable even though the interior is not filled. */
+          if (d.opts.middle !== false) {
+            const ym = (y0 + y1) / 2;
+            if (U.distSeg(x, y, x0, ym, x1, ym) < m) return true;
+          }
+          return false; // hollow rect: only border + middle line grab
+        }
         return (dl < m || dr < m || dt < m || db < m) || inside;
       };
     },
@@ -1047,11 +1069,14 @@ const HIT = 7;
         const P = d.points.map((p) => [v.xOf(p.t), v.yOf(p.p)]);
         const near = U.distSeg(x, y, P[0][0], P[0][1], P[1][0], P[1][1]) < 6 ||
                      U.distSeg(x, y, P[1][0], P[1][1], P[2][0], P[2][1]) < 6;
-        if (near) return true;
+        if (near && d.opts.showTrend !== false) return true;
         const p0 = d.points[0].p, p1 = d.points[1].p, p2 = d.points[2].p;
         /* ROUND245: the same level set draw uses (custom levels included —
            the old code only knew the factory list). */
-        const prices = levelsOf(d, FIBEXT_LEVELS.map((r) => ({ r }))).map((l) => p2 + (p1 - p0) * l.r);
+        const prices = levelsOf(d, FIBEXT_LEVELS.map((r) => ({ r })))
+          .filter((l) => l.on !== false)
+          .map((l) => p2 + (p1 - p0) * l.r);
+        if (!prices.length) return false;
         const top = v.yOf(Math.max(...prices)) - 5, bot = v.yOf(Math.min(...prices)) + 5;
         const xL = d.opts.extendLeft ? 0 : P[2][0], xR = d.opts.extendRight !== false ? v.pw : P[2][0];
         return x >= xL - 4 && x <= xR + 4 && y >= Math.min(top, bot) && y <= Math.max(top, bot);

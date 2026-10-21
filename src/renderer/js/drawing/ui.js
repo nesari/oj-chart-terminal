@@ -265,9 +265,12 @@ const UI = {};
           App.hideAll = !App.hideAll;
           b.innerHTML = icon(App.hideAll ? 'eyeoff' : 'eye');
           b.classList.toggle('on', App.hideAll);
+          /* Hide-all also invalidates any live selection. */
+          if (App.hideAll && App.selection) { App.selection = null; UI.onSelectionChanged(); }
         } else if (id === 'trash') {
           if (App.activePane) {
-            App.drawings.removeAll(App.activePane.symbol);
+            if (App.undo) App.undo.removeAll(App.activePane);
+            else App.drawings.removeAll(App.activePane.symbol);
             App.selection = null;
             UI.onSelectionChanged();
             toast('All drawings removed for ' + App.activePane.symbol);
@@ -875,6 +878,7 @@ const UI = {};
               copy.points = copy.points.map((pt) => ({ t: pt.t + 6 * 60, p: pt.p }));
               copy.opts = Object.assign({}, copy.opts);
               App.drawings.add(pane.symbol, copy);
+              if (App.undo) App.undo.push({ kind: 'add', symbol: pane.symbol, d: U.deepCopy(copy) });
               App.selection = { pane, d: copy };
               UI.onSelectionChanged();
             });
@@ -884,6 +888,7 @@ const UI = {};
               copy.points = copy.points.map((pt) => ({ t: pt.t, p: pt.p }));
               copy.opts = Object.assign({}, copy.opts);
               App.drawings.add(pane.symbol, copy);
+              if (App.undo) App.undo.push({ kind: 'add', symbol: pane.symbol, d: U.deepCopy(copy) });
               App.selection = { pane, d: copy };
               UI.onSelectionChanged();
             });
@@ -1030,7 +1035,7 @@ const UI = {};
           const d = { type: 'hline', points: [{ t, p: price }], opts: App.drawings.defaultOpts('hline') };
           App.drawings.add(pane.symbol, d);
           App.drawings.save();
-          if (App.undo) App.undo.push({ kind: 'add', symbol: pane.symbol, d });
+          if (App.undo) App.undo.push({ kind: 'add', symbol: pane.symbol, d: U.deepCopy(d) });
           toast(`Horizontal line at ${P}`);
         } catch (e) {}
       });

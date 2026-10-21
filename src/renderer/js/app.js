@@ -384,6 +384,9 @@ function boot() {
     });
 
     window.addEventListener('beforeunload', () => {
+      /* Drawings are saved through a 250ms debounce; flush the pending change
+         so closing the app right after a drag/add cannot lose it. */
+      try { App.drawings.saveNow(); } catch (e) { Log.debug('drawing', 'final drawing flush failed', e) }
       try { App.feed.close(); } catch (e) { Log.debug('feed', 'feed close on unload failed', e) }
     });
 

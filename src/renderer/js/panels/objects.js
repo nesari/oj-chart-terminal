@@ -24,7 +24,8 @@ const ObjectTree = {};
       trash.addEventListener('click', () => {
         const pane = App.activePane || App.panes[0];
         if (!pane) return;
-        App.drawings.removeAll(pane.symbol);
+        if (App.undo) App.undo.removeAll(pane);
+        else App.drawings.removeAll(pane.symbol);
         App.selection = null;
         UI.onSelectionChanged();
       });
@@ -124,6 +125,12 @@ const ObjectTree = {};
         mkAct(d.hidden ? 'eyeoff' : 'eye', d.hidden ? 'Show' : 'Hide', d.hidden ? 'dim' : '', () => {
           d.hidden = !d.hidden;
           App.drawings.save();
+          /* A hidden drawing cannot be hit-tested anymore; don't leave its
+             selection toolbar floating over an invisible object. */
+          if (d.hidden && App.selection && App.selection.d === d) {
+            App.selection = null;
+            UI.onSelectionChanged();
+          }
           ObjectTree.refresh();
         });
         mkAct(d.locked ? 'lock' : 'unlock', d.locked ? 'Unlock' : 'Lock', d.locked ? 'dim' : '', () => {
@@ -132,7 +139,8 @@ const ObjectTree = {};
           ObjectTree.refresh();
         });
         mkAct('trash', 'Delete', 'danger', () => {
-          App.drawings.remove(d.symbol, d.id);
+          if (App.undo) App.undo.remove(pane, d);
+          else App.drawings.remove(d.symbol, d.id);
           if (App.selection && App.selection.d === d) { App.selection = null; UI.onSelectionChanged(); }
         });
       }

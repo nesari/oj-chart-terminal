@@ -1372,7 +1372,7 @@ const Toolbar = {};
             { color: s2 === 'buy' ? '#089981' : '#f23645', style: 'dashed', width: 1 }) };
         App.drawings.add(sym, d);
         App.drawings.save();
-        if (App.undo) App.undo.push({ kind: 'add', symbol: sym, d });
+        if (App.undo) App.undo.push({ kind: 'add', symbol: sym, d: U.deepCopy(d) });
       } catch (e) {}
       close();
       if (UI.toast) UI.toast(`${s2 === 'buy' ? 'Buy' : 'Sell'} ${nQty} ${sym} @ ${price} ${t2} placed (demo)`);

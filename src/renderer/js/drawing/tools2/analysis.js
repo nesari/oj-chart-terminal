@@ -134,6 +134,15 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
         for (const { seg } of rs.segs) {
           if (U.distSeg(x, y, seg[0], seg[1], seg[2], seg[3]) < m) return true;
         }
+        /* ROUND258: Background fills the area between the outer bands. */
+        if (d.opts.fill && rs.kmax > 0) {
+          const top = rs.segs.find((s) => s.k === rs.kmax);
+          const bot = rs.segs.find((s) => s.k === -rs.kmax);
+          if (top && bot && insidePoly(x, y, [
+            [top.seg[0], top.seg[1]], [top.seg[2], top.seg[3]],
+            [bot.seg[2], bot.seg[3]], [bot.seg[0], bot.seg[1]],
+          ])) return true;
+        }
         return false;
       };
     },
@@ -197,10 +206,25 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {
       return (x, y) => {
-        const n = normRect(d);
-        const xL = v.xOf(n.tL), xR = v.xOf(n.tR), yT = v.yOf(n.pT), yB = v.yOf(n.pB);
-        return x >= Math.min(xL, xR) - 5 && x <= Math.max(xL, xR) + 5 &&
-               y >= Math.min(yT, yB) - 5 && y <= Math.max(yT, yB) + 5;
+        /* ROUND258: the painted histogram is a fixed time range but derives
+           its price span from the bars inside it. The old endpoint box missed
+           the profile whenever the anchors were not placed at its top/bottom. */
+        const bars = v.bars;
+        if (!bars || bars.length < 4) return false;
+        const i0 = Math.max(0, Math.floor(U.timeToLogical(v.times, Math.min(d.points[0].t, d.points[1].t))));
+        const i1 = Math.min(bars.length - 1, Math.ceil(U.timeToLogical(v.times, Math.max(d.points[0].t, d.points[1].t))));
+        if (i1 - i0 < 2) return false;
+        let lo = Infinity, hi = -Infinity;
+        for (let i = i0; i <= i1; i++) {
+          lo = Math.min(lo, bars[i].low); hi = Math.max(hi, bars[i].high);
+        }
+        if (!(hi > lo)) return false;
+        const x0 = v.xOf(d.points[0].t), x1 = v.xOf(d.points[1].t);
+        const baseX = Math.min(x0, x1);
+        const maxW = Math.max(30, Math.abs(x1 - x0) * 0.5);
+        return x >= baseX - 6 && x <= baseX + maxW + 40 &&
+               y >= Math.min(v.yOf(lo), v.yOf(hi)) - 6 &&
+               y <= Math.max(v.yOf(lo), v.yOf(hi)) + 6;
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
@@ -369,10 +393,35 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {
       return (x, y) => {
-        const [px, py] = ptXY(v, d.points[0]);
-        const sp = (v.spacing > 0 ? v.spacing : 8);
+        const bars = v.bars;
+        if (!bars || bars.length < 10) return false;
         const N = U.clamp(Math.round(d.opts.bars || 20), 1, 300);
-        return x > px - 6 && x < px + N * sp + 6 && Math.abs(y - py) < 80;
+        const look = Math.min(bars.length, 20);
+        const s0 = bars.length - look;
+        let sx = 0, sy = 0, sxx = 0, sxy = 0, rng = 0;
+        for (let i = s0; i < bars.length; i++) {
+          const c = bars[i].close;
+          sx += i; sy += c; sxx += i * i; sxy += i * c;
+          rng += bars[i].high - bars[i].low;
+        }
+        const den = look * sxx - sx * sx;
+        const slope = den ? (look * sxy - sx * sy) / den : 0;
+        const avgR = rng / look || 0;
+        /* ROUND258: the projected candles often travel far beyond the old
+           fixed 160px band around the anchor. Derive the painted y-range from
+           the same LSQ projection the renderer uses. */
+        let open = d.points[0].p, yMin = v.yOf(open), yMax = yMin;
+        for (let k = 0; k < N; k++) {
+          const close = open + slope;
+          const hi = Math.max(open, close) + avgR * 0.35;
+          const lo = Math.min(open, close) - avgR * 0.35;
+          yMin = Math.min(yMin, v.yOf(hi), v.yOf(lo));
+          yMax = Math.max(yMax, v.yOf(hi), v.yOf(lo));
+          open = close;
+        }
+        const px = v.xOf(d.points[0].t);
+        const sp = (v.spacing > 0 ? v.spacing : 8);
+        return x > px - 6 && x < px + N * sp + 6 && y >= yMin - 6 && y <= yMax + 6;
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
@@ -426,7 +475,14 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
         while (rel > Math.PI) rel -= 2 * Math.PI;
         while (rel < -Math.PI) rel += 2 * Math.PI;
         const lo = Math.min(0, sweep), hi = Math.max(0, sweep);
-        return rel >= lo - 0.05 && rel <= hi + 0.05;
+        const inSweep = rel >= lo - 0.05 && rel <= hi + 0.05;
+        const onRadius = U.distSeg(x, y, A[0], A[1], B[0], B[1]) < 6 ||
+                         U.distSeg(x, y, A[0], A[1], C[0], C[1]) < 6;
+        /* ROUND258: when Background is off only the arc and the two radii
+           are painted; don't let the invisible pie interior steal clicks. */
+        if (d.opts.fill === false) return onRadius || (inSweep && Math.abs(rr - r) < 6);
+        if (!inSweep) return onRadius;
+        return true;
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
@@ -542,8 +598,24 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {
       return (x, y) => {
-        const [ax, ay] = ptXY(v, d.points[0]);
-        return x > ax - 6 && x < ax + 260 && Math.abs(y - ay) < 140;
+        /* ROUND258: match the painted profile, not a 260x140 guess around the
+           anchor. The price span comes from the bars from the anchor to the
+           newest one, and the bars grow to the right of the anchor. */
+        const bars = v.bars;
+        if (!bars || bars.length < 4) return false;
+        const i0 = Math.max(0, Math.round(U.timeToLogical(v.times, d.points[0].t)));
+        const i1 = bars.length - 1;
+        if (i1 - i0 < 2) return false;
+        let lo = Infinity, hi = -Infinity;
+        for (let i = i0; i <= i1; i++) {
+          lo = Math.min(lo, bars[i].low); hi = Math.max(hi, bars[i].high);
+        }
+        if (!(hi > lo)) return false;
+        const baseX = v.xOf(d.points[0].t);
+        const maxW = Math.max(30, Math.min(240, (v.pw - baseX) * 0.5));
+        return x >= baseX - 6 && x <= baseX + maxW + 40 &&
+               y >= Math.min(v.yOf(lo), v.yOf(hi)) - 6 &&
+               y <= Math.max(v.yOf(lo), v.yOf(hi)) + 6;
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
