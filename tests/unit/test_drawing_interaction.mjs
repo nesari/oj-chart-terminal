@@ -276,6 +276,7 @@ console.log('\n-- source contracts for interaction paths --');
   const objects = fs.readFileSync('src/renderer/js/panels/objects.js', 'utf8');
   const app = fs.readFileSync('src/renderer/js/app.js', 'utf8');
   const toolbar = fs.readFileSync('src/renderer/js/chart/toolbar.js', 'utf8');
+  const undo = fs.readFileSync('src/renderer/js/core/undo.js', 'utf8');
   ok(/const l0 = Math\.floor\(lr\.from\), l1 = Math\.ceil\(lr\.to\);[\s\S]*?logicalToCoordinate\(l0\)[\s\S]*?logicalToCoordinate\(l1\)/.test(engine),
     'magnet-off placement interpolates over the plot, not the full canvas');
   ok(/const w = this\.view\(\)\.pw;[\s\S]{0,140}?const px = U\.clamp\(x/.test(engine),
@@ -290,6 +291,12 @@ console.log('\n-- source contracts for interaction paths --');
     'Gann Box exposes both diagonal colors');
   ok(/Clone<\/span>[\s\S]*?App\.drawings\.add\(pane\.symbol, copy\);[\s\S]{0,140}?App\.undo\.push\(\{ kind: 'add'/.test(ui),
     'Clone/Copy from the context bar pushes an undo step');
+  ok(/Array\.isArray\(copy\.opts\.ctrls\)[\s\S]{0,180}?c\.t \+ 6 \* 60/.test(ui),
+    'Clone shifts Path/Polyline bend controls with the anchors');
+  ok(/p\.engine && p\.engine\._timeArr[\s\S]{0,160}?timeToLogical\(arr, pt\.t\)/.test(objects),
+    'Object Tree Locate uses the gap-inclusive session time frame');
+  ok(/typeof d\.opts\.vis !== 'object'[\s\S]{0,160}?defaultVis\(\)/.test(ui),
+    'context-menu visibility materialises malformed vis data');
   ok(/const after = JSON\.parse\(JSON\.stringify\(\{ opts: d\.opts, points: d\.points \}\)\);[\s\S]{0,220}?kind: 'modify'/.test(settings),
     'Ok in drawing settings registers a modify undo step');
   ok(/let v = d\.opts\.vis\[f\.key\];[\s\S]{0,170}?typeof v !== 'object'/.test(settings),
@@ -300,6 +307,11 @@ console.log('\n-- source contracts for interaction paths --');
     'Escape also cancels the uncommitted Text/Note dialog');
   ok(/const alive = \(App\.drawings\.list\(d\.symbol\)[\s\S]{0,160}?App\.undo\.push/.test(settings),
     'Ok on a discarded temp drawing leaves no phantom undo step');
+  ok(/UI\.closeSettingsFor\(d, true\)/.test(undo) && /UI\.closeActiveSettings\(true\)/.test(undo) &&
+     /UI\.closeSettingsFor = function[\s\S]{0,140}?closeFor/.test(ui),
+    'deleting a drawing closes its open settings dialog');
+  ok(/deleted while the dialog was open[\s\S]{0,420}?kind: 'modify'/.test(settings),
+    'Ok on a drawing deleted while its dialog was open pushes no phantom modify');
   ok(/id === 'trash'[\s\S]{0,320}?App\.undo\.removeAll/.test(ui),
     'left-toolbar trash-all is undoable');
   ok(/id === 'eye'[\s\S]{0,420}?App\.hideAll && App\.selection[\s\S]{0,80}?App\.selection = null/.test(ui),

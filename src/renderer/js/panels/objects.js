@@ -108,13 +108,14 @@ const ObjectTree = {};
              visible range is centred on the object's time span (round 18) */
           try {
             const ts = p.chart.timeScale();
+            const arr = (p.engine && p.engine._timeArr) ? p.engine._timeArr() : p.barTimes;
             let l0 = Infinity, l1 = -Infinity;
             for (const pt of d.points) {
-              const l = U.timeToLogical(p.barTimes, pt.t);
+              const l = U.timeToLogical(arr, pt.t);
               if (l < l0) l0 = l;
               if (l > l1) l1 = l;
             }
-            if (isFinite(l0) && p.barTimes.length) {
+            if (isFinite(l0) && arr.length) {
               const lr = ts.getVisibleLogicalRange();
               const span = lr ? Math.max(20, lr.to - lr.from) : 120;
               const pad = Math.max(4, span * 0.15);

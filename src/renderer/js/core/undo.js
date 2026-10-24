@@ -65,6 +65,9 @@ const CAP = 200;
 
     removeAll(pane) {
       if (!pane) return;
+      /* Close any open drawing dialog first so it cannot keep editing an
+         object that removeAll is about to delete. */
+      if (UI && UI.closeActiveSettings) UI.closeActiveSettings(true);
       this.push({ kind: 'removeAll', symbol: pane.symbol, snap: this._bucket(pane.symbol) });
       App.drawings.removeAll(pane.symbol);
     },
@@ -78,6 +81,9 @@ const CAP = 200;
     },
     remove(pane, d) {
       if (!pane || !d) return;
+      /* An open settings dialog holds a live reference to this drawing; close
+         it (committing any pending edit) before the object disappears. */
+      if (UI && UI.closeSettingsFor) UI.closeSettingsFor(d, true);
       const b = App.drawings.data[pane.symbol];
       const idx = b ? b.items.findIndex((x) => x.id === d.id) : -1;
       this.push({ kind: 'remove', symbol: pane.symbol, d: U.deepCopy(d), idx });

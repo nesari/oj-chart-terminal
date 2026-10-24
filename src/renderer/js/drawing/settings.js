@@ -620,12 +620,17 @@ import { Log } from '../../../core/logger.js';
   /* the dialog currently on screen, so the chart can cancel a temp Text/Note
      when the user clicks elsewhere on the canvas */
   let DS_ACTIVE = null;
-  DrawSettings.closeFor = function (drawing) {
+  DrawSettings.closeFor = function (drawing, commit) {
     if (DS_ACTIVE && DS_ACTIVE.d === drawing) {
-      DS_ACTIVE.close(false);
+      DS_ACTIVE.close(commit === true);
       return true;
     }
     return false;
+  };
+  DrawSettings.closeActive = function (commit) {
+    if (!DS_ACTIVE) return false;
+    DS_ACTIVE.close(commit === true);
+    return true;
   };
 
   /* replace all option fields of d.opts in place (template/default apply) */
@@ -691,10 +696,15 @@ import { Log } from '../../../core/logger.js';
           if (alive) App.undo.push({ kind: 'add', symbol: d.symbol, d: JSON.parse(JSON.stringify(d)) });
         } else if (App.undo) {
           /* ROUND258: Ok on an existing drawing changed its style/coordinates
-             live, but the change was never registered in the undo stack. */
-          const after = JSON.parse(JSON.stringify({ opts: d.opts, points: d.points }));
-          if (JSON.stringify(after) !== JSON.stringify(snap)) {
-            App.undo.push({ kind: 'modify', symbol: d.symbol, id: d.id, before: snap, after });
+             live, but the change was never registered in the undo stack.
+             If the drawing was deleted while the dialog was open, closing it
+             must not push a modify command for a dead id. */
+          const alive = (App.drawings.list(d.symbol) || []).some((x) => x.id === d.id);
+          if (alive) {
+            const after = JSON.parse(JSON.stringify({ opts: d.opts, points: d.points }));
+            if (JSON.stringify(after) !== JSON.stringify(snap)) {
+              App.undo.push({ kind: 'modify', symbol: d.symbol, id: d.id, before: snap, after });
+            }
           }
         }
       } else {

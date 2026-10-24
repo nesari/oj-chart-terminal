@@ -22,7 +22,15 @@ const UI = {};
 /* ROUND259: cancel an uncommitted Text/Note through its settings dialog so the
    dialog cannot stay open over a drawing that was already removed. */
 UI.discardTemp = function (d) {
-  if (DrawSettings && DrawSettings.closeFor) return DrawSettings.closeFor(d);
+  if (DrawSettings && DrawSettings.closeFor) return DrawSettings.closeFor(d, false);
+  return false;
+};
+UI.closeSettingsFor = function (d, commit) {
+  if (DrawSettings && DrawSettings.closeFor) return DrawSettings.closeFor(d, commit === true);
+  return false;
+};
+UI.closeActiveSettings = function (commit) {
+  if (DrawSettings && DrawSettings.closeActive) return DrawSettings.closeActive(commit === true);
   return false;
 };
 
@@ -865,14 +873,14 @@ UI.discardTemp = function (d) {
             puRow(p, '<span>Send to back</span>', () => { App.drawings.moveToBack(pane.symbol, d.id); });
             U.el('div', 'pu-sep', p);
             U.el('div', 'pu-title', p).textContent = 'VISIBILITY ON INTERVALS';
-            if (!d.opts.vis && DrawSettings) d.opts.vis = DrawSettings.defaultVis();
+            if (!d.opts.vis || typeof d.opts.vis !== 'object') d.opts.vis = DrawSettings ? DrawSettings.defaultVis() : {};
             const visKeys = [['ticks', 'Ticks'], ['sec', 'Seconds'], ['min', 'Minutes'], ['hours', 'Hours'], ['days', 'Days'], ['weeks', 'Weeks'], ['months', 'Months'], ['ranges', 'Ranges']];
             for (const [key, label] of visKeys) {
               const on = DrawSettings ? DrawSettings.visGroupOn(d, key) : true;
               const it = U.el('button', 'pu-item', p);
               it.innerHTML = `<span class="ic">${icon(on ? 'checkOn' : 'checkOff')}</span><span>${label}</span>`;
               it.addEventListener('click', () => {
-                if (!d.opts.vis[key]) d.opts.vis[key] = { on: true };
+                if (!d.opts.vis[key] || typeof d.opts.vis[key] !== 'object') d.opts.vis[key] = { on: true };
                 d.opts.vis[key].on = d.opts.vis[key].on === false;
                 save();
                 UI.toast(`${TOOLS[d.type].name} is ${d.opts.vis[key].on === false ? 'hidden' : 'visible'} on ${label.toLowerCase()}`);
@@ -884,6 +892,11 @@ UI.discardTemp = function (d) {
               delete copy.id;
               copy.points = copy.points.map((pt) => ({ t: pt.t + 6 * 60, p: pt.p }));
               copy.opts = Object.assign({}, copy.opts);
+              /* Path/Polyline bend controls live in opts.ctrls; shift them with
+                 the anchors or the clone keeps the source curve's bends. */
+              if (Array.isArray(copy.opts.ctrls)) {
+                copy.opts.ctrls = copy.opts.ctrls.map((c) => (c ? { t: c.t + 6 * 60, p: c.p } : c));
+              }
               App.drawings.add(pane.symbol, copy);
               if (App.undo) App.undo.push({ kind: 'add', symbol: pane.symbol, d: U.deepCopy(copy) });
               App.selection = { pane, d: copy };
