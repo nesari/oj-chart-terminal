@@ -1267,7 +1267,7 @@ const HIT = 7;
       const ts = this.pane.chart.timeScale();
       const lr = ts.getVisibleLogicalRange();
       if (!lr) return;
-      const w = this.canvas.clientWidth;
+      const w = this.view().pw;
       const deltaY = (srcEv && srcEv.deltaY) || 100;
       const px = U.clamp(x / Math.max(1, w), 0, 1);
       const span = lr.to - lr.from;

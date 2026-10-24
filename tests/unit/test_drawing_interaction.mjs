@@ -35,6 +35,8 @@ const { TOOLS } = await import(new URL('tools.js', base).href);
 const { App } = await import(new URL('../../../core/state.js', base).href);
 await import(new URL('tools2.js', base).href);
 const { DrawSettings } = await import(new URL('settings.js', base).href);
+const { UI } = await import(new URL('ui.js', base).href);
+const { Undo } = await import(new URL('../core/undo.js', base).href);
 
 /* Screen space is deliberately simple: t -> x = t - 1000, p -> y = 2000 - p. */
 const ctx = {
@@ -214,6 +216,58 @@ console.log('\n-- visibility defaults --');
   ok(DrawSettings.isVisible(legacy, 3600), 'a visibility group missing from legacy data defaults to visible');
 }
 
+console.log('\n-- undo selection binding --');
+{
+  const prevData = App.drawings.data;
+  const prevSel = App.selection;
+  const prevChanged = UI.onSelectionChanged;
+  const prevButtons = Undo._buttons;
+  const prevStack = Undo._stack;
+  const prevIdx = Undo._idx;
+  UI.onSelectionChanged = () => {};
+  Undo._buttons = () => {};
+  Undo._stack = [];
+  Undo._idx = 0;
+  App.drawings.data = {
+    EURUSD: {
+      next: 3,
+      items: [
+        { id: 1, type: 'trend', points: [], opts: {} },
+        { id: 2, type: 'trend', points: [], opts: {} },
+      ],
+    },
+  };
+  App.selection = { pane: { symbol: 'EURUSD' }, d: App.drawings.data.EURUSD.items[1] };
+  Undo.removeAll({ symbol: 'EURUSD' });
+  Undo.undo();
+  ok(App.drawings.list('EURUSD').length === 2, 'undo removeAll restores the bucket');
+  ok(App.selection && App.selection.d === App.drawings.data.EURUSD.items[1],
+    'selection re-binds to the restored live drawing object');
+  App.drawings.data = prevData;
+  App.selection = prevSel;
+  UI.onSelectionChanged = prevChanged;
+  Undo._buttons = prevButtons;
+  Undo._stack = prevStack;
+  Undo._idx = prevIdx;
+}
+
+console.log('\n-- malformed drawing persistence --');
+{
+  const prevData = App.drawings.data;
+  App.drawings.data = {
+    BAD: [],
+    EURUSD: { next: 'x', items: 'nope' },
+    XAUUSD: { next: 1, items: [null, { id: 7, type: 'trend', points: [], opts: {} }] },
+  };
+  ok(App.drawings.list('BAD').length === 0, 'list tolerates a malformed bucket');
+  const repaired = App.drawings.bucket('EURUSD');
+  ok(Array.isArray(repaired.items) && repaired.next === 1,
+    'bucket repairs missing items/next instead of throwing');
+  const advanced = App.drawings.bucket('XAUUSD');
+  ok(advanced.next === 8, 'bucket advances next past existing drawing ids');
+  App.drawings.data = prevData;
+}
+
 console.log('\n-- source contracts for interaction paths --');
 {
   const engine = fs.readFileSync('src/renderer/js/drawing/engine.js', 'utf8');
@@ -224,6 +278,8 @@ console.log('\n-- source contracts for interaction paths --');
   const toolbar = fs.readFileSync('src/renderer/js/chart/toolbar.js', 'utf8');
   ok(/const l0 = Math\.floor\(lr\.from\), l1 = Math\.ceil\(lr\.to\);[\s\S]*?logicalToCoordinate\(l0\)[\s\S]*?logicalToCoordinate\(l1\)/.test(engine),
     'magnet-off placement interpolates over the plot, not the full canvas');
+  ok(/const w = this\.view\(\)\.pw;[\s\S]{0,140}?const px = U\.clamp\(x/.test(engine),
+    'wheel zoom is anchored within the plot width, not the full canvas');
   ok(/if \(App\.hideAll\) return null;[\s\S]*?DrawSettings\.isVisible\(d, v\.tfSec\)/.test(engine),
     'hit-testing skips hidden drawings and the Visibility tab filter');
   ok(/if \(wasTemp && App\.undo\)[\s\S]*?kind: 'add'/.test(settings),

@@ -143,10 +143,13 @@ const CAP = 200;
       this._after();
     },
     _after() {
-      /* drop a dead selection, refresh the tree, persist immediately */
+      /* Drop a dead selection; if the drawing survived (e.g. undo of
+         removeAll restores a fresh bucket copy), re-bind to the live object so
+         later drags/settings edits do not mutate a detached stale copy. */
       if (App.selection && App.selection.d) {
-        const alive = (App.drawings.list(App.selection.pane.symbol) || []).some((x) => x.id === App.selection.d.id);
-        if (!alive) App.selection = null;
+        const live = (App.drawings.list(App.selection.pane.symbol) || []).find((x) => x.id === App.selection.d.id);
+        if (live) App.selection.d = live;
+        else App.selection = null;
       }
       if (UI) UI.onSelectionChanged();
       this._buttons();

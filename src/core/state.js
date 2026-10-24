@@ -205,17 +205,55 @@ const TF = [
   };
 
   /* ---- drawings store (per symbol) ---- */
+  /* Persisted drawings are user data and survive app upgrades, so treat the
+     stored blob as untrusted: a corrupt/legacy shape must not make the chart
+     throw on boot. Normalise buckets to { next, items } and keep only objects. */
+  const normalizeDrawings = (raw) => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+    const out = {};
+    for (const [symbol, bucket] of Object.entries(raw)) {
+      if (!bucket || typeof bucket !== 'object' || Array.isArray(bucket)) continue;
+      const items = Array.isArray(bucket.items)
+        ? bucket.items.filter((d) => d && typeof d === 'object' && !Array.isArray(d))
+        : [];
+      let next = Number.isFinite(bucket.next) ? Math.floor(bucket.next) : 1;
+      if (next < 1) next = 1;
+      let max = 0;
+      for (const d of items) {
+        const id = Number(d.id);
+        if (Number.isFinite(id) && id > max) max = id;
+      }
+      if (next <= max) next = max + 1;
+      out[symbol] = { next, items };
+    }
+    return out;
+  };
+
   const Drawings = {
-    data: ENV.storage.get('mt5_drawings', {}),
+    data: normalizeDrawings(ENV.storage.get('mt5_drawings', {})),
     _save: debounce(function () { ENV.storage.set('mt5_drawings', Drawings.data); }, 250),
     onChanged: [], // listeners for Object Tree etc.
     _notify() { for (const f of this.onChanged) { try { f(); } catch (e) {} } },
 
     bucket(symbol) {
-      if (!this.data[symbol]) this.data[symbol] = { next: 1, items: [] };
-      return this.data[symbol];
+      let b = this.data[symbol];
+      if (!b || typeof b !== 'object' || Array.isArray(b)) {
+        b = this.data[symbol] = { next: 1, items: [] };
+      }
+      if (!Array.isArray(b.items)) b.items = [];
+      if (!Number.isFinite(b.next) || b.next < 1) b.next = 1;
+      let max = 0;
+      for (const d of b.items) {
+        const id = Number(d && d.id);
+        if (Number.isFinite(id) && id > max) max = id;
+      }
+      if (b.next <= max) b.next = max + 1;
+      return b;
     },
-    list(symbol) { return this.data[symbol] ? this.data[symbol].items : []; },
+    list(symbol) {
+      const b = this.data[symbol];
+      return b && Array.isArray(b.items) ? b.items : [];
+    },
     add(symbol, d) {
       const b = this.bucket(symbol);
       d.id = b.next++;
@@ -227,7 +265,7 @@ const TF = [
     },
     remove(symbol, id) {
       const b = this.data[symbol];
-      if (!b) return;
+      if (!b || !Array.isArray(b.items)) return;
       b.items = b.items.filter((d) => d.id !== id);
       this.save();
       this._notify();
@@ -235,7 +273,7 @@ const TF = [
     /* Visual order (TV ⋯ menu, round 21): render order = array order */
     moveToFront(symbol, id) {
       const b = this.data[symbol];
-      if (!b) return;
+      if (!b || !Array.isArray(b.items)) return;
       const i = b.items.findIndex((d) => d.id === id);
       if (i < 0 || i === b.items.length - 1) return;
       const [it] = b.items.splice(i, 1);
@@ -245,7 +283,7 @@ const TF = [
     },
     moveToBack(symbol, id) {
       const b = this.data[symbol];
-      if (!b) return;
+      if (!b || !Array.isArray(b.items)) return;
       const i = b.items.findIndex((d) => d.id === id);
       if (i <= 0) return;
       const [it] = b.items.splice(i, 1);
