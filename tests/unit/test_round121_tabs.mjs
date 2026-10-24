@@ -107,6 +107,16 @@ check('keyboard: Ctrl+T new tab / Ctrl+W close, guarded against typing + ANY ope
   /e\.code !== 'KeyT' && e\.code !== 'KeyW'/.test(tabs) &&
   /U\.isTyping\(e\.target\)/.test(tabs) &&
   /querySelector\('\.dialog-backdrop, \.ds-dialog'\)/.test(tabs) && /sym-dialog/.test(tabs));
+
+console.log('— ROUND260 · dock handoff edge cases —');
+check('a repeated dock request replaces the matching id instead of pushing a duplicate',
+  /const dup = this\.list\.findIndex\(\(t\) => t\.id === rec\.id\);[\s\S]{0,140}?splice\(dup, 1, rec\)/.test(tabs));
+check('dock ack re-activates a surviving tab when the acked tab was active',
+  /let droppedActive = false;[\s\S]{0,700}?if \(droppedActive && this\.list\.length\)[\s\S]{0,160}?this\._restore\(next\)/.test(tabs));
+check('dock ack with no surviving tab clears the dead active id',
+  /droppedActive[\s\S]{0,240}?this\.activeId = null;/.test(tabs));
+check('duplicate clears an in-flight docking flag on the copy',
+  /copy\.id = nid\(\);\s*\n\s*delete copy\._docking;/.test(tabs));
 check('close ✕ appears on hover/active only (CSS) and never activates the tab on mousedown',
   /\.tab-item:hover \.t-close, \.tab-item\.active \.t-close \{ opacity: 1; \}/.test(css) &&
   /if \(e\.button === 0 && !e\.target\.closest\('\.t-close'\)\) this\.activate\(t\.id\);/.test(tabs));

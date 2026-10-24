@@ -580,6 +580,7 @@ const Tabs = {
     let copy;
     try { copy = JSON.parse(JSON.stringify(src)); } catch (e) { return; }
     copy.id = nid();
+    delete copy._docking; // a duplicate is never mid-handoff
     this.list.splice(this.list.indexOf(src) + 1, 0, copy);
     this._persist();
     this.activate(copy.id);
@@ -921,9 +922,14 @@ const Tabs = {
     } catch (e) { Log.warn('chart', 'dock handoff cleanup failed', e) }
     this.capture();
     delete rec._docking;
-    this.list.push(rec);
+    /* A retried handoff can arrive with an id the host already holds; pushing
+       it again used to leave two tabs with the same id (find/activate/render
+       all follow the first one). Replace in place instead. */
+    const dup = this.list.findIndex((t) => t.id === rec.id);
+    if (dup >= 0) this.list.splice(dup, 1, rec);
+    else this.list.push(rec);
     this.activeId = rec.id;
-    this._restore(this.list.find((t) => t.id === rec.id));
+    this._restore(rec);
     this._persist();
     this.render();
     try { await window.mt5Tabs.dockAck({ soloId, ids: [rec.id] }); } catch (e) { Log.debug('chart', 'dock ack failed', e) }
@@ -934,9 +940,23 @@ const Tabs = {
   _onDockAck(p) {
     if (SOLO_ID == null || !p || p.soloId !== SOLO_ID) return;
     const ids = Array.isArray(p.ids) ? p.ids : [];
+    let droppedActive = false;
     for (const id of ids) {
       const i = this.list.findIndex((t) => t.id === id);
-      if (i >= 0) this.list.splice(i, 1);
+      if (i >= 0) {
+        if (this.list[i].id === this.activeId) droppedActive = true;
+        this.list.splice(i, 1);
+      }
+    }
+    /* A solo window can hold more than one tab. When the acked tab was active,
+       its chart is still on screen: hand the view to a surviving neighbour
+       (the record left behind would otherwise keep _syncTick/activate dead). */
+    if (droppedActive && this.list.length) {
+      const next = this.list[0];
+      this.activeId = next.id;
+      this._restore(next);
+    } else if (droppedActive) {
+      this.activeId = null;
     }
     this._persist();
     this.render();

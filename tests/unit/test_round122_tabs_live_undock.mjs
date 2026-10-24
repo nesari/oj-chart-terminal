@@ -135,7 +135,7 @@ check('dock-back requests time out (5s) — the tab un-dims and stays',
 check('the host absorbs the record from the REQUEST PAYLOAD, activates it, acks (ROUND123)',
   /_acceptDock\(p\) \{[\s\S]*?const rec = \(p && p\.rec && validRec\(p\.rec\)\) \? p\.rec : null;[\s\S]*?this\.activeId = rec\.id;[\s\S]*?await window\.mt5Tabs\.dockAck\(\{ soloId, ids: \[rec\.id\] \}\);/.test(tabs));
 check('the solo drops its copy ONLY on the ack; empty strip closes the window (Chrome)',
-  /_onDockAck\(p\) \{[\s\S]*?if \(i >= 0\) this\.list\.splice\(i, 1\);[\s\S]*?if \(!this\.list\.length\) \{[\s\S]*?window\.close\(\);/.test(tabs));
+  /_onDockAck\(p\) \{[\s\S]*?const i = this\.list\.findIndex\(\(t\) => t\.id === id\);[\s\S]{0,200}?this\.list\.splice\(i, 1\);[\s\S]{0,900}?if \(!this\.list\.length\) \{[\s\S]{0,160}?window\.close\(\);/.test(tabs));
 check('main routes dockback (with the record) to the host strip and acks back to the solo by id',
   /host\.webContents\.send\('tabs:dock-request', \{ soloId, rec \}\);/.test(main) &&
   /const win = soloWins\.get\(soloId\);[\s\S]*?win\.webContents\.send\('tabs:dock-ack', \{ soloId,/.test(main));

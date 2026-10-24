@@ -658,12 +658,13 @@ const Toolbar = {};
       const saveBtn = U.el('button', 'pu-item lay-save', layBox);
       saveBtn.innerHTML = `<span class="ic">${icon('save')}</span><span>Save layout\u2026</span>`;
       saveBtn.addEventListener('click', () => { closePopup(); Toolbar.openSaveLayoutDialog(); });
-      const list = U.lsGet('mt5_saved_layouts', []) || [];
+      const list = savedLayouts();
       for (const s of list.slice().reverse()) {
         const it = U.el('button', 'pu-item ds-tpl-item lay-saved', layBox);
-        const d = new Date(s.at || Date.now());
-        const when = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-        it.innerHTML = `<span>${s.name}</span><span class="lay-saved-at">${when}</span>`;
+        const when = savedLayoutWhen(s.at);
+        const nm = U.el('span', '', it);
+        nm.textContent = s.name;
+        U.el('span', 'lay-saved-at', it).textContent = when;
         it.title = 'Load this layout';
         const tr = U.el('button', 'pu-star ds-tpl-trash', it);
         tr.innerHTML = icon('trash');
@@ -671,8 +672,7 @@ const Toolbar = {};
         tr.addEventListener('mousedown', (e) => e.stopPropagation());
         tr.addEventListener('click', (e) => {
           e.stopPropagation();
-          const cur = U.lsGet('mt5_saved_layouts', []) || [];
-          U.lsSet('mt5_saved_layouts', cur.filter((x) => x.name !== s.name));
+          setSavedLayouts(savedLayouts().filter((x) => x.name !== s.name));
           closePopup();
           Toolbar.openLayoutMenu(x, y);
         });
@@ -712,14 +712,24 @@ const Toolbar = {};
 
   Toolbar.applySavedLayout = function (s) {
     try {
-      if (s && s.name) U.lsSet('mt5_cur_layout_name', s.name);
-      const d = s.data || {};
-      if (d.layout) {
-        U.lsSet('mt5_layout', d.layout);
-        if (d.ratios) U.lsSet('mt5_split_' + d.layout, d.ratios);
-        U.lsSet('mt5_styles_' + d.layout, (d.panes || []).map((p) => p.style));
+      if (!s || typeof s.name !== 'string' || !s.name.trim()) {
+        UI.toast('Could not load this layout', 'err');
+        return;
       }
-      if (d.panes) U.lsSet('mt5_boot_panes', { layout: d.layout || App.layout, panes: d.panes });
+      U.lsSet('mt5_cur_layout_name', s.name);
+      const d = (s.data && typeof s.data === 'object') ? s.data : {};
+      /* Panes are the one field the boot path indexes directly; drop corrupt
+         entries instead of writing them into mt5_boot_panes. */
+      const panes = Array.isArray(d.panes)
+        ? d.panes.filter((p) => p && typeof p === 'object' && p.symbol)
+        : [];
+      /* A saved (or hand-edited) layout id may be unknown/legacy; writing it
+         raw left mt5_styles_<garbage> behind and only fell back at boot. */
+      const layId = App.layoutById(d.layout || App.layout).id;
+      U.lsSet('mt5_layout', layId);
+      if (d.ratios) U.lsSet('mt5_split_' + layId, d.ratios);
+      if (panes.length) U.lsSet('mt5_styles_' + layId, panes.map((p) => p.style));
+      if (panes.length) U.lsSet('mt5_boot_panes', { layout: layId, panes });
       if (d.settings) U.lsSet('mt5_settings', d.settings);
       if (d.sync) U.lsSet('mt5_sync', d.sync);
       if (d.tz) U.lsSet('mt5_tz', d.tz);
@@ -758,9 +768,9 @@ const Toolbar = {};
     const save = () => {
       const name = inp.value.trim();
       if (!name) { inp.style.borderColor = '#f23645'; return; }
-      const list = (U.lsGet('mt5_saved_layouts', []) || []).filter((x) => x.name !== name);
+      const list = savedLayouts().filter((x) => x.name !== name);
       list.push(Toolbar.layoutSnapshot(name));
-      U.lsSet('mt5_saved_layouts', list.slice(-20));
+      setSavedLayouts(list);
       U.lsSet('mt5_cur_layout_name', name); // this is now the current layout (Rename / Make a copy)
       close();
       UI.toast(`Layout “${name}” saved`, 'ok');
@@ -781,6 +791,27 @@ const Toolbar = {};
      counterpart — layouts live in this app's storage.) */
   Toolbar.autosaveOn = function () { return U.lsGet('mt5_autosave', true) !== false; };
 
+  /* Saved layouts live in localStorage, so the value may be missing, from an
+     older shape or hand-edited. Reading it raw used to throw on .slice() /
+     .filter() when it was not an array, and every name was interpolated into
+     innerHTML unescaped. Normalise the list at ONE boundary instead. */
+  function savedLayouts() {
+    const raw = U.lsGet('mt5_saved_layouts', []);
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((s) => s && typeof s === 'object' &&
+      typeof s.name === 'string' && !!s.name.trim());
+  }
+  function setSavedLayouts(list) {
+    const out = (Array.isArray(list) ? list : []).filter((s) => s && typeof s === 'object' &&
+      typeof s.name === 'string' && !!s.name.trim());
+    U.lsSet('mt5_saved_layouts', out.slice(-20));
+  }
+  function savedLayoutWhen(at) {
+    const d = new Date(typeof at === 'number' && isFinite(at) ? at : NaN);
+    if (!isFinite(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
   function layoutSum(s) {
     try {
       const p0 = (s.data && s.data.panes && s.data.panes[0]) || null;
@@ -799,12 +830,15 @@ const Toolbar = {};
     const dlg = U.el('div', 'dialog', back);
     dlg.innerHTML = `<h3>${title}<button class="mini-btn dlg-x">${icon('x')}</button></h3>
       ${note ? `<p class="dlg-note">${note}</p>` : ''}
-      <div class="dlg-row"><label>Name<input type="text" id="ln-name" maxlength="60" value="${defName}" spellcheck="false"></label></div>
+      <div class="dlg-row"><label>Name<input type="text" id="ln-name" maxlength="60" spellcheck="false"></label></div>
       <div class="dlg-actions">
         <button class="dlg-btn dlg-ghost" id="ln-cancel">Cancel</button>
         <button class="dlg-btn dlg-primary" id="ln-ok">Save</button>
       </div>`;
     const inp = dlg.querySelector('#ln-name');
+    /* Existing layout names are user data; never interpolate them into the
+       value="" attribute (a quote would break out of it). */
+    inp.value = typeof defName === 'string' ? defName : '';
     const close = () => { layer.classList.add('hidden'); U.clear(layer); };
     dlg.querySelector('.dlg-x').addEventListener('click', close);
     dlg.querySelector('#ln-cancel').addEventListener('click', close);
@@ -850,43 +884,45 @@ const Toolbar = {};
       mk('Make a copy\u2026', 'copy', '', () => {
         const cur = U.lsGet('mt5_cur_layout_name', null);
         layoutNameDialog('Make a copy of the layout', null, `Copy of ${cur || Toolbar._defaultLayoutName()}`, (name) => {
-          const list = (U.lsGet('mt5_saved_layouts', []) || []).filter((x) => x.name !== name);
+          const list = savedLayouts().filter((x) => x.name !== name);
           list.push(Toolbar.layoutSnapshot(name));
-          U.lsSet('mt5_saved_layouts', list.slice(-20));
+          setSavedLayouts(list);
           U.lsSet('mt5_cur_layout_name', name);
-          UI.toast(`Layout copied as “${name}”`, 'ok');
+          UI.toast(`Layout copied as “${U.esc(name)}”`, 'ok');
         });
       });
       mk('Rename\u2026', 'pencil', '', () => {
         const cur = U.lsGet('mt5_cur_layout_name', null);
-        const list = U.lsGet('mt5_saved_layouts', []) || [];
+        const list = savedLayouts();
         if (!cur || !list.some((s) => s.name === cur)) {
           UI.toast('The current layout is not saved yet — use Save layout first', 'err');
           Toolbar.openSaveLayoutDialog();
           return;
         }
         layoutNameDialog('Rename layout', null, cur, (name) => {
-          const arr = (U.lsGet('mt5_saved_layouts', []) || []);
+          const arr = savedLayouts();
           const ent = arr.find((s) => s.name === cur);
           if (!ent) return;
           ent.name = name;
           const out = arr.filter((s) => s !== ent && s.name !== name); // overwrite a name collision
           out.push(ent);
-          U.lsSet('mt5_saved_layouts', out.slice(-20));
+          setSavedLayouts(out);
           U.lsSet('mt5_cur_layout_name', name);
-          UI.toast(`Layout renamed to “${name}”`, 'ok');
+          UI.toast(`Layout renamed to “${U.esc(name)}”`, 'ok');
         });
       });
       mk('Download chart data\u2026', 'doc', '', () => Toolbar.downloadChartData());
       U.el('div', 'pu-sep', p);
       mk('Create new layout\u2026', 'plus', '', () => Toolbar.newLayoutConfirm());
       /* RECENTLY USED (TV): latest saved layouts first */
-      const list = (U.lsGet('mt5_saved_layouts', []) || []).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
+      const list = savedLayouts().slice().sort((a, b) => (Number(b.at) || 0) - (Number(a.at) || 0));
       if (list.length) {
         U.el('div', 'pu-title', p).textContent = 'RECENTLY USED';
         for (const s of list.slice(0, 4)) {
           const it = U.el('button', 'pu-item sl-recent', p);
-          it.innerHTML = `<span class="ic">${icon('layout1')}</span><span class="sl-rname">${s.name}</span><span class="sl-rsum">${layoutSum(s)}</span>`;
+          U.el('span', 'ic', it).innerHTML = icon('layout1');
+          U.el('span', 'sl-rname', it).textContent = s.name;
+          U.el('span', 'sl-rsum', it).textContent = layoutSum(s);
           it.title = 'Load this layout';
           it.addEventListener('click', () => { closePopup(); Toolbar.applySavedLayout(s); });
         }
@@ -923,6 +959,10 @@ const Toolbar = {};
     back.addEventListener('mousedown', (e) => { if (e.target === back) close(); });
     dlg.querySelector('#nl-ok').addEventListener('click', () => {
       U.lsSet('mt5_boot_panes', null); // no session to restore
+      /* Tabs.init restores its own store on boot; leaving mt5_tabs behind
+         reopened every old tab, so "Create new layout" landed right back on
+         the previous multi-tab session. */
+      U.lsSet('mt5_tabs', null);
       U.lsSet('mt5_layout', '1');
       U.lsSet('mt5_cur_layout_name', null);
       location.reload();
