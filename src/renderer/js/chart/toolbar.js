@@ -457,7 +457,9 @@ const Toolbar = {};
       for (const p of App.panes) p.engine.cancelCreate();
       if (App.selection) {
         const sd = App.selection.d;
-        if (sd.opts && sd.opts.temp) App.drawings.remove(sd.symbol, sd.id);
+        if (sd && sd.opts && sd.opts.temp) {
+          if (!UI.discardTemp || !UI.discardTemp(sd)) App.drawings.remove(sd.symbol, sd.id);
+        }
         App.selection = null;
       }
       if (UI.onToolDone) UI.onToolDone();

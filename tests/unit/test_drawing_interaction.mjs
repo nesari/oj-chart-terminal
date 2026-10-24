@@ -221,6 +221,7 @@ console.log('\n-- source contracts for interaction paths --');
   const ui = fs.readFileSync('src/renderer/js/drawing/ui.js', 'utf8');
   const objects = fs.readFileSync('src/renderer/js/panels/objects.js', 'utf8');
   const app = fs.readFileSync('src/renderer/js/app.js', 'utf8');
+  const toolbar = fs.readFileSync('src/renderer/js/chart/toolbar.js', 'utf8');
   ok(/const l0 = Math\.floor\(lr\.from\), l1 = Math\.ceil\(lr\.to\);[\s\S]*?logicalToCoordinate\(l0\)[\s\S]*?logicalToCoordinate\(l1\)/.test(engine),
     'magnet-off placement interpolates over the plot, not the full canvas');
   ok(/if \(App\.hideAll\) return null;[\s\S]*?DrawSettings\.isVisible\(d, v\.tfSec\)/.test(engine),
@@ -239,6 +240,8 @@ console.log('\n-- source contracts for interaction paths --');
     'Visibility tab materialises groups missing from legacy drawings');
   ok(/DS_ACTIVE[\s\S]{0,260}?closeFor = function/.test(settings) && /DrawSettings\.closeFor\(sd\)/.test(engine),
     'click-away cancels the uncommitted Text/Note dialog');
+  ok(/UI\.discardTemp = function[\s\S]{0,160}?DrawSettings\.closeFor/.test(ui) && /UI\.discardTemp\(sd\)/.test(toolbar),
+    'Escape also cancels the uncommitted Text/Note dialog');
   ok(/const alive = \(App\.drawings\.list\(d\.symbol\)[\s\S]{0,160}?App\.undo\.push/.test(settings),
     'Ok on a discarded temp drawing leaves no phantom undo step');
   ok(/id === 'trash'[\s\S]{0,320}?App\.undo\.removeAll/.test(ui),

@@ -19,6 +19,13 @@ import { ObjectTree } from '../panels/objects.js';
 
 const UI = {};
 
+/* ROUND259: cancel an uncommitted Text/Note through its settings dialog so the
+   dialog cannot stay open over a drawing that was already removed. */
+UI.discardTemp = function (d) {
+  if (DrawSettings && DrawSettings.closeFor) return DrawSettings.closeFor(d);
+  return false;
+};
+
   /* Round 23 regroup (user request):
      - 'lines'  = trend-line tools + anchored lines + Info Line in ONE list
      - 'shapes' = rectangles/shapes + Text/annotations in ONE list
