@@ -697,9 +697,15 @@ const Toolbar = {};
       data: {
         layout: App.layout,
         ratios: App._ratios ? JSON.parse(JSON.stringify(App._ratios)) : null,
-        /* round 27: indicator instances travel with saved layouts */
+        /* round 27: indicator instances travel with saved layouts (style
+           overrides, pane height and Pine scripts too — the tab snapshot
+           already carried them, so loading a layout silently dropped them) */
         panes: App.panes.map((p) => ({ symbol: p.symbol, tf: p.tf, style: p.style,
-          indicators: (p.indicators || []).map((i) => ({ type: i.type, params: i.params, colors: i.colors, visible: i.visible !== false })) })),
+          indicators: (p.indicators || []).map((i) => ({ type: i.type, params: i.params, colors: i.colors,
+            style: (i.style && typeof i.style === 'object') ? i.style : undefined,
+            frac: (typeof i.frac === 'number' && isFinite(i.frac) && i.frac > 0) ? i.frac : undefined,
+            visible: i.visible !== false })),
+          pineScripts: Manager.serializePine ? Manager.serializePine(p) : undefined })),
         settings: U.lsGet('mt5_settings', {}),
         sync: App.sync,
         tz: App.tz,
@@ -738,6 +744,10 @@ const Toolbar = {};
       if (d.toolFavs) U.lsSet('mt5_tool_favs', d.toolFavs);
       if (d.styleFavs) U.lsSet('mt5_style_favs', d.styleFavs);
       if (d.watchlist) U.lsSet('mt5_watchlist', d.watchlist);
+      /* Loading a layout must also win over the tab-session restore: the old
+         strip (and its beforeunload capture) would put its charts right back
+         over the layout just chosen. */
+      if (Toolbar.resetTabSession) Toolbar.resetTabSession();
       location.reload();
     } catch (e) {
       UI.toast('Could not load this layout', 'err');
@@ -959,10 +969,11 @@ const Toolbar = {};
     back.addEventListener('mousedown', (e) => { if (e.target === back) close(); });
     dlg.querySelector('#nl-ok').addEventListener('click', () => {
       U.lsSet('mt5_boot_panes', null); // no session to restore
-      /* Tabs.init restores its own store on boot; leaving mt5_tabs behind
-         reopened every old tab, so "Create new layout" landed right back on
-         the previous multi-tab session. */
-      U.lsSet('mt5_tabs', null);
+      /* Drop the strip too (memory + store). Tabs.init restores its own store
+         on boot, and the beforeunload capture would rewrite the OLD list over
+         this key on reload — either way "Create new layout" reopened the
+         previous multi-tab session. */
+      if (Toolbar.resetTabSession) Toolbar.resetTabSession();
       U.lsSet('mt5_layout', '1');
       U.lsSet('mt5_cur_layout_name', null);
       location.reload();

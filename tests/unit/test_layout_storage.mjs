@@ -54,8 +54,12 @@ check('styles are written from the validated pane list, not the raw one',
   /U\.lsSet\('mt5_styles_' \+ layId, panes\.map\(\(p\) => p\.style\)\)/.test(tb));
 check('an unknown saved layout id is normalised through App.layoutById',
   /const layId = App\.layoutById\(d\.layout \|\| App\.layout\)\.id;[\s\S]{0,200}?U\.lsSet\('mt5_styles_' \+ layId/.test(tb));
-check('Create new layout drops the tab strip store (no old tabs on reload)',
-  /U\.lsSet\('mt5_boot_panes', null\);[\s\S]{0,260}?U\.lsSet\('mt5_tabs', null\);/.test(tb));
+check('Create new layout resets the tab session before reloading',
+  /U\.lsSet\('mt5_boot_panes', null\);[\s\S]{0,420}?Toolbar\.resetTabSession[\s\S]{0,140}?location\.reload\(\);/.test(tb));
+check('loading a saved layout resets the tab session before reloading',
+  /if \(d\.watchlist\) U\.lsSet\('mt5_watchlist', d\.watchlist\);[\s\S]{0,340}?Toolbar\.resetTabSession[\s\S]{0,80}?location\.reload\(\);/.test(tb));
+check('a saved layout carries indicator style/height and Pine scripts',
+  /panes: App\.panes\.map\(\(p\) => \(\{ symbol: p\.symbol, tf: p\.tf, style: p\.style,[\s\S]{0,700}?frac: \(typeof i\.frac[\s\S]{0,300}?pineScripts: Manager\.serializePine/.test(tb));
 
 console.log('— mirror of the list rules —');
 {

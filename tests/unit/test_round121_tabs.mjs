@@ -46,6 +46,10 @@ check('records: { id, layout, panes[{symbol,tf,style,indicators?,pineScripts?}] 
   /const STORE_KEY = SOLO_ID \? 'mt5_tab_solo_' \+ SOLO_ID : K\.key;/.test(tabs));
 check('validRec rejects broken records (id + layout + EVERY pane symbol-bearing)',
   /function validRec\(r\) \{[\s\S]*?r\.id && r\.layout && Array\.isArray\(r\.panes\)[\s\S]*?r\.panes\.every\(\(p\) => p && typeof p === 'object' && p\.symbol\)/.test(tabs));
+check('restore drops duplicate tab ids instead of rendering two records with one id',
+  /const seen = new Set\(\);[\s\S]{0,180}?if \(!validRec\(t\) \|\| seen\.has\(t\.id\)\) return false;[\s\S]{0,80}?seen\.add\(t\.id\)/.test(tabs));
+check('resetTabSession clears the live list and this window\'s own store',
+  /Toolbar\.resetTabSession = function \(\) \{[\s\S]{0,200}?Tabs\.list = \[\];[\s\S]{0,120}?Tabs\.activeId = null;[\s\S]{0,120}?U\.lsSet\(STORE_KEY, null\)/.test(tabs));
 check('first run ADOPTS the live chart as tab 1 (zero behaviour change on upgrade)',
   /this\.list = \[this\._adoptRec\(\)\];/.test(tabs) &&
   /_adoptRec\(\) \{[\s\S]*?App\.panes\.length \? this\.snapshotPanes\(\) : \[\{ symbol: 'EURUSD'/.test(tabs));

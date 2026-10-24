@@ -150,7 +150,14 @@ const Tabs = {
          ROUND123 fallback for a detached window whose IPC claim failed */
       try {
         if (saved && saved.v === K.v && Array.isArray(saved.tabs)) {
-          this.list = saved.tabs.filter(validRec);
+          /* Duplicate ids in a hand-edited store make activate/close/render
+             follow only the first record; keep the first of each id. */
+          const seen = new Set();
+          this.list = saved.tabs.filter((t) => {
+            if (!validRec(t) || seen.has(t.id)) return false;
+            seen.add(t.id);
+            return true;
+          });
         }
         if (this.list.length) {
           /* restore the last active tab (its records override the legacy boot) */
@@ -972,6 +979,19 @@ const Tabs = {
        its OWN key so two windows can never overwrite each other's strip */
     U.lsSet(SOLO_ID ? STORE_KEY : K.key, { v: K.v, tabs: this.list, active: this.activeId });
   },
+};
+
+/* ROUND261: the layout dialogs (toolbar.js) drop THIS window's tab session
+   before a reload. Without it, Tabs.init restored the old strip on boot and
+   the beforeunload capture rewrote it over mt5_tabs, so "Open layout" and
+   "Create new layout" never survived more than one frame. One-way wiring:
+   tabs.js already imports Toolbar, so no cycle is introduced. */
+Toolbar.resetTabSession = function () {
+  try {
+    Tabs.list = [];
+    Tabs.activeId = null;
+    U.lsSet(STORE_KEY, null);
+  } catch (e) { Log.debug('chart', 'tab session reset failed', e); }
 };
 
 /* ROUND122: feed the tab labels from the SAME tick stream the Watchlist
