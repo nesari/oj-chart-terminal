@@ -97,10 +97,12 @@ function nid() {
   return 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
-/* a persisted record is usable when it has an id, a layout and ≥1 valid pane */
+/* a persisted record is usable when it has an id, a layout and every pane is
+   a real {symbol,...} record. One corrupt pane used to pass the old first-pane
+   check and then break the layout rebuild. */
 function validRec(r) {
   return !!(r && r.id && r.layout && Array.isArray(r.panes) &&
-    r.panes.length && r.panes[0] && r.panes[0].symbol);
+    r.panes.length && r.panes.every((p) => p && typeof p === 'object' && p.symbol));
 }
 
 const Tabs = {
@@ -467,10 +469,13 @@ const Tabs = {
   },
 
   _restore(rec) {
-    const panes = (rec && Array.isArray(rec.panes) && rec.panes.length)
-      ? rec.panes
-      : [{ symbol: 'EURUSD', tf: 'M1', style: 'candles' }];
-    Manager.setLayout((rec && rec.layout) || '1', false, panes);
+    /* A floating drawing-settings dialog belongs to the tab being left; close
+       it before its pane is destroyed so it cannot float over the new chart. */
+    if (UI && UI.closeActiveSettings) UI.closeActiveSettings(true);
+    const panes = (rec && Array.isArray(rec.panes) ? rec.panes : [])
+      .filter((p) => p && typeof p === 'object' && p.symbol);
+    Manager.setLayout((rec && rec.layout) || '1', false,
+      panes.length ? panes : [{ symbol: 'EURUSD', tf: 'M1', style: 'candles' }]);
   },
 
   /* first-run adoption record built from whatever Manager.init restored */
@@ -781,9 +786,11 @@ const Tabs = {
   _onKey(e) {
     if (!e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
     if (e.code !== 'KeyT' && e.code !== 'KeyW') return;
+    if (e.repeat) return; // holding Ctrl+W must not close tab after tab
     if (U.isTyping(e.target)) return;
-    if (document.getElementById('draw-settings-dialog') ||
-        document.getElementById('save-layout-dialog') ||
+    /* Any open dialog owns the keyboard; the old list only knew three ids and
+       let Ctrl+T/Ctrl+W close/open tabs behind the Settings/Alerts dialogs. */
+    if (document.querySelector('.dialog-backdrop, .ds-dialog') ||
         document.getElementById('sym-dialog')) return;
     if (e.code === 'KeyT') {
       e.preventDefault();

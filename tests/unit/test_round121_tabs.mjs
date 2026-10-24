@@ -44,8 +44,8 @@ check('records: { id, layout, panes[{symbol,tf,style,indicators?,pineScripts?}] 
   /key: 'mt5_tabs'/.test(tabs) && /v: 1/.test(tabs) &&
   /U\.lsSet\(SOLO_ID \? STORE_KEY : K\.key, \{ v: K\.v, tabs: this\.list, active: this\.activeId \}\)/.test(tabs) &&
   /const STORE_KEY = SOLO_ID \? 'mt5_tab_solo_' \+ SOLO_ID : K\.key;/.test(tabs));
-check('validRec rejects broken records (id + layout + ≥1 symbol-bearing pane)',
-  /function validRec\(r\) \{[\s\S]*?r\.id && r\.layout && Array\.isArray\(r\.panes\)[\s\S]*?r\.panes\[0\] && r\.panes\[0\]\.symbol/.test(tabs));
+check('validRec rejects broken records (id + layout + EVERY pane symbol-bearing)',
+  /function validRec\(r\) \{[\s\S]*?r\.id && r\.layout && Array\.isArray\(r\.panes\)[\s\S]*?r\.panes\.every\(\(p\) => p && typeof p === 'object' && p\.symbol\)/.test(tabs));
 check('first run ADOPTS the live chart as tab 1 (zero behaviour change on upgrade)',
   /this\.list = \[this\._adoptRec\(\)\];/.test(tabs) &&
   /_adoptRec\(\) \{[\s\S]*?App\.panes\.length \? this\.snapshotPanes\(\) : \[\{ symbol: 'EURUSD'/.test(tabs));
@@ -54,7 +54,7 @@ check('snapshot serialization matches the setLayout keep-shape (indicators + Pin
 
 console.log('— ROUND121 · switching machinery —');
 check('restore goes through Manager.setLayout(layout, false, EXPLICIT panes) — the layout-switch path',
-  /_restore\(rec\) \{[\s\S]*?Manager\.setLayout\(\(rec && rec\.layout\) \|\| '1', false, panes\)/.test(tabs));
+  /_restore\(rec\) \{[\s\S]*?Manager\.setLayout\(\(rec && rec\.layout\) \|\| '1', false,[\s\S]{0,140}?panes\.length \? panes/.test(tabs));
 check('manager honours the explicit pane array over mt5_boot_panes',
   /Array\.isArray\(explicitPanes\) && explicitPanes\.length\s*\?\s*\{ layout: spec\.id, panes: explicitPanes \}/.test(mgr));
 check('activate captures the live state into ITS record before leaving',
@@ -103,10 +103,10 @@ check('closeToRight safely LEAVES a dying active tab first (activate before slic
 check('drag reorder: HTML5 DnD with a before/after drop edge',
   /el\.addEventListener\('dragstart'/.test(tabs) && /el\.addEventListener\('dragover'/.test(tabs) &&
   /el\.addEventListener\('drop'/.test(tabs) && /this\._reorder\(this\._dragId, t\.id, before\)/.test(tabs));
-check('keyboard: Ctrl+T new tab / Ctrl+W close, guarded against typing + dialogs',
+check('keyboard: Ctrl+T new tab / Ctrl+W close, guarded against typing + ANY open dialog',
   /e\.code !== 'KeyT' && e\.code !== 'KeyW'/.test(tabs) &&
   /U\.isTyping\(e\.target\)/.test(tabs) &&
-  /draw-settings-dialog|save-layout-dialog|sym-dialog/.test(tabs));
+  /querySelector\('\.dialog-backdrop, \.ds-dialog'\)/.test(tabs) && /sym-dialog/.test(tabs));
 check('close ✕ appears on hover/active only (CSS) and never activates the tab on mousedown',
   /\.tab-item:hover \.t-close, \.tab-item\.active \.t-close \{ opacity: 1; \}/.test(css) &&
   /if \(e\.button === 0 && !e\.target\.closest\('\.t-close'\)\) this\.activate\(t\.id\);/.test(tabs));

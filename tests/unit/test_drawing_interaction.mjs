@@ -277,6 +277,7 @@ console.log('\n-- source contracts for interaction paths --');
   const app = fs.readFileSync('src/renderer/js/app.js', 'utf8');
   const toolbar = fs.readFileSync('src/renderer/js/chart/toolbar.js', 'utf8');
   const undo = fs.readFileSync('src/renderer/js/core/undo.js', 'utf8');
+  const tabs = fs.readFileSync('src/renderer/js/chart/tabs.js', 'utf8');
   ok(/const l0 = Math\.floor\(lr\.from\), l1 = Math\.ceil\(lr\.to\);[\s\S]*?logicalToCoordinate\(l0\)[\s\S]*?logicalToCoordinate\(l1\)/.test(engine),
     'magnet-off placement interpolates over the plot, not the full canvas');
   ok(/const w = this\.view\(\)\.pw;[\s\S]{0,140}?const px = U\.clamp\(x/.test(engine),
@@ -327,6 +328,14 @@ console.log('\n-- source contracts for interaction paths --');
     'chart shortcuts do not fire behind an open dialog');
   ok(/beforeunload[\s\S]{0,300}?App\.drawings\.saveNow\(\)/.test(app),
     'closing the app flushes pending drawing saves');
+  ok(/r\.panes\.every\(\(p\) => p && typeof p === 'object' && p\.symbol\)/.test(tabs),
+    'a tab with a corrupt secondary pane is rejected on restore');
+  ok(/Array\.isArray\(rec\.panes\)[\s\S]{0,180}?filter\(\(p\) => p && typeof p === 'object' && p\.symbol\)/.test(tabs),
+    'tab restore filters invalid panes before rebuilding the layout');
+  ok(/_restore\(rec\) \{[\s\S]{0,260}?UI\.closeActiveSettings\(true\)/.test(tabs),
+    'switching tabs closes the floating drawing settings dialog');
+  ok(/if \(e\.repeat\) return;[\s\S]{0,520}?querySelector\('\.dialog-backdrop, \.ds-dialog'\)/.test(tabs),
+    'held Ctrl+W and open dialogs cannot close tabs');
   ok(/d\.hidden = !d\.hidden;[\s\S]{0,320}?App\.selection = null/.test(objects),
     'hiding a drawing clears its selection');
 }
