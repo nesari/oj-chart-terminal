@@ -312,6 +312,10 @@ console.log('\n-- source contracts for interaction paths --');
     'deleting a drawing closes its open settings dialog');
   ok(/deleted while the dialog was open[\s\S]{0,420}?kind: 'modify'/.test(settings),
     'Ok on a drawing deleted while its dialog was open pushes no phantom modify');
+  ok(/if \(DS_ACTIVE\) \{[\s\S]{0,140}?DS_ACTIVE\.d === d\) return[\s\S]{0,100}?DS_ACTIVE\.close\(true\)/.test(settings),
+    'opening another drawing settings dialog closes the previous one');
+  ok(/function close\(commit\) \{[\s\S]{0,180}?if \(!dlg && DS_ACTIVE !== session\) return/.test(settings),
+    'double Escape cannot close a drawing dialog twice');
   ok(/id === 'trash'[\s\S]{0,320}?App\.undo\.removeAll/.test(ui),
     'left-toolbar trash-all is undoable');
   ok(/id === 'eye'[\s\S]{0,420}?App\.hideAll && App\.selection[\s\S]{0,80}?App\.selection = null/.test(ui),

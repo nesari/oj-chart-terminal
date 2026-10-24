@@ -641,6 +641,13 @@ import { Log } from '../../../core/logger.js';
 
   DrawSettings.open = function (pane, d, opts) {
     if (!pane || !d || !TOOLS[d.type]) return;
+    /* Only one settings dialog at a time: double-clicking another drawing
+       used to stack a second floating dialog, leaving the first orphaned
+       (DS_ACTIVE only tracked the newest one). */
+    if (DS_ACTIVE) {
+      if (DS_ACTIVE.d === d) return;
+      DS_ACTIVE.close(true);
+    }
     const type = d.type;
     /* rect legacy migration: the old UI had two independent extend checkboxes
        and could store "both" — the TV Box select has three states, keep Left */
@@ -678,6 +685,9 @@ import { Log } from '../../../core/logger.js';
       try { U.lsSet('mt5_tool_last_' + type, o); } catch (e) { Log.warn('drawing', 'last tool pref save failed', e) }
     }
     function close(commit) {
+      /* Escape can reach both the app-level shortcut and this dialog's own
+         key handler; the second close must be a no-op. */
+      if (!dlg && DS_ACTIVE !== session) return;
       if (DS_ACTIVE === session) DS_ACTIVE = null;
       document.removeEventListener('keydown', onKey);
       if (dlg) { dlg.remove(); dlg = null; }
