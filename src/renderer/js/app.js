@@ -262,6 +262,12 @@ function boot() {
          now covers every text surface, and the browser keeps its native
          text undo/redo because we return BEFORE preventDefault(). */
       const typing = U.isTyping(e.target);
+      /* ROUND260: a modal/floating dialog is a text-edit surface too. Chart
+         shortcuts (Delete / Ctrl+Z / Ctrl+S / timeframe digits) must not act on
+         the chart behind it just because focus sits on a button instead of an
+         input. Escape is left to the dialog's own handler. */
+      const modalOpen = !!document.querySelector('.dialog-backdrop, .ds-dialog');
+      if (modalOpen && e.key !== 'Escape') return;
       // round 27: "/" opens the Indicators dialog (TV shortcut, parity)
       if (e.key === '/' && !e.ctrlKey && !e.altKey && !e.metaKey) {
         const tag = (e.target.tagName || '').toLowerCase();

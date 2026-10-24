@@ -323,6 +323,8 @@ console.log('\n-- source contracts for interaction paths --');
   ok(/getElementById\('obj-trash'\)[\s\S]{0,420}?App\.undo\.removeAll/.test(objects) &&
      /mkAct\('trash', 'Delete'[\s\S]{0,160}?App\.undo\.remove\(pane, d\)/.test(objects),
     'Object Tree delete and trash-all are undoable');
+  ok(/const modalOpen = !!document\.querySelector\('\.dialog-backdrop, \.ds-dialog'\);[\s\S]{0,120}?e\.key !== 'Escape'[\s\S]{0,40}?return;/.test(app),
+    'chart shortcuts do not fire behind an open dialog');
   ok(/beforeunload[\s\S]{0,300}?App\.drawings\.saveNow\(\)/.test(app),
     'closing the app flushes pending drawing saves');
   ok(/d\.hidden = !d\.hidden;[\s\S]{0,320}?App\.selection = null/.test(objects),
