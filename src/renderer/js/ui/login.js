@@ -418,5 +418,30 @@ let mode = 'demo';
     });
   }
 
-const LoginUI = { init, bootApp, switchServer };
+  /* AUDIT FIX (reconnect, frozen provider): Feed's stall watchdog closes a
+     socket whose provider loop stopped answering, but reconnecting cannot
+     heal a wedged Python process — the port is still open, so every handshake
+     times out and the app sits Offline forever. A detached window never does
+     this (the host owns the provider). */
+  async function restartProvider(acc) {
+    if (SOLO || !acc) return false;
+    if (!window.electronAPI || !window.electronAPI.startProvider) return false;
+    try {
+      const r = await window.electronAPI.startProvider({
+        mode: acc.mode === 'mt5' ? 'mt5' : 'demo',
+        login: acc.login || '',
+        password: acc.password || '',
+        server: acc.server || '',
+        path: acc.path || '',
+        force: true,
+        tickInterval: savedRefreshRate(),
+      });
+      return !!(r && r.ok);
+    } catch (e) {
+      try { Log.warn('feed', 'provider restart failed', { error: String(e && e.message || e) }); } catch (er) {}
+      return false;
+    }
+  }
+
+const LoginUI = { init, bootApp, switchServer, restartProvider };
 export { LoginUI };

@@ -350,6 +350,14 @@ function boot() {
              reload owns the next session, this loop must not log in again */
           if (App.currentAcc !== acc) return;
           if (sessionStorage.getItem('mt5Logout') === '1') return;
+          /* a frozen provider (loop wedged, port still open) can never be
+             healed by reconnecting — after ~30s of failures ask main to
+             respawn it, then repeat rarely so a long broker outage doesn't
+             restart Python every few seconds */
+          if (attempt === 5 || (attempt > 5 && attempt % 15 === 0)) {
+            try { await LoginUI.restartProvider(acc); } catch (e) { Log.debug('feed', 'provider restart request failed', e) }
+            if (App.currentAcc !== acc) return;
+          }
           try {
             await App.feed.connect();
             if (acc.mode === 'mt5' && acc.login) await App.feed.login('mt5', acc);

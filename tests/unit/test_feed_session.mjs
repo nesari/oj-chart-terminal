@@ -112,5 +112,21 @@ const fakeSocket = () => ({ readyState: 1, send() {}, close() {} });
     'startProvider is single-flight (login vs crash-restart cannot spawn twice)');
 }
 
+/* ---------- 6. frozen-provider recovery (stall watchdog path) ---------- */
+{
+  const login = readSource('src/renderer/js/ui/login.js');
+  ok(/async function restartProvider\(acc\)[\s\S]{0,180}if \(SOLO \|\| !acc\) return false;/.test(login),
+    'detached windows never restart the host provider');
+  ok(/force: true,\s*\n\s*tickInterval: savedRefreshRate\(\)/.test(login),
+    'a recovery restart is forced and keeps the saved refresh rate');
+  ok(/restartProvider \}/.test(login), 'restartProvider is exported on LoginUI');
+
+  const app = readSource('src/renderer/js/app.js');
+  ok(/attempt === 5[\s\S]{0,220}LoginUI\.restartProvider\(acc\)/.test(app),
+    'reconnect asks main to respawn a wedged provider after repeated failures');
+  ok(/attempt % 15 === 0/.test(app),
+    'provider restarts are rate-limited during a long outage');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
