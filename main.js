@@ -9,6 +9,12 @@ const PORT = 8777;
 let mainWindow = null;
 let providerProc = null;
 let providerIdent = null; // identity of the RUNNING provider {mode, login, server}
+let providerSpec = null; // last successfully started spec (memory only; auto-restart uses it)
+let providerStarting = null; // in-flight startProvider promise (single-flight)
+let providerRestartTimer = null;
+let providerRestartAttempts = 0;
+let providerStableTimer = null;
+let quitting = false;
 let provErrTail = ''; // last meaningful stderr line — the REAL python error
 
 /* ===== round 28: main-process file logger (JSONL + rotation) =====
@@ -239,11 +245,44 @@ function providerLog(msg) {
 }
 
 function stopProvider() {
+  if (providerRestartTimer) { clearTimeout(providerRestartTimer); providerRestartTimer = null; }
+  if (providerStableTimer) { clearTimeout(providerStableTimer); providerStableTimer = null; }
   if (providerProc) {
-    try { providerProc.kill(); } catch (e) { mlogEvent('warn', 'ipc', 'provider kill failed', { error: String(e && e.message || e) }) }
-    providerProc = null;
+    const p = providerProc;
+    providerProc = null; // exit handler must see this as an intentional stop
+    try { p.kill(); } catch (e) { mlogEvent('warn', 'ipc', 'provider kill failed', { error: String(e && e.message || e) }) }
   }
   providerIdent = null;
+}
+
+/* AUDIT FIX (provider crash): a Python process that dies after a successful
+ * start used to leave the renderer reconnecting forever — nothing listens on
+ * 8777 any more and only a manual reload could spawn a new provider. The
+ * supervision below restarts the SAME account (the spec lives in memory only,
+ * never on disk) with capped exponential backoff. A provider that stays up
+ * for a minute resets the attempt counter, so an occasional terminal/Python
+ * crash heals silently while a permanent failure still stops after 8 tries
+ * instead of fork-looping. */
+function scheduleProviderRestart() {
+  if (quitting || !providerSpec || providerRestartTimer) return;
+  if (providerRestartAttempts >= 8) {
+    providerLog('Data provider stopped repeatedly — automatic restart paused. Log in again or reload the app.');
+    providerIdent = null;
+    return;
+  }
+  const delay = Math.min(30000, 1000 * Math.pow(2, providerRestartAttempts));
+  providerRestartAttempts++;
+  mlogEvent('warn', 'provider', 'restart scheduled', { attempt: providerRestartAttempts, delay });
+  providerRestartTimer = setTimeout(() => {
+    providerRestartTimer = null;
+    if (quitting || !providerSpec) return;
+    startProvider(Object.assign({}, providerSpec, { force: true })).then((r) => {
+      if (!r || !r.ok) {
+        providerLog('Provider restart failed: ' + ((r && r.error) || 'unknown error'));
+        scheduleProviderRestart();
+      }
+    }).catch(() => scheduleProviderRestart());
+  }, delay);
 }
 
 /* AUDIT FIX (security/hygiene): raw python stderr can contain absolute
@@ -276,6 +315,11 @@ function providerScriptPath(name) {
 }
 
 async function startProvider(payload) {
+  /* single-flight: an explicit login and a scheduled crash-restart must never
+     spawn two Python providers racing for port 8777 */
+  while (providerStarting) { try { await providerStarting; } catch (e) {} }
+  let doneStarting;
+  providerStarting = new Promise((r) => { doneStarting = r; });
   try {
     // account identity of the provider being requested — a running provider
     // may only be REUSED when it serves the SAME account/mode, otherwise a
@@ -285,13 +329,26 @@ async function startProvider(payload) {
       login: String((payload && payload.login) || ''),
       server: String((payload && payload.server) || ''),
     };
+    /* AUDIT FIX (login failure path): the running Python process received the
+       password once, in its environment at spawn. Reusing it after the user
+       corrected a wrong password (same login/server) kept retrying the OLD
+       credential forever. Compare against the in-memory spawn spec and force a
+       real respawn when the secret changed. A detached window ATTACHES to the
+       host's provider and must never restart it, so it only reuses/refuses. */
+    const wantPw = want.mode === 'mt5' ? String((payload && payload.password) || '') : '';
     if (!payload.force && await portOpen(PORT)) {
-      if (providerIdent && providerIdent.mode === want.mode &&
-          providerIdent.login === want.login && providerIdent.server === want.server) {
-        return { ok: true, reused: true };
+      const sameIdent = !!(providerIdent && providerIdent.mode === want.mode &&
+        providerIdent.login === want.login && providerIdent.server === want.server);
+      if (payload.attach) {
+        if (sameIdent) return { ok: true, reused: true };
+        return { ok: false, error: 'A data provider for another account is already running' };
       }
-      payload.force = true; // different account or unknown identity -> restart
+      const samePw = want.mode !== 'mt5' || !providerSpec || providerSpec.password === wantPw;
+      if (sameIdent && samePw) return { ok: true, reused: true };
+      payload.force = true; // different account/password or unknown identity
     }
+    /* a pending crash-restart is superseded by this explicit start request */
+    if (providerRestartTimer) { clearTimeout(providerRestartTimer); providerRestartTimer = null; }
     stopProvider();
     if (payload.force) {
       // account switch: let the old provider release 8777 before respawn
@@ -331,17 +388,25 @@ async function startProvider(payload) {
     } catch (e) {
       return { ok: false, error: pythonMissingHelp() };
     }
-    providerProc.on('error', (e) => { spawnFail = e.message; providerLog('Provider spawn error: ' + e.message); });
-    providerProc.stderr.on('data', (d) => { noteStderr(d); providerLog(scrubPath(String(d).split('\n')[0].slice(0, 140))); });
-    providerProc.stdout.on('data', (d) => {
+    const child = providerProc;
+    let supervised = false; // only a provider that reached "up" is auto-restarted
+    child.on('error', (e) => { spawnFail = e.message; providerLog('Provider spawn error: ' + e.message); });
+    child.stderr.on('data', (d) => { noteStderr(d); providerLog(scrubPath(String(d).split('\n')[0].slice(0, 140))); });
+    child.stdout.on('data', (d) => {
       const s = String(d);
       noteStderr(s); // provider prints connect/package errors on stdout too
       const line = s.split('\n')[0].slice(0, 140);
       if (/missing|failed|[Ee]rror|No module|Traceback/.test(line)) providerLog(scrubPath(line));
     });
-    providerProc.on('exit', (code) => {
+    child.on('exit', (code) => {
       exitedCode = (code === null ? 0 : code);
       if (exitedCode !== 0) providerLog(providerErrText(exitedCode));
+      /* providerProc !== child means stopProvider() replaced/killed it on
+         purpose (account switch / quit) — never resurrect those. */
+      if (!supervised || providerProc !== child || quitting) return;
+      providerProc = null;
+      providerLog('Data provider exited unexpectedly (code ' + exitedCode + ') — restarting…');
+      scheduleProviderRestart();
     });
     // fail fast: if the provider process dies while we wait for the port,
     // report the REAL python error immediately instead of a generic timeout
@@ -358,9 +423,28 @@ async function startProvider(payload) {
       return { ok: false, error: 'Data provider did not start. Check that Python is installed and run: pip install websockets' + (mode === 'mt5' ? ' MetaTrader5' : '') };
     }
     providerIdent = want; // remember which account this provider serves
+    supervised = true;
+    /* keep the spawn recipe for crash recovery (memory only, password never
+       logged/persisted) and clear the retry budget once it proves stable */
+    providerSpec = {
+      mode,
+      login: want.login,
+      server: want.server,
+      password: wantPw,
+      path: String((payload && payload.path) || ''),
+      tickInterval: (payload && payload.tickInterval) || undefined,
+    };
+    if (providerStableTimer) clearTimeout(providerStableTimer);
+    providerStableTimer = setTimeout(() => {
+      providerStableTimer = null;
+      providerRestartAttempts = 0;
+    }, 60000);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e.message };
+  } finally {
+    providerStarting = null;
+    doneStarting();
   }
 }
 
@@ -461,7 +545,16 @@ function secureWindow(win) {
 ipcMain.handle('start-provider', (e, payload) => {
   const v = validStartProvider(payload);
   if (!v) return { ok: false, error: 'Invalid provider request' };
-  mlogEvent('info', 'ipc', 'start-provider', { mode: v.mode, login: v.mode === 'mt5' ? v.login : undefined, server: v.server || undefined }); // NEVER log the password
+  /* AUDIT FIX: a detached chart window only ATTACHES to the running provider;
+     it must never kill/restart the host's session. Mark the request by the
+     sender URL (index.html#solo=<id>) so startProvider can refuse a mismatch
+     instead of forcing a respawn. */
+  try {
+    const w = BrowserWindow.fromWebContents(e.sender);
+    v.attach = !!(w && /solo=[\w-]+/.test(String(w.webContents.getURL() || '')));
+  } catch (er) { v.attach = false; }
+  if (!v.attach) providerRestartAttempts = 0; // explicit user start gets a fresh retry budget
+  mlogEvent('info', 'ipc', 'start-provider', { mode: v.mode, login: v.mode === 'mt5' ? v.login : undefined, server: v.server || undefined, attach: v.attach || undefined }); // NEVER log the password
   return startProvider(v);
 });
 ipcMain.on('stop-provider', () => { mlogEvent('info', 'ipc', 'stop-provider'); stopProvider(); });
@@ -835,7 +928,7 @@ app.on('render-process-gone', (e, wc, details) => {
 app.on('child-process-gone', (e, details) => {
   try { mlogEvent('error', 'error', 'child gone', details); } catch (err) {}
 });
-app.on('before-quit', () => { mlogEvent('info', 'app', 'app quit'); stopProvider(); try { if (logStream) { logStream.end(); logStream = null; } } catch (e) {} });
+app.on('before-quit', () => { quitting = true; mlogEvent('info', 'app', 'app quit'); stopProvider(); try { if (logStream) { logStream.end(); logStream = null; } } catch (e) {} });
 
 /* round 28: main-process crash net — uncaught exceptions land in the log
    file instead of dying silently */

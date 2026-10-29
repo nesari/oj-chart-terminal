@@ -93,5 +93,24 @@ const fakeSocket = () => ({ readyState: 1, send() {}, close() {} });
     'a switched/logged-out account cancels the in-flight retry loop');
 }
 
+/* ---------- 5. provider process supervision (main.js) ---------- */
+{
+  const src = readSource('main.js');
+  ok(/function scheduleProviderRestart\s*\(/.test(src),
+    'main schedules a restart after an unexpected provider exit');
+  ok(/providerProc !== child \|\| quitting/.test(src),
+    'intentional stops / app quit never resurrect the provider');
+  ok(/providerRestartAttempts >= 8/.test(src),
+    'restart attempts are bounded (no fork loop on a permanent failure)');
+  ok(/providerStableTimer = setTimeout[\s\S]{0,160}providerRestartAttempts = 0/.test(src),
+    'a provider that stays up resets the retry budget');
+  ok(/providerSpec\.password === wantPw/.test(src),
+    'a changed MT5 password forces a real provider respawn (old env password cannot linger)');
+  ok(/payload\.attach[\s\S]{0,220}A data provider for another account is already running/.test(src),
+    'a detached window attaches to the host provider instead of restarting it');
+  ok(/while \(providerStarting\)/.test(src),
+    'startProvider is single-flight (login vs crash-restart cannot spawn twice)');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
