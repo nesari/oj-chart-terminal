@@ -122,5 +122,17 @@ check('css: tinted event tags ship (blue open/fill, red SL, green TP, amber part
 check('css: the old flat blocks are gone (no bare nf-sec card, no tn-head row)',
   !/#alert-sound-settings, #trade-alert-settings \{/.test(appCss) && !/\.tn-head \{/.test(tradeCss));
 
+console.log('— ROUND130 · 6: armed alerts own their feed subscription —');
+check('panels: syncAlertSubs holds one ref per active/unfired alert symbol',
+  /function syncAlertSubs\(\)/.test(ui) &&
+  /if \(a && a\.active && !a\.fired && typeof a\.symbol === 'string' && a\.symbol\) wanted\.add\(a\.symbol\)/.test(ui));
+check('panels: removing/disarming/firing releases the ref exactly once',
+  /for \(const sym of Array\.from\(alertSubs\)\)[\s\S]{0,200}Manager\.releaseSub\(sym\)/.test(ui) &&
+  /alertSubs\.delete\(sym\)/.test(ui));
+check('panels: every list mutation (save) re-syncs the subscription set',
+  /function save\(\) \{ U\.lsSet\('mt5_alerts', Alerts\.list\); syncAlertSubs\(\); \}/.test(ui));
+check('panels: surviving alerts re-subscribe on boot',
+  /syncAlertSubs\(\); \/\* armed alerts restored from storage keep their symbols live \*\//.test(palerts));
+
 console.log('\nROUND130: ' + N + ' checks, ' + BAD + ' failed');
 process.exit(BAD ? 1 : 0);

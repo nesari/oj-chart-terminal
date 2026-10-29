@@ -5,6 +5,7 @@
  */
 
 import { U } from '../core/util.js';
+import { Log } from '../../../core/logger.js';
 import { icon } from '../ui/icons.js';
 import { App } from '../../../core/state.js';
 import { priceDigits } from '../../../core/feed.js';
@@ -340,7 +341,33 @@ let audioCtx = null;
     if (a) { a.active = !a.active; if (a.active) a.fired = false; save(); render(); if (Manager && Manager.applyPriceLines) for (const p of App.panes) if (p.symbol === a.symbol) Manager.applyPriceLines(p); }
   };
 
-  function save() { U.lsSet('mt5_alerts', Alerts.list); }
+  /* AUDIT FIX (alerts outliving their chart): an armed alert used to fire only
+     while its symbol happened to be on a chart/watchlist, because nothing
+     acquired a feed subscription for the alert itself — closing the last tab
+     of that symbol silently disarmed it. Every active/unfired alert now holds
+     ONE ref-counted subscription (same Manager bookkeeping the Watchlist and
+     tab labels use), so it keeps ticking after its chart is gone. */
+  const alertSubs = new Set();
+  function syncAlertSubs() {
+    if (!Manager || !Manager.acquireSub || !Manager.releaseSub) return;
+    const wanted = new Set();
+    for (const a of Alerts.list) {
+      if (a && a.active && !a.fired && typeof a.symbol === 'string' && a.symbol) wanted.add(a.symbol);
+    }
+    for (const sym of Array.from(alertSubs)) {
+      if (wanted.has(sym)) continue;
+      alertSubs.delete(sym);
+      try { Manager.releaseSub(sym); } catch (e) { Log.debug('alerts', 'alert unsubscribe failed', e) }
+    }
+    for (const sym of wanted) {
+      if (alertSubs.has(sym)) continue;
+      alertSubs.add(sym);
+      try { Manager.acquireSub(sym); } catch (e) { alertSubs.delete(sym); }
+    }
+  }
+  Alerts.syncSubs = syncAlertSubs;
+
+  function save() { U.lsSet('mt5_alerts', Alerts.list); syncAlertSubs(); }
   Alerts.persist = save; /* ROUND51: alert drag-commit hook (engine.up) */
 
   function render() {
@@ -652,6 +679,7 @@ let audioCtx = null;
     TradeAlerts.onChange.push(renderTradeAlerts);
     TradeAlerts.onChange.push(renderNotifyLog);
     render();
+    syncAlertSubs(); /* armed alerts restored from storage keep their symbols live */
   };
 
   (App.onTickHooks = App.onTickHooks || []).push(Alerts.onTick);
