@@ -303,10 +303,19 @@ let mode = 'demo';
       sessionStorage.removeItem('mt5Logout');
       sessionStorage.removeItem('mt5ShowLogin');
       if (mode === 'mt5') App.lastMt5 = { login: creds.login, server: creds.server };
+      /* AUDIT FIX (reconnect): the reconnect loop needs the ACTUAL MT5
+         credentials; the old object only carried mode/label/id, so every
+         reconnect sent `login('demo', {})` and an MT5 session stayed dead.
+         Password lives in memory only — it is never logged or re-saved
+         here (the saved-account store keeps its own copy). */
       App.currentAcc = {
         mode,
         label: mode === 'demo' ? 'Demo Server' : (creds.login + (creds.server ? ' · ' + creds.server : '')),
         id: accId(mode, creds.login, creds.server),
+        login: creds.login,
+        server: creds.server,
+        password: creds.password,
+        path: creds.path,
       };
       rememberCurrent(creds);
       document.getElementById('login-screen').classList.add('hidden');

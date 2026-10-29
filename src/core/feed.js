@@ -58,8 +58,13 @@ function Feed(url) {
     /* BUG-004/013: subscribe/unsubscribe issued while the socket is not open
        (boot: chart panes + a restored-open watchlist panel subscribe BEFORE
        the user logs in) used to be silently dropped — only symbols subscribed
-       AFTER login ever ticked. They now queue and flush on open. */
-    this._pendingSubs = new Set();
+       AFTER login ever ticked. They now queue and flush on open.
+       AUDIT FIX (reconnect): this is the DESIRED set, not a one-shot queue —
+       the provider keeps subscriptions per WebSocket connection, so a new
+       socket starts empty. Keeping the set here and replaying it on every
+       open restores charts/watchlist/position ticks after any reconnect
+       (including symbols subscribed outside Manager, e.g. Pine/trade). */
+    this._desiredSubs = new Set();
     this._connectSeq = 0;
     this._connectPromise = null;
     this._reconnectTimer = null;
@@ -109,10 +114,8 @@ function Feed(url) {
         this._pingAt = 0; // ROUND174: fresh socket, fresh stall-watchdog state
         try { this._lastPongAt = Date.now(); } catch (e) {}
         this.startStallWatchdog();
-        const pending = Array.from(this._pendingSubs);
-        this._pendingSubs.clear();
-        for (const sym of pending) this.subscribe(sym);
-        try { Log && Log.info('feed', 'feed connected', { pendingSubs: pending.length }); } catch (e) {}
+        const wanted = this._replaySubs();
+        try { Log && Log.info('feed', 'feed connected', { resubscribed: wanted }); } catch (e) {}
         finish(resolve);
       };
       ws.onclose = () => {
@@ -323,15 +326,25 @@ function Feed(url) {
     if (to != null && isFinite(to)) msg.to = Math.floor(to);
     return this._send(msg);
   };
+  /* AUDIT FIX (reconnect): replay the desired set on every socket open.
+     Separate from onopen so tests can drive it without a real WebSocket. */
+  Feed.prototype._replaySubs = function () {
+    const wanted = Array.from(this._desiredSubs);
+    for (const sym of wanted) {
+      try { this.subscribe(sym); } catch (e) { Log.debug('feed', 'resubscribe failed', e) }
+    }
+    return wanted.length;
+  };
   Feed.prototype.subscribe = function (symbol) {
+    if (!symbol) return Promise.resolve();
+    this._desiredSubs.add(symbol);
     if (!this.ws || this.ws.readyState !== 1) {
-      this._pendingSubs.add(symbol); // queued — flushed on open (BUG-004/013)
-      return Promise.resolve();
+      return Promise.resolve(); // queued — replayed on open (BUG-004/013)
     }
     return this._send({ type: 'subscribe', symbol }).catch(() => {});
   };
   Feed.prototype.unsubscribe = function (symbol) {
-    this._pendingSubs.delete(symbol);
+    this._desiredSubs.delete(symbol);
     if (!this.ws || this.ws.readyState !== 1) return Promise.resolve();
     return this._send({ type: 'unsubscribe', symbol }).catch(() => {});
   };

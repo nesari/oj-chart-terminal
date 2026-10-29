@@ -325,40 +325,47 @@ function boot() {
       }
     });
 
-    // reconnect on provider loss — single-flight, bounded backoff. The old
-    // handler could start overlapping reconnect loops and always sent a DEMO
-    // login after reconnect, which was wrong for MT5 accounts. Feed.connect()
-    // itself is also single-flight, so both layers are safe against races.
+    // reconnect on provider loss — single-flight, indefinite retry with a
+    // capped backoff. The old handler could start overlapping reconnect loops,
+    // gave up permanently after ~27s (so a longer outage never healed), and
+    // always sent a DEMO login after reconnect, which was wrong for MT5
+    // accounts. Feed.connect() itself is also single-flight, so both layers
+    // are safe against races.
     let reconnectRunning = false;
     App.feed.onClose.push(async () => {
       if (reconnectRunning) return;
+      const acc = App.currentAcc;
+      if (!acc) return; // never logged in (nothing to restore)
       reconnectRunning = true;
       try {
-        const backoff = [1000, 2000, 4000, 8000, 12000];
-        for (let i = 0; i < backoff.length; i++) {
-          await new Promise((r) => setTimeout(r, backoff[i]));
-          try {
-            await App.feed.connect();
-            if (App.currentAcc && App.currentAcc.login) {
-              await App.feed.login('mt5', App.currentAcc);
-            } else {
-              await App.feed.login('demo', {});
-            }
-            const lab = document.getElementById('conn-label');
-            const dot = document.querySelector('#conn-status .dot');
-            if (lab) lab.textContent = (App.currentAcc && App.currentAcc.label) || 'Connected';
-            if (dot) dot.className = 'dot green';
-            for (const p of App.panes) Manager.loadBars(p);
-            for (const s of App.watchlist) App.feed.subscribe(s);
-            return;
-          } catch (e) {
-            try { Log && Log.warn('feed', 'reconnect attempt failed', { attempt: i + 1, error: String(e && e.message || e) }); } catch (er) {}
-          }
-        }
         const lab = document.getElementById('conn-label');
         const dot = document.querySelector('#conn-status .dot');
-        if (lab) lab.textContent = 'Offline';
-        if (dot) dot.className = 'dot red';
+        if (lab) lab.textContent = 'Reconnecting…';
+        if (dot) dot.className = 'dot yellow';
+        let delay = 1000;
+        for (let attempt = 1; ; attempt++) {
+          await new Promise((r) => setTimeout(r, delay));
+          delay = Math.min(30000, delay * 2); // 1s,2s,4s… capped at 30s forever
+          /* the user switched account / logged out while we waited — the
+             reload owns the next session, this loop must not log in again */
+          if (App.currentAcc !== acc) return;
+          if (sessionStorage.getItem('mt5Logout') === '1') return;
+          try {
+            await App.feed.connect();
+            if (acc.mode === 'mt5' && acc.login) await App.feed.login('mt5', acc);
+            else await App.feed.login('demo', {});
+            if (lab) lab.textContent = acc.label || 'Connected';
+            if (dot) dot.className = 'dot green';
+            /* provider subscriptions are per socket — re-issue them before
+               reloading bars so live ticking resumes with the new socket */
+            if (Manager.resubscribeAll) Manager.resubscribeAll();
+            else for (const s of App.watchlist) App.feed.subscribe(s);
+            for (const p of App.panes) Manager.loadBars(p);
+            return;
+          } catch (e) {
+            try { Log && Log.warn('feed', 'reconnect attempt failed', { attempt, error: String(e && e.message || e) }); } catch (er) {}
+          }
+        }
       } finally {
         reconnectRunning = false;
       }

@@ -386,6 +386,20 @@ import { createPane } from './pane.js';
      symbol switch (release+acquire) can never drop a row's data flow */
   Manager.acquireSub = acquireSub;
   Manager.releaseSub = releaseSub;
+  /* AUDIT FIX (reconnect): the provider's subscription buckets live on the
+     WebSocket connection, so a reconnect starts with ZERO subscriptions while
+     this ref-count map still believes every symbol is live. Re-issuing the
+     subscribe frame per still-held ref restores chart ticks (Feed also
+     replays its own desired set, covering non-Manager subscribers). */
+  function resubscribeAll() {
+    let n = 0;
+    for (const [symbol, count] of subs) {
+      if (!symbol || count <= 0) continue;
+      try { App.feed.subscribe(symbol); n++; } catch (e) { Log.debug('feed', 'resubscribe failed', e) }
+    }
+    return n;
+  }
+  Manager.resubscribeAll = resubscribeAll;
 
   /* BUG-E/R25 hardening: a manual price-zoom window belongs to ONE symbol's
      price level. The reload path (loadBars) already resets pane.pz, but every
@@ -989,4 +1003,4 @@ import { createPane } from './pane.js';
   }
   Manager.setActive = setActive;
 
-export { lastTickAt, tickBA, tickPx, scheduleStaleReload, onTick, fmtRemain, bucketEndFor, PV_H, updateCountdown, subs, acquireSub, releaseSub, resetPriceZoom, applySymbol, applyTf, clearPriceLines, persistStyles, persistPanes, refreshStyleUI, destroyPanes, GAP, layoutSpec, defaultRatios, validRatios, paneRects, linePos, edgeIntervals, splitterEls, buildSplitters, positionSplitters, layoutPanes, persistRatios, startSplitDrag, syncGuardOk, syncTimeTo, initTimeSync, setActive };
+export { lastTickAt, tickBA, tickPx, scheduleStaleReload, onTick, fmtRemain, bucketEndFor, PV_H, updateCountdown, subs, acquireSub, releaseSub, resubscribeAll, resetPriceZoom, applySymbol, applyTf, clearPriceLines, persistStyles, persistPanes, refreshStyleUI, destroyPanes, GAP, layoutSpec, defaultRatios, validRatios, paneRects, linePos, edgeIntervals, splitterEls, buildSplitters, positionSplitters, layoutPanes, persistRatios, startSplitDrag, syncGuardOk, syncTimeTo, initTimeSync, setActive };
