@@ -63,6 +63,10 @@ const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 8, 10, 15, 20];
     if (pickPane) { Replay.cancelPick(); return; }
     if (!App.activePane) return;
     const target = App.activePane;
+    if (!target.bars || target.bars.length < 2) {
+      UI.toast('Bar Replay needs at least two loaded bars', 'warn');
+      return;
+    }
     UI.toast('Bar Replay: click on the chart to set the start point', 'ok');
     pickPane = target;
     target.engine.replayPick = (x, y) => {
@@ -90,11 +94,11 @@ const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 8, 10, 15, 20];
   Replay.pickArmed = function () { return !!pickPane; };
 
   function start(driver, idx) {
+    const anchor = driver.bars[idx];
+    if (!anchor) return; // empty/too-short chart: never arm a session with no start bar
     S.on = true;
     S.driver = driver;
     S.dsec = App.tfById[driver.tf].sec;
-    const anchor = driver.bars[idx];
-    if (!anchor) return;
     S.cursor = anchor.time + S.dsec;   // bars up to anchor are complete
     S.startCursor = S.cursor;
     S.frac = 0;
@@ -453,6 +457,7 @@ const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 8, 10, 15, 20];
   };
 
   Replay.stop = function () {
+    if (pickPane) Replay.cancelPick(); // a stop during the armed pick must clear the overlay too
     if (raf) { cancelAnimationFrame(raf); raf = null; }
     closeSpeedMenu();
     S.on = false; S.playing = false;
