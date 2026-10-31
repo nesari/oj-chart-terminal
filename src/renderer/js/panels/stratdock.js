@@ -183,6 +183,10 @@ async function applyToolbar() {
       if (inst) {
         inst.strategyProps = Object.assign({}, inst.strategyProps,
           { initial_capital: cap, currency: e.cur ? e.cur.value : 'USD' });
+        /* ROUND263: the tester's capital/currency pick is a per-instance
+           strategy Property — persist it with the layout (the Properties
+           dialog already does), so a restart keeps the backtest settings. */
+        try { Manager.persistPanes(); } catch (err) {}
         try { await PineUI.rebuild(sel.pane, inst); } catch (err) {}
       }
     }

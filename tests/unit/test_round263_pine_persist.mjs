@@ -64,5 +64,14 @@ console.log('\n[3] htfSpec honours the flag');
     'explicit Chart pick still beats a declaration timeframe');
 }
 
+console.log('\n[4] every writer persists');
+{
+  const dock = readSource('src/renderer/js/panels/stratdock.js');
+  const at = dock.indexOf('initial_capital: cap');
+  const after = dock.slice(at, at + 600);
+  ok(at > 0 && after.includes('Manager.persistPanes()') && after.includes('PineUI.rebuild(sel.pane, inst)'),
+    'tester capital Apply persists BEFORE rebuilding the instance');
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);
