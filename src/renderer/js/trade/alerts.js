@@ -261,8 +261,13 @@ const TradeAlerts = {
       if (filled && !this._fillDone.has(t)) {
         this._fillDone.add(t);
         this._recentPend.delete(t);
-        /* ordType (NOT type): the event's `type` must stay 'fill' */
-        this._fire('fill', { symbol: o.symbol, ordType: o.type, vol: o.volume, price: o.price, ticket: t });
+        /* ordType (NOT type): the event's `type` must stay 'fill'.
+           ROUND264: the panel's "Pending order activated" switch (cfg.onFill)
+           and the master switch were never read on this path — a fill always
+           toasted/rang even with both off. Record silently instead (the
+           notification list still gets the row, same as SL/TP). */
+        this._fire('fill', { symbol: o.symbol, ordType: o.type, vol: o.volume, price: o.price, ticket: t },
+          { silent: !(this.cfg.enabled && this.cfg.onFill) });
       }
     }
     this._expCancel.forEach((t) => { if (!nowO.has(t)) this._expCancel.delete(t); });
@@ -277,7 +282,10 @@ const TradeAlerts = {
         if (rp && !this._fillDone.has(t)) {
           this._fillDone.add(t);
           this._recentPend.delete(t);
-          this._fire('fill', { symbol: p.symbol, ordType: p.type, vol: p.volume, price: p.open, ticket: t });
+          /* ROUND264: same gating as the orders-gone path above — a fast fill
+             must honour the "Pending order activated" / master switches. */
+          this._fire('fill', { symbol: p.symbol, ordType: p.type, vol: p.volume, price: p.open, ticket: t },
+            { silent: !(this.cfg.enabled && this.cfg.onFill) });
         } else if (!this._fillDone.has(t) && !boot) {
           /* ROUND128: a MARKET position opened (no pending behind it) —
              the notification list records the trade being set. The
