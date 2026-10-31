@@ -106,7 +106,13 @@ const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 8, 10, 15, 20];
     S.speedIdx = speedIdxDefault();     // persisted choice, 1x on first run
     for (const p of App.panes) {
       p.replay = {};                    // blocks live ticks
-      p._allBars = p.bars;
+      /* ROUND265: starting a session while one is ALREADY active must never
+         re-capture the cut arrays as the full history — `p.bars` is the
+         replay-cut slice at that point, and overwriting `_allBars` with it
+         lost every bar after the old cursor for good (stop() then "restored"
+         the truncated data). Keep the original capture; only a pane that has
+         no capture yet (added mid-session) adopts its current bars. */
+      p._allBars = p._allBars || p.bars;
       p._shown = -1;
       p._lastPartialClose = null;
     }

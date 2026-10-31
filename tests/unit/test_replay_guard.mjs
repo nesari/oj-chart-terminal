@@ -58,5 +58,21 @@ const src = readSource('src/renderer/js/panels/replay.js');
   ok(pineAt > indAt, 'Pine instances recompute after the restore too');
 }
 
+/* 5. starting a session twice must not re-capture the CUT arrays */
+{
+  const start = (src.match(/function start\(driver, idx\) \{[\s\S]*?\n  \}/) || [''])[0];
+  ok(start.includes('p._allBars = p._allBars || p.bars;'),
+    'start() keeps an existing full-history capture (never re-captures the cut slice)');
+  ok(!/p\._allBars = p\.bars;/.test(start), 'no unconditional overwrite of _allBars remains');
+  const goto = readSource('src/renderer/js/panels/gotodate.js');
+  const at = goto.indexOf('async function jumpReplayFrom(t) {');
+  const body = at >= 0 ? goto.slice(at, at + 1200) : '';
+  ok(at > 0 && /if \(Replay\.isActive\(\)\) Replay\.stop\(\);/.test(body),
+    'Go to Date stops a running session before reading pane.bars');
+  const stopAt = body.indexOf('Replay.stop()');
+  const branchAt = body.indexOf('SessionRange.isActive()');
+  ok(stopAt > 0 && branchAt > stopAt, 'the stop happens before the stitched-session branch reads bars');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -261,6 +261,11 @@ async function jumpReplayFrom(t) {
   if (t >= nowT - DAY) { UI.toast('Go to Date: that date is not in the past', 'warn'); return; }
   const driver = App.activePane || App.panes[0];
   if (!driver) return;
+  /* ROUND265: re-anchoring while a replay session is ALREADY running would
+     read the CUT arrays (the session swaps pane.bars for the slice up to the
+     cursor). Stop first so every pane is back on its full history before we
+     pick the index / fetch the new window. */
+  if (Replay.isActive()) Replay.stop();
   if (SessionRange.isActive()) {
     /* stitched Custom Session data is finite by design — anchor the replay
        inside it instead of fetching (composes with the demo account too) */
