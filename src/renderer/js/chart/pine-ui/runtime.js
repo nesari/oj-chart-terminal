@@ -121,6 +121,15 @@ const PineUI = {
       ...(i.style && typeof i.style === 'object' && Object.keys(i.style).length ? { style: JSON.parse(JSON.stringify(i.style)) } : {}),
       ...(i.visTF && typeof i.visTF === 'object' && Object.keys(i.visTF).length ? { visTF: Object.assign({}, i.visTF) } : {}),
       ...(i.timeframe ? { timeframe: String(i.timeframe) } : {}),
+      /* ROUND263: two per-instance choices were lost across save/reload:
+         - an explicit "Chart" timeframe pick (timeframe '' + _tfTouched) must
+           keep beating a declaration timeframe="...";
+         - strategy Properties (capital/qty/commission/slippage/margins) were
+           never serialized at all, so every restart reverted the backtest to
+           the declaration literals. */
+      ...(i._tfTouched ? { tfTouched: true } : {}),
+      ...(i.strategyProps && typeof i.strategyProps === 'object' && Object.keys(i.strategyProps).length
+        ? { strategyProps: JSON.parse(JSON.stringify(i.strategyProps)) } : {}),
     }));
   },
   /** restore from a persisted pane record */
@@ -139,6 +148,11 @@ const PineUI = {
         ...(r.style && typeof r.style === 'object' ? { style: JSON.parse(JSON.stringify(r.style)) } : {}),
         ...(r.visTF && typeof r.visTF === 'object' ? { visTF: Object.assign({}, r.visTF) } : {}),
         ...(r.timeframe ? { timeframe: String(r.timeframe) } : {}),
+        /* ROUND263: restore the explicit Chart pick + strategy Properties
+           (see serialize above) */
+        ...(r.tfTouched ? { _tfTouched: true } : {}),
+        ...(r.strategyProps && typeof r.strategyProps === 'object'
+          ? { strategyProps: JSON.parse(JSON.stringify(r.strategyProps)) } : {}),
       }));
   },
 
