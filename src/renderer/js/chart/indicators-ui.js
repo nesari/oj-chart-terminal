@@ -575,11 +575,20 @@ const LWC = window.LightweightCharts;
         inp.step = 'any';
         if (p.min != null) inp.min = p.min;
         if (p.max != null) inp.max = p.max;
-        inp.value = inst.params[p.key] != null ? inst.params[p.key] : p.def;
+        inp.value = Indicators.paramValue(p, inst);
+        /* ROUND261: heal a persisted fractional/zero period on open, so the
+           dialog agrees with what compute() already runs. */
+        if (p.int) inst.params[p.key] = Number(inp.value);
         inp.addEventListener('keydown', (e) => e.stopPropagation());
         inp.addEventListener('change', () => {
           const v = parseFloat(inp.value);
-          if (isFinite(v)) inst.params[p.key] = v;
+          if (!isFinite(v)) return;
+          inst.params[p.key] = v;
+          if (p.int) {
+            const n = Indicators.paramValue(p, inst);
+            inst.params[p.key] = n;
+            inp.value = String(n);
+          }
         });
       }
       if (!def.params.length) U.el('div', 'ist-empty', body).textContent = 'This indicator has no inputs.';

@@ -37,19 +37,19 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
   const DEFS = [
     /* ---------------------------- Trend (main) --------------------------- */
     { type: 'sma', label: 'Moving Average (SMA)', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20 }],
+      params: [{ key: 'length', label: 'Length', def: 20, int: true }],
       colors: { line: BLUE },
       compute: (bars, p, c) => ({ lines: [{ values: sma(closes(bars), p.length), color: c.line, width: 2 }] }) },
     { type: 'ema', label: 'Moving Average (EMA)', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20 }],
+      params: [{ key: 'length', label: 'Length', def: 20, int: true }],
       colors: { line: ORANGE },
       compute: (bars, p, c) => ({ lines: [{ values: ema(closes(bars), p.length), color: c.line, width: 2 }] }) },
     { type: 'wma', label: 'Moving Average (WMA)', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20 }],
+      params: [{ key: 'length', label: 'Length', def: 20, int: true }],
       colors: { line: PURPLE },
       compute: (bars, p, c) => ({ lines: [{ values: wma(closes(bars), p.length), color: c.line, width: 2 }] }) },
     { type: 'hma', label: 'Hull Moving Average', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 21 }],
+      params: [{ key: 'length', label: 'Length', def: 21, int: true }],
       colors: { line: TEAL },
       compute: (bars, p, c) => {
         const half = Math.max(2, Math.round(p.length / 2));
@@ -59,7 +59,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         return { lines: [{ values: wma(diff, Math.max(2, Math.round(Math.sqrt(p.length)))), color: c.line, width: 2 }] };
       } },
     { type: 'bollinger', label: 'Bollinger Bands', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20 }, { key: 'mult', label: 'StdDev', def: 2, min: 0.5, max: 6 }],
+      params: [{ key: 'length', label: 'Length', def: 20, int: true }, { key: 'mult', label: 'StdDev', def: 2, min: 0.5, max: 6 }],
       colors: { line: BLUE },
       compute: (bars, p, c) => {
         const basis = sma(closes(bars), p.length), dev = stdev(closes(bars), p.length);
@@ -71,7 +71,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         };
       } },
     { type: 'donchian', label: 'Donchian Channels', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20 }],
+      params: [{ key: 'length', label: 'Length', def: 20, int: true }],
       colors: { line: TEAL },
       compute: (bars, p, c) => {
         const upper = new Array(bars.length).fill(null), lower = new Array(bars.length).fill(null), basis = new Array(bars.length).fill(null);
@@ -86,7 +86,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         };
       } },
     { type: 'keltner', label: 'Keltner Channels', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20 }, { key: 'mult', label: 'Multiplier', def: 2, min: 0.5, max: 6 }],
+      params: [{ key: 'length', label: 'Length', def: 20, int: true }, { key: 'mult', label: 'Multiplier', def: 2, min: 0.5, max: 6 }],
       colors: { line: YELLOW },
       compute: (bars, p, c) => {
         const basis = ema(closes(bars), p.length), a = atr(bars, p.length);
@@ -98,7 +98,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         };
       } },
     { type: 'envelopes', label: 'Moving Average Envelopes', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20 }, { key: 'percent', label: 'Percent', def: 2, min: 0.1, max: 20 }],
+      params: [{ key: 'length', label: 'Length', def: 20, int: true }, { key: 'percent', label: 'Percent', def: 2, min: 0.1, max: 20 }],
       colors: { line: BLUE },
       compute: (bars, p, c) => {
         const basis = sma(closes(bars), p.length), k = p.percent / 100;
@@ -155,7 +155,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         };
       } },
     { type: 'supertrend', label: 'SuperTrend', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'ATR Length', def: 10 }, { key: 'mult', label: 'Factor', def: 3, min: 0.5, max: 10 }],
+      params: [{ key: 'length', label: 'ATR Length', def: 10, int: true }, { key: 'mult', label: 'Factor', def: 3, min: 0.5, max: 10 }],
       colors: { up: UP, down: DOWN },
       compute: (bars, p, c) => {
         const a = atr(bars, p.length);
@@ -178,7 +178,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         return { lines: [{ values: up, color: c.up, width: 2 }, { values: down, color: c.down, width: 2 }] };
       } },
     { type: 'ichimoku', label: 'Ichimoku Cloud', group: 'Trend', pane: 'main',
-      params: [{ key: 'conv', label: 'Conversion', def: 9 }, { key: 'base', label: 'Base', def: 26 }, { key: 'spanB', label: 'Span B', def: 52 }],
+      params: [{ key: 'conv', label: 'Conversion', def: 9, int: true }, { key: 'base', label: 'Base', def: 26, int: true }, { key: 'spanB', label: 'Span B', def: 52, int: true }],
       colors: { conv: BLUE, base: DOWN, spanA: 'rgba(38,166,154,0.7)', spanB: 'rgba(239,83,80,0.7)' },
       compute: (bars, p, c) => {
         const midpoint = (len) => {
@@ -210,14 +210,14 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
 
     /* -------------------------- Oscillators (sub) ------------------------ */
     { type: 'rsi', label: 'Relative Strength Index', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 14 }],
+      params: [{ key: 'length', label: 'Length', def: 14, int: true }],
       colors: { line: PURPLE }, fixedRange: [0, 100],
       compute: (bars, p, c) => ({
         lines: [{ values: rsi(closes(bars), p.length), color: c.line, width: 2 }],
         levels: [LVL(70), { value: 50, color: 'rgba(178,181,190,0.25)', dashed: true }, LVL(30)],
       }) },
     { type: 'macd', label: 'MACD', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'fast', label: 'Fast', def: 12 }, { key: 'slow', label: 'Slow', def: 26 }, { key: 'signal', label: 'Signal', def: 9 }],
+      params: [{ key: 'fast', label: 'Fast', def: 12, int: true }, { key: 'slow', label: 'Slow', def: 26, int: true }, { key: 'signal', label: 'Signal', def: 9, int: true }],
       colors: { macd: BLUE, signal: ORANGE, up: 'rgba(38,166,154,0.5)', down: 'rgba(239,83,80,0.5)' },
       compute: (bars, p, c) => {
         const src = closes(bars);
@@ -232,7 +232,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         };
       } },
     { type: 'stochastic', label: 'Stochastic', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'k', label: '%K Length', def: 14 }, { key: 'd', label: '%D Smoothing', def: 3 }],
+      params: [{ key: 'k', label: '%K Length', def: 14, int: true }, { key: 'd', label: '%D Smoothing', def: 3, int: true }],
       colors: { k: BLUE, d: ORANGE }, fixedRange: [0, 100],
       compute: (bars, p, c) => {
         const kVals = new Array(bars.length).fill(null);
@@ -247,7 +247,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         };
       } },
     { type: 'stochrsi', label: 'Stochastic RSI', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'length', label: 'RSI Length', def: 14 }, { key: 'stoch', label: 'Stoch Length', def: 14 }],
+      params: [{ key: 'length', label: 'RSI Length', def: 14, int: true }, { key: 'stoch', label: 'Stoch Length', def: 14, int: true }],
       colors: { k: BLUE, d: ORANGE }, fixedRange: [0, 100],
       compute: (bars, p, c) => {
         const r = rsi(closes(bars), p.length);
@@ -267,7 +267,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         };
       } },
     { type: 'willr', label: 'Williams %R', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 14 }],
+      params: [{ key: 'length', label: 'Length', def: 14, int: true }],
       colors: { line: YELLOW }, fixedRange: [-100, 0],
       compute: (bars, p, c) => {
         const out = new Array(bars.length).fill(null);
@@ -279,7 +279,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         return { lines: [{ values: out, color: c.line, width: 2 }], levels: [LVL(-20), LVL(-80)] };
       } },
     { type: 'cci', label: 'Commodity Channel Index', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 20 }],
+      params: [{ key: 'length', label: 'Length', def: 20, int: true }],
       colors: { line: BLUE },
       compute: (bars, p, c) => {
         const tp = bars.map((b) => (b.high + b.low + b.close) / 3);
@@ -296,15 +296,15 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         return { lines: [{ values: out, color: c.line, width: 2 }], levels: [LVL(100), LVL(-100)] };
       } },
     { type: 'atr', label: 'Average True Range', group: 'Volatility', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 14 }],
+      params: [{ key: 'length', label: 'Length', def: 14, int: true }],
       colors: { line: '#e91e63' },
       compute: (bars, p, c) => ({ lines: [{ values: atr(bars, p.length), color: c.line, width: 2 }] }) },
     { type: 'stddev', label: 'Standard Deviation', group: 'Volatility', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 20 }],
+      params: [{ key: 'length', label: 'Length', def: 20, int: true }],
       colors: { line: TEAL },
       compute: (bars, p, c) => ({ lines: [{ values: stdev(closes(bars), p.length), color: c.line, width: 2 }] }) },
     { type: 'momentum', label: 'Momentum', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 10 }],
+      params: [{ key: 'length', label: 'Length', def: 10, int: true }],
       colors: { line: BLUE },
       compute: (bars, p, c) => {
         const out = new Array(bars.length).fill(null);
@@ -312,7 +312,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         return { lines: [{ values: out, color: c.line, width: 2 }], levels: [{ value: 100, color: 'rgba(178,181,190,0.3)', dashed: true }] };
       } },
     { type: 'roc', label: 'Rate of Change', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 9 }],
+      params: [{ key: 'length', label: 'Length', def: 9, int: true }],
       colors: { line: ORANGE },
       compute: (bars, p, c) => {
         const out = new Array(bars.length).fill(null);
@@ -326,17 +326,20 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         const hl = hl2(bars);
         const smaFast = sma(hl, 5), smaSlow = sma(hl, 34);
         const ao = smaFast.map((v, i) => (v != null && smaSlow[i] != null ? v - smaSlow[i] : null));
-        const hist = ao.map((v, i) => (v != null && i > 0 && ao[i - 1] != null ? v : null));
+        /* ROUND261: the FIRST valid AO value is bar 34 (index 33, once the
+           34-period SMA has a full window) — it used to be suppressed by an
+           `i > 0 && ao[i-1] != null` guard, so every AO histogram started one
+           bar late. Color is derived by fillSeries from the previous value. */
         return {
           lines: [],
-          hist: { values: hist, colorUp: c.up, colorDown: c.down },
+          hist: { values: ao, colorUp: c.up, colorDown: c.down },
           levels: [{ value: 0, color: 'rgba(178,181,190,0.3)', dashed: true }],
         };
       } },
 
     /* ------------------------------ Volume ------------------------------- */
     { type: 'volume', label: 'Volume', group: 'Volume', pane: 'separate',
-      params: [{ key: 'ma', label: 'MA Length', def: 20 }],
+      params: [{ key: 'ma', label: 'MA Length', def: 20, int: true }],
       colors: { up: 'rgba(38,166,154,0.6)', down: 'rgba(239,83,80,0.6)', ma: BLUE },
       compute: (bars, p, c) => {
         const vol = bars.map((b) => b.volume);
@@ -349,7 +352,9 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
       params: [],
       colors: { line: BLUE },
       compute: (bars, p, c) => {
-        const out = [0];
+        /* ROUND261: keep the output aligned with bars — an empty history used
+           to return [0] (one value for zero bars). */
+        const out = bars.length ? [0] : [];
         for (let i = 1; i < bars.length; i++) {
           if (bars[i].close > bars[i - 1].close) out.push(out[i - 1] + bars[i].volume);
           else if (bars[i].close < bars[i - 1].close) out.push(out[i - 1] - bars[i].volume);
@@ -358,7 +363,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         return { lines: [{ values: out, color: c.line, width: 2 }] };
       } },
     { type: 'mfi', label: 'Money Flow Index', group: 'Volume', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 14 }],
+      params: [{ key: 'length', label: 'Length', def: 14, int: true }],
       colors: { line: PURPLE }, fixedRange: [0, 100],
       compute: (bars, p, c) => {
         const tp = bars.map((b) => (b.high + b.low + b.close) / 3);
@@ -367,14 +372,22 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         const win = [];
         for (let i = 1; i < bars.length; i++) {
           const flow = tp[i] * bars[i].volume;
-          const pos = tp[i] > tp[i - 1];
-          win.push({ flow, pos });
-          if (pos) posSum += flow; else negSum += flow;
+          /* ROUND261: an UNCHANGED typical price is neither positive nor
+             negative money flow (the old `else` dumped flat bars into the
+             negative sum, so a flat/illiquid window reported MFI 0 =
+             extreme oversold). Flat bars contribute to neither sum. */
+          const dir = tp[i] > tp[i - 1] ? 1 : (tp[i] < tp[i - 1] ? -1 : 0);
+          win.push({ flow, dir });
+          if (dir > 0) posSum += flow; else if (dir < 0) negSum += flow;
           if (win.length > p.length) {
             const old = win.shift();
-            if (old) { if (old.pos) posSum -= old.flow; else negSum -= old.flow; }
+            if (old) { if (old.dir > 0) posSum -= old.flow; else if (old.dir < 0) negSum -= old.flow; }
           }
-          if (win.length === p.length) out[i] = negSum === 0 ? 100 : 100 - 100 / (1 + posSum / negSum);
+          if (win.length === p.length) {
+            /* no directional flow at all -> no reading (not 0 / not 100) */
+            if (posSum === 0 && negSum === 0) out[i] = null;
+            else out[i] = negSum === 0 ? 100 : 100 - 100 / (1 + posSum / negSum);
+          }
         }
         return { lines: [{ values: out, color: c.line, width: 2 }], levels: [LVL(80), LVL(20)] };
       } },
@@ -382,7 +395,9 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
       params: [],
       colors: { line: ORANGE },
       compute: (bars, p, c) => {
-        const out = [0];
+        /* ROUND261: keep the output aligned with bars — an empty history used
+           to return [0] (one value for zero bars). */
+        const out = bars.length ? [0] : [];
         for (let i = 1; i < bars.length; i++) {
           const range = bars[i].high - bars[i].low;
           const clv = range === 0 ? 0 : ((bars[i].close - bars[i].low) - (bars[i].high - bars[i].close)) / range;
@@ -395,14 +410,36 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
   const MAP = {};
   DEFS.forEach((d) => { MAP[d.type] = d; });
 
+  /* ROUND261: indicator periods are integers (TV input.int). A fractional or
+     non-numeric length typed in the settings dialog used to reach the math
+     kernels raw — fractional windows read bars[19.5] (undefined -> throw,
+     swallowed by compute()'s catch -> an apparently empty indicator) and
+     sma(src, 20.5) divided a 21-value sum by 20.5. Normalize ONCE at this
+     boundary so compute() and the legend title agree, and persisted layouts
+     with stale/poisoned values heal on load. */
+  function paramValue(p, inst) {
+    const raw = (inst.params && inst.params[p.key] != null) ? inst.params[p.key] : p.def;
+    if (!p.int) return raw;
+    let v = Number(raw);
+    if (!isFinite(v)) v = p.def;
+    v = Math.round(v);
+    const lo = p.min != null ? p.min : 1;
+    if (v < lo) v = lo;
+    if (p.max != null && v > p.max) v = p.max;
+    return v;
+  }
+
   const Indicators = {
     all: DEFS,
     def(type) { return MAP[type] || null; },
+    /* ROUND261: shared period normalization — the settings dialog uses the
+       exact same rule so the value it shows/commits is the value computed. */
+    paramValue(p, inst) { return paramValue(p, inst); },
     compute(inst, bars) {
       const def = MAP[inst.type];
       if (!def) return { lines: [] };
       const params = {};
-      for (const p of def.params) params[p.key] = (inst.params && inst.params[p.key] != null) ? inst.params[p.key] : p.def;
+      for (const p of def.params) params[p.key] = paramValue(p, inst);
       const colors = Object.assign({}, def.colors, inst.colors || {});
       let out;
       try { out = def.compute(bars, params, colors) || { lines: [] }; } catch (e) { out = { lines: [] }; }
@@ -424,7 +461,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
       const def = MAP[inst.type];
       if (!def) return inst.type;
       if (!def.params.length) return def.label;
-      const ps = def.params.map((p) => (inst.params && inst.params[p.key] != null) ? inst.params[p.key] : p.def).join(', ');
+      const ps = def.params.map((p) => paramValue(p, inst)).join(', ');
       return `${def.label} (${ps})`;
     },
   };
