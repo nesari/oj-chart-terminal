@@ -106,6 +106,12 @@ async function rebuild(pane, inst, opts) {
     /* ROUND80: the TF this runtime was built for — a TF switch must REBUILD
        (fresh globals + correct env.tfSec), never re-run the old runtime */
     tf: pane.tf,
+    /* ROUND262: env.symbol/env.mintick are baked into the runtime at
+       construction (syminfo.ticker, request.security defaults, tick math).
+       Switching the chart's symbol must rebuild for the same reason a TF
+       switch does; a same-length history used to hit the "fresh" fast path
+       and keep running with the PREVIOUS symbol in env.symbol. */
+    symbol: pane.symbol,
     /* ROUND144: the indicator timeframe this runtime was built for */
     htf: (htfSpec(pane, inst, script.source) || {}).id || '' };
   map.set(inst.id, st);
@@ -466,6 +472,10 @@ function recomputePine(pane) {
          stayed stale. A TF change now rebuilds the instance (compile is
          cached, so this is cheap); only a same-TF history reload re-runs. */
       if (st.tf !== pane.tf) { rebuild(pane, inst); }
+      /* ROUND262: same rule for a SYMBOL switch — the runtime cached the old
+         env.symbol (syminfo.*, request.security's default ticker, tick math)
+         and a same-bar-count reload could even take the "fresh" skip below. */
+      else if (st.symbol !== pane.symbol) { rebuild(pane, inst); }
       /* ROUND144: an Indicator-Timeframe edit must rebuild too (fresh
          HTF-frame globals + env.tfSec) — same rule as a chart TF switch */
       else if (((htfSpec(pane, inst, st.script && st.script.source) || {}).id || '') !== (st.htf || '')) { rebuild(pane, inst); }
