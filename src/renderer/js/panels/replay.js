@@ -470,6 +470,13 @@ const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 8, 10, 15, 20];
       p._shown = p.bars.length;
       p._lastPartialClose = null;
       try { Manager.setPaneData(p, p.bars); } catch (e) {}
+      /* ROUND264: the session recomputed indicators on the CUT history on
+         every step (renderAll). Restoring the full bars without recomputing
+         left every overlay/sub-pane showing only the replay window until a
+         live tick happened to arrive (a quiet symbol stayed wrong forever).
+         Recompute both engines on the restored history here. */
+      try { Manager.recomputeIndicators(p); } catch (e) {}
+      try { Manager.recomputePine(p); } catch (e) {}
     }
     /* ROUND86: after replay ends, keep the Custom Session day-gaps in the
        series AND keep blocking live ticks (the stitched view is historical) */

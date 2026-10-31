@@ -47,5 +47,16 @@ const src = readSource('src/renderer/js/panels/replay.js');
     'stop cancels an armed pick before tearing the session down');
 }
 
+/* 4. stop re-derives indicators/Pine from the RESTORED full history */
+{
+  const stop = (src.match(/Replay\.stop = function \(\) \{[\s\S]*?\n  \};/) || [''])[0];
+  const setAt = stop.indexOf('Manager.setPaneData(p, p.bars)');
+  const indAt = stop.indexOf('Manager.recomputeIndicators(p)');
+  const pineAt = stop.indexOf('Manager.recomputePine(p)');
+  ok(setAt > 0, 'stop restores the full pane data');
+  ok(indAt > setAt, 'built-in indicators recompute after the restore (not left on the replay cut)');
+  ok(pineAt > indAt, 'Pine instances recompute after the restore too');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
