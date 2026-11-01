@@ -899,19 +899,50 @@ app.on('web-contents-created', (event, wc) => {
   } catch (e) {}
 });
 
+/* ROUND269: keep the user-data folder stable across the app-name fix.
+   Every build since round 51 wrote to "<appData>/OJchart Notification"; a
+   packaged build before that used the productName ("OJchart"), and a dev run
+   used package.json's name. Pick the folder that already holds data (newest
+   convention first) and pin it, so upgrading never moves accounts, logs or
+   the Local Storage that carries the saved layouts. */
+function pinUserDataDir() {
+  try {
+    const appData = app.getPath('appData');
+    const cands = [
+      path.join(appData, 'OJchart Notification'),
+      path.join(appData, 'OJchart'),
+      path.join(appData, 'mt5-chart-terminal'),
+    ];
+    const has = (p) => { try { return fs.existsSync(p); } catch (e) { return false; } };
+    const dir = cands.find(has) || path.join(appData, 'OJchart');
+    app.setPath('userData', dir);
+  } catch (e) {
+    try { mlogEvent('warn', 'app', 'userData pin failed', { error: String(e && e.message || e) }); } catch (e2) {}
+  }
+}
+
+/* pinned at module load — before Chromium picks its user-data dir */
+pinUserDataDir();
+
 app.whenReady().then(() => {
   /* ROUND51 (user request): brand the OS notifications — the Windows toast
      header used to read "electron.app.Electron" (the dev AUMID); a fixed
-     App User Model ID makes it read "OJChart Notification" instead.
+     App User Model ID makes it read as OJchart.
      ROUND127 (taskbar icon): on Windows the unpackaged-app AUMID must be
      the executable path (the Electron-documented dev-mode call) so the
      shell groups the window under an identity whose icon IS the window's
      own (assets/app.ico) instead of falling back to the electron.exe
      default logo. The toast keeps its bell image via the explicit
      ALERT_ICON above. */
-  try { app.setName('OJchart Notification'); } catch (e) {}
+  /* ROUND269: the app NAME is not the toast header. Round 51 renamed the whole
+     application to "OJchart Notification" to brand Windows toasts — that is
+     the AUMID's job (below) — so the app menu, the shell and the user-data
+     folder all carried the odd name as well. Restore the product name, but
+     PIN userData where earlier builds kept it (accounts, logs, Local
+     Storage/layouts) so an upgrade never looks like lost data. */
+  try { app.setName('OJchart'); } catch (e) {}
   const aumid = app.isPackaged ? 'com.ojchart.terminal' : process.execPath;
-  try { app.setAppUserModelId(process.platform === 'win32' ? aumid : 'OJchart Notification'); } catch (e) {}
+  try { app.setAppUserModelId(process.platform === 'win32' ? aumid : 'OJchart'); } catch (e) {}
   hardenPermissions(require('electron').session.defaultSession); // ROUND126
   pruneLogs();
   mlogEvent('info', 'app', 'main boot', { version: app.getVersion(), electron: process.versions.electron, node: process.versions.node, platform: process.platform });

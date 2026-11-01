@@ -74,7 +74,7 @@ check('icon: BOTH windows (host + detached solo) take APP_ICON',
   (main.match(/icon: APP_ICON,/g) || []).length === 2);
 check('icon: dev AUMID = executable path, packaged AUMID = brand id',
   /app\.isPackaged \? 'com\.ojchart\.terminal' : process\.execPath/.test(main) &&
-  /app\.setAppUserModelId\(process\.platform === 'win32' \? aumid : 'OJchart Notification'\)/.test(main));
+  /app\.setAppUserModelId\(process\.platform === 'win32' \? aumid : 'OJchart'\)/.test(main));
 check('icon: the one-time build script is part of the repo',
   fs.existsSync(ROOT + 'scripts/make_app_icon.py') && /make_app_icon/.test(main));
 
