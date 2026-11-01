@@ -139,4 +139,21 @@ function stopsCheck(spec, type, ref, sl, tp) {
   return m;
 }
 
-export { mround, clampVol, demoProfit, demoMargin, baseUsdRate, pendingTriggered, barStopsHit, priceStopsHit, stopsCheck };
+/* ROUND268: clamp a dragged SL/TP to the legal side of `ref` (the price the
+   level is validated against) with the broker's minimum distance. `type` is
+   the ORDER type (even = buy: 0 BUY, 2 BUY_LIMIT, 4 BUY_STOP, 6 BUY_STOP_LIMIT).
+   MT5 sticks the line at the boundary instead of sending an invalid stop. */
+function clampStopPrice(spec, type, ref, kind, price) {
+  if (!(ref > 0) || !(price > 0)) return price;
+  const pt = spec && spec.point > 0 ? spec.point : 0;
+  const gap = Math.max((spec && spec.stops_level > 0 && pt > 0) ? spec.stops_level * pt : 0, pt);
+  if (!(gap > 0)) return price;
+  const dg = spec && spec.digits != null ? spec.digits : 5;
+  const buy = (type % 2) === 0;
+  const below = kind === 'sl' ? buy : !buy;      // SL: buy below / sell above
+  if (below) { if (price > ref - gap) price = ref - gap; }
+  else if (price < ref + gap) price = ref + gap;
+  return Number(price.toFixed(dg));
+}
+
+export { mround, clampVol, demoProfit, demoMargin, baseUsdRate, pendingTriggered, barStopsHit, priceStopsHit, stopsCheck, clampStopPrice };

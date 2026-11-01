@@ -107,7 +107,7 @@ import { UI } from '../drawing/ui.js';
 import { icon } from '../ui/icons.js';
 import { Trade, OT, OT_NAME } from './state.js';
 import { TradeRoute } from './route.js';
-import { stopsCheck } from '../../../core/demo-math.js';
+import { stopsCheck, clampStopPrice } from '../../../core/demo-math.js';
 import { Log } from '../../../core/logger.js';
 
 const K = {
@@ -1276,6 +1276,20 @@ const OneClick = {
     const spec = Trade.specSync(p.symbol);
     const dg = (spec && spec.digits != null) ? spec.digits : 5;
     const be = Number(p.open.toFixed(dg));
+    /* ROUND268: a break-even stop is only legal once the market has passed the
+       entry (and the spread clears stops_level). The DEMO broker snaps that
+       request to the nearest legal point; the LIVE path sent it raw and the
+       broker answered with a bare rejection — same button, different outcome.
+       Refuse with a readable reason instead of moving the user's stop
+       somewhere they did not ask for. */
+    const q = TradeRoute.quote(p.symbol) || {};
+    const ref = p.type === 0 ? (q.bid || 0) : (q.ask || 0);
+    const legal = clampStopPrice(spec, p.type, ref, 'sl', be);
+    const snap = Math.abs(legal - be) > 1e-12;
+    if (snap && !TradeRoute.isDemo()) {
+      UI.toast('Risk-free needs the market past the entry — the broker would reject that stop', '');
+      return;
+    }
     /* opts.be: the demo broker snaps an illegal break-even SL (open sits on
        the far side of the spread) to the nearest legal point */
     TradeRoute.modifySLTP(p.ticket, be, p.tp || 0, { be: true })

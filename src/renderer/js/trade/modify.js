@@ -26,6 +26,7 @@ import { U } from '../core/util.js';
 import { UI } from '../drawing/ui.js';
 import { Trade, OT_NAME } from './state.js';
 import { TradeRoute } from './route.js';
+import { stopsCheck } from '../../../core/demo-math.js';
 
 const TradeModify = {
   _root: null,      // the backdrop element
@@ -206,6 +207,17 @@ const TradeModify = {
     this._liveRefresh();
   },
 
+  /* ROUND268: the typed SL/TP must sit on the correct side of the price the
+     modify is validated against — a position's close-out price (bid for a
+     buy, ask for a sell) or the pending order's own price. Returns the error
+     text or null. Without this the dialog sent an inverted stop and the
+     broker answered with a bare retcode. */
+  _stopSideErr(symbol, type, ref, sl, tp) {
+    const s = this._spec(symbol);
+    if (!s || !(ref > 0)) return null;
+    return stopsCheck(s, type, ref, sl || 0, tp || 0);
+  },
+
   _wirePos(pos) {
     const root = this._root;
     const d = this._digits(pos.symbol);
@@ -239,6 +251,10 @@ const TradeModify = {
     });
     root.querySelector('#tm-apply-sltp').addEventListener('click', () => {
       const s2 = num(sl), t2 = num(tp);
+      const q = TradeRoute.quote(pos.symbol) || {};
+      const ref = pos.type === 0 ? (q.bid || 0) : (q.ask || 0);
+      const bad = this._stopSideErr(pos.symbol, pos.type, ref, s2, t2);
+      if (bad) { UI.toast(bad + ' — fix the SL/TP', ''); return; }
       TradeRoute.modifySLTP(pos.ticket, s2, t2).then(() => {
         UI.toast('SL/TP applied — #' + pos.ticket, 'ok');
       }).catch((err) => UI.toast('Modify rejected: ' + (err.message || ''), ''));
@@ -260,6 +276,9 @@ const TradeModify = {
     root.querySelector('#tm-apply-order').addEventListener('click', () => {
       const p2 = num(px), s2 = num(sl), t2 = num(tp);
       if (!(p2 > 0)) { UI.toast('Enter a valid order price', ''); return; }
+      /* ROUND268: pendings are validated against their (new) order price */
+      const bad = this._stopSideErr(ord.symbol, ord.type, p2, s2, t2);
+      if (bad) { UI.toast(bad + ' — fix the SL/TP', ''); return; }
       TradeRoute.modifyOrder(ord.ticket, p2, s2, t2).then(() => {
         UI.toast('Order modified — #' + ord.ticket, 'ok');
       }).catch((err) => UI.toast('Modify rejected: ' + (err.message || ''), ''));

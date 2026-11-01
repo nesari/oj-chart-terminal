@@ -45,6 +45,7 @@ import { TradeRoute } from './route.js';
 import { TradeModify } from './modify.js';
 import { GoToDate } from '../panels/gotodate.js';
 import { TZ } from '../../../core/timezone.js';
+import { stopsCheck } from '../../../core/demo-math.js';
 
 const K = { vis: 'mt5_tr_dock', h: 'mt5_tr_dock_h', tab: 'mt5_tr_dock_tab', range: 'mt5_tr_hist_range',
   sortP: 'mt5_tr_sort_pos', sortH: 'mt5_tr_sort_hist', sortO: 'mt5_tr_sort_ord',
@@ -974,6 +975,14 @@ const TradeDock = {
       const tp = parseFloat(tpIn.value);
       const sl2 = isFinite(sl) && sl > 0 ? Number(sl.toFixed(d)) : 0;
       const tp2 = isFinite(tp) && tp > 0 ? Number(tp.toFixed(d)) : 0;
+      /* ROUND268: the inline editor typed its way straight to the broker — an
+         SL above the market for a buy came back as a bare retcode. Same side
+         rule as the modify dialog; the row stays in edit mode so the value
+         can be corrected. */
+      const q = TradeRoute.quote(p.symbol) || {};
+      const ref = p.type === 0 ? (q.bid || 0) : (q.ask || 0);
+      const bad = (s && ref > 0) ? stopsCheck(s, p.type, ref, sl2, tp2) : null;
+      if (bad) { UI.toast(bad + ' — fix the SL/TP', ''); return; }
       delete row.dataset.editing;
       TradeRoute.modifySLTP(p.ticket, sl2, tp2).then((res) => {
         UI.toast('SL/TP updated — ' + ((res && res.comment) || 'done'),
@@ -1146,10 +1155,14 @@ const TradeDock = {
       const sl = parseFloat(slIn.value);
       const tp = parseFloat(tpIn.value);
       if (!(px > 0)) { cancel(); return; }
+      /* ROUND268: pendings validate against their own (new) order price */
+      const px2 = Number(px.toFixed(d));
+      const sl2 = isFinite(sl) && sl > 0 ? Number(sl.toFixed(d)) : 0;
+      const tp2 = isFinite(tp) && tp > 0 ? Number(tp.toFixed(d)) : 0;
+      const bad = s ? stopsCheck(s, o.type, px2, sl2, tp2) : null;
+      if (bad) { UI.toast(bad + ' — fix the SL/TP', ''); return; }   // stay editing
       delete row.dataset.editing;
-      TradeRoute.modifyOrder(o.ticket, Number(px.toFixed(d)),
-        isFinite(sl) && sl > 0 ? Number(sl.toFixed(d)) : 0,
-        isFinite(tp) && tp > 0 ? Number(tp.toFixed(d)) : 0)
+      TradeRoute.modifyOrder(o.ticket, px2, sl2, tp2)
         .then((res) => {
           UI.toast('Order modified — ' + ((res && res.comment) || 'done'),
             (res && (res.retcode === 10009 || res.ok)) ? 'ok' : '');

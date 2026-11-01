@@ -87,6 +87,7 @@ import { UI } from '../drawing/ui.js';
 import { Trade, OT_NAME } from './state.js';
 import { TradeRoute } from './route.js';
 import { TradeModify } from './modify.js';
+import { clampStopPrice } from '../../../core/demo-math.js';
 
 const HIT_PX = 9;          // drag/hover hit radius around a line
 const DRAG_ARM_PX = 6;     /* ROUND127: pointer travel required to ARM a drag —
@@ -450,6 +451,20 @@ const TradeOverlay = {
     return ' · too close';
   },
 
+  /* ROUND268: a dragged SL/TP may not cross its own reference price.
+     Positions hang off their CLOSE-OUT price (bid for a buy, ask for a sell),
+     pending orders off their own order price. Without this a drop on the
+     wrong side sent `modifySLTP`/`modifyOrder` with an inverted stop and the
+     broker refused it — MT5 simply sticks the line at the legal boundary. */
+  _clampStop(pane, pos, kind, price, order) {
+    const s = Trade.specSync(pane.symbol);
+    const q = Trade.quote(pane.symbol) || {};
+    const ref = order ? (order.price || 0)
+      : (pos && pos.type === 0 ? (q.bid || (s && s.bid) || 0)
+        : (q.ask || (s && s.ask) || 0));
+    return clampStopPrice(s, pos ? pos.type : 0, ref, kind, price);
+  },
+
   _lineMoney(l) {
     /* money P/L at the line's level (null = not applicable).
        ROUND99 guard: without a loaded spec, profitAt falls back to the
@@ -713,8 +728,14 @@ const TradeOverlay = {
       }
       const be = Number(pos.open.toFixed(dg));
       const beDone = pos.sl > 0 && Math.abs(pos.sl - be) < (s ? s.point / 2 : 1e-9);
+      const q0 = Trade.quote(pane.symbol) || {};
+      const beRef = pos.type === 0 ? (q0.bid || (s && s.bid) || 0) : (q0.ask || (s && s.ask) || 0);
+      /* ROUND268: the broker only takes a break-even stop once the market is
+         past the entry — disable the row instead of sending a rejected one */
+      const beIllegal = clampStopPrice(s, pos.type, beRef, 'sl', be) !== be;
       items.push({
-        label: 'Stop loss to break-even (' + be.toFixed(dg) + ')', disabled: beDone,
+        label: 'Stop loss to break-even (' + be.toFixed(dg) + ')' + (beIllegal ? ' — market not past the entry' : ''),
+        disabled: beDone || beIllegal,
         run: () => Trade.modifySLTP(pos.ticket, be, pos.tp || 0)
           .then(() => UI.toast('SL moved to break-even', 'ok'))
           .catch(fail('SL')),
@@ -1018,6 +1039,15 @@ const TradeOverlay = {
         d.chip.textContent = label;
       }
     } else {
+      /* ROUND268: keep a dragged stop on its legal side while it moves, so the
+         ghost line and chip show exactly what a drop will send. */
+      if (d.kind === 'sl' || d.kind === 'tp') {
+        const pos = Trade.positions.find((p) => p.ticket === d.ticket);
+        const o = pos ? null : Trade.orders.find((x) => x.ticket === d.ticket);
+        if (pos) price = this._clampStop(pane, pos, d.kind, price);
+        else if (o) price = this._clampStop(pane, this._orderPos(o), d.kind, price, o);
+        d.price = price;
+      }
       try { d.line.pl.applyOptions({ price }); } catch (er) {}
       /* ROUND105 (user request): while an SL/TP is being dragged the chip
          shows the MONEY the level would lock + its points/pips distance
@@ -1116,19 +1146,24 @@ const TradeOverlay = {
     if (d.kind === 'sl' || d.kind === 'tp') {
       const pos = Trade.positions.find((p) => p.ticket === d.ticket);
       if (pos) {
-        const sl = d.kind === 'sl' ? px : (pos.sl || 0);
-        const tp = d.kind === 'tp' ? px : (pos.tp || 0);
+        /* ROUND268: a stale drag price (the market moved after the last
+           move event) is clamped again before it becomes an order */
+        const sl = d.kind === 'sl' ? Number(this._clampStop(pane, pos, 'sl', px).toFixed(dg)) : (pos.sl || 0);
+        const tp = d.kind === 'tp' ? Number(this._clampStop(pane, pos, 'tp', px).toFixed(dg)) : (pos.tp || 0);
+        const sent = d.kind === 'sl' ? sl : tp;
         Trade.modifySLTP(pos.ticket, sl, tp)
-          .then(() => done((d.kind === 'sl' ? 'SL' : 'TP') + ' moved to ' + px.toFixed(dg)))
+          .then(() => done((d.kind === 'sl' ? 'SL' : 'TP') + ' moved to ' + sent.toFixed(dg)))
           .catch((err) => fail(d.kind.toUpperCase(), err));
       } else {
         /* ROUND98: the dragged line belonged to a PENDING order */
         const o = Trade.orders.find((x) => x.ticket === d.ticket);
         if (!o) { this.sync(); return; }
-        const sl = d.kind === 'sl' ? px : (o.sl || 0);
-        const tp = d.kind === 'tp' ? px : (o.tp || 0);
+        const op = this._orderPos(o);
+        const sl = d.kind === 'sl' ? Number(this._clampStop(pane, op, 'sl', px, o).toFixed(dg)) : (o.sl || 0);
+        const tp = d.kind === 'tp' ? Number(this._clampStop(pane, op, 'tp', px, o).toFixed(dg)) : (o.tp || 0);
+        const sent = d.kind === 'sl' ? sl : tp;
         Trade.modifyOrder(o.ticket, o.price, sl, tp)
-          .then(() => done((d.kind === 'sl' ? 'SL' : 'TP') + ' moved to ' + px.toFixed(dg)))
+          .then(() => done((d.kind === 'sl' ? 'SL' : 'TP') + ' moved to ' + sent.toFixed(dg)))
           .catch((err) => fail(d.kind.toUpperCase(), err));
       }
     } else if (d.kind === 'order') {

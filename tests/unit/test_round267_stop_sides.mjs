@@ -89,7 +89,7 @@ console.log('\n[3] the ticket validates before sending');
 console.log('\n[4] the panel validates before sending');
 {
   const src = readSource('src/renderer/js/trade/oneclick.js');
-  ok(/import \{ stopsCheck \} from '\.\.\/\.\.\/\.\.\/core\/demo-math\.js';/.test(src),
+  ok(/import \{ stopsCheck, clampStopPrice \} from '\.\.\/\.\.\/\.\.\/core\/demo-math\.js';/.test(src),
     'panel imports the shared validator');
   const iSend = src.indexOf('_sendDraft(pane, st) {');
   const send = src.slice(iSend, src.indexOf('TradeRoute.sendOrder({', iSend));
