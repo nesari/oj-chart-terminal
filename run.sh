@@ -15,9 +15,12 @@ cd "$(dirname "$0")"
 MODE="${1:-demo}"
 # F6.2: keep any extra Electron flags the user passes (e.g. --no-sandbox on
 # distributions whose kernel/AppArmor policy blocks the SUID sandbox).
-ARGS=()
+# ROUND270: a plain string, not an array — stock macOS ships bash 3.2, where
+# `set -u` treats an EMPTY array as unbound and the documented demo launch
+# (`./run.sh`, no flags) died with "ARGS[@]: unbound variable".
+MODE_FLAG=""
 if [ "$MODE" = "mt5" ]; then
-  ARGS+=(--mode=mt5)
+  MODE_FLAG="--mode=mt5"
   shift || true
 elif [ "$MODE" = "demo" ]; then
   shift || true
@@ -37,4 +40,5 @@ if [ ! -x "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" ] &&
   fi
 fi
 
-npx electron . "${ARGS[@]}" "$@"
+# shellcheck disable=SC2086  # MODE_FLAG is one fixed token (or empty)
+npx electron . $MODE_FLAG "$@"
