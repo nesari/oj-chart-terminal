@@ -776,15 +776,36 @@ const TradeTicket = {
        was already stale. Replaced with an ARM-then-confirm on the button
        itself: the first click arms it (and pins the chart preview of the
        exact entry / SL / TP), the second click inside 5s sends it. Esc or
-       any other click disarms. Nothing blocks, nothing is hidden. */
-    if (this._armedSide === side) { this._disarm(); send(); return; }
+       any other click disarms. Nothing blocks, nothing is hidden.
+       ROUND265: the arm pins THIS order — if the user changes the symbol,
+       type, volume, price or SL/TP between the two clicks, the second click
+       used to send the NEW order with no confirmation at all (the guard
+       compared the side only). The signature must still match, otherwise
+       the button re-arms and asks again. */
+    if (this._armedSide === side) {
+      if (this._armSig != null && this._armSig === this._sigFor(side)) {
+        this._disarm(); send(); return;
+      }
+      this._disarm(); this._arm(side, desc); return;
+    }
     this._arm(side, desc);
+  },
+
+  /* the order fields the confirmation pins — any edit invalidates the arm */
+  _sigFor(side) {
+    const e = this.els;
+    return [this.currentSymbol(), side, e.type.value, e.volume.value,
+      e.price.value, e.stoplimit.value, e.expiry.value, e.expiryAt.value,
+      e.slOn.checked ? '1' : '0', e.slMode.value, e.slVal.value,
+      e.tpOn.checked ? '1' : '0', e.tpMode.value, e.tpVal.value,
+      e.oneClick.checked ? '1' : '0', e.comment.value].join('\u0001');
   },
 
   _arm(side, desc) {
     this._disarm();
     const btn = side === 0 ? this.els.buy : this.els.sell;
     this._armedSide = side;
+    this._armSig = this._sigFor(side);
     this._armPrev = btn.innerHTML;
     btn.classList.add('tt-armed');
     btn.innerHTML = '<span class="tt-exec-side">CONFIRM ' + (side === 0 ? 'BUY' : 'SELL') +
@@ -794,12 +815,27 @@ const TradeTicket = {
     this._refreshFast();
     this._armKey = (ev) => { if (ev.key === 'Escape') { this._disarm(); this._status(''); } };
     document.addEventListener('keydown', this._armKey, true);
+    /* ROUND265: the comment promised "any other click disarms" — nothing
+       listened. A click on any field (or anywhere outside the armed button)
+       now cancels the confirmation instead of leaving a live arm behind. The
+       armed button's own mousedown is ignored so the confirming click still
+       counts. */
+    this._armClick = (ev) => {
+      if (this._armedSide == null) return;
+      const own = this._armedSide === 0 ? this.els.buy : this.els.sell;
+      if (own && own.contains(ev.target)) return;
+      this._disarm();
+      this._status('');
+    };
+    document.addEventListener('mousedown', this._armClick, true);
     this._armTimer = setTimeout(() => { this._disarm(); this._status('Order not sent — confirmation timed out'); }, 5000);
   },
 
   _disarm() {
     if (this._armTimer) { clearTimeout(this._armTimer); this._armTimer = null; }
     if (this._armKey) { document.removeEventListener('keydown', this._armKey, true); this._armKey = null; }
+    if (this._armClick) { document.removeEventListener('mousedown', this._armClick, true); this._armClick = null; }
+    this._armSig = null;
     if (this._armedSide != null) {
       const btn = this._armedSide === 0 ? this.els.buy : this.els.sell;
       btn.classList.remove('tt-armed');
