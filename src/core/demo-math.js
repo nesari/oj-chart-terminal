@@ -119,7 +119,10 @@ function stopsCheck(spec, type, ref, sl, tp) {
   if (!(ref > 0)) return 'No reference price';
   const pt = spec && spec.point > 0 ? spec.point : 0;
   const minDist = (spec && spec.stops_level > 0 && pt > 0) ? spec.stops_level * pt : 0;
-  const buy = type === 0 || type === 2 || type === 4;
+  /* ROUND267: the order types are paired (0/2/4/6 buy, 1/3/5/7 sell). The
+     old list stopped at 4, so a BUY STOP LIMIT (6) was validated as a SELL —
+     every legal stop-limit was rejected with "SL must be above the price". */
+  const buy = (type % 2) === 0;
   const chk = (v, cond, msg) => (v > 0 && cond ? msg : null);
   let m = null;
   if (buy) {

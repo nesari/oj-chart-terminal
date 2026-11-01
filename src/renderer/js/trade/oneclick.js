@@ -107,6 +107,7 @@ import { UI } from '../drawing/ui.js';
 import { icon } from '../ui/icons.js';
 import { Trade, OT, OT_NAME } from './state.js';
 import { TradeRoute } from './route.js';
+import { stopsCheck } from '../../../core/demo-math.js';
 import { Log } from '../../../core/logger.js';
 
 const K = {
@@ -994,8 +995,15 @@ const OneClick = {
       const q = TradeRoute.quote(st.sym) || {};
       const clamped = _clampLevel(st.lineDrag.kind, d.side, d.pend, price,
         { bid: q.bid, ask: q.ask, entry: d.entry }, spec);
-      if (st.lineDrag.kind === 'e') d.entry = clamped;
-      else if (st.lineDrag.kind === 's') d.sl = clamped;
+      if (st.lineDrag.kind === 'e') {
+        d.entry = clamped;
+        /* ROUND267: moving the entry re-anchors the stops. Dragging the
+           entry line past the SL used to leave SL/TP inverted (the clamp
+           only knew the market), so Set built an order with the stop on the
+           profit side; push them back into their legal zones instead. */
+        d.sl = _clampLevel('s', d.side, true, d.sl, { entry: d.entry }, spec);
+        d.tp = _clampLevel('t', d.side, true, d.tp, { entry: d.entry }, spec);
+      } else if (st.lineDrag.kind === 's') d.sl = clamped;
       else d.tp = clamped;
       this._draftPaint(pane, st);
       this._statusPaint(st);
@@ -1094,6 +1102,18 @@ const OneClick = {
     } else {
       orderType = d.side === 0 ? OT.BUY : OT.SELL;
       desc = (d.side === 0 ? 'BUY ' : 'SELL ') + r.vol + ' ' + sym + ' @ market';
+    }
+    /* ROUND267: SL/TP must sit on the correct side of what will actually be
+       sent. The market draft's entry follows every tick while the stop lines
+       stay put, so a run through the SL (or an entry line dragged past it)
+       left an inverted stop that the preview still showed as a valid risk and
+       the broker rejected. Same shared validator the demo engine uses. */
+    const refPx = d.pend ? price : (d.side === 0 ? q.ask : q.bid);
+    const sideErr = stopsCheck(spec, orderType, refPx, sl, tp);
+    if (sideErr) {
+      UI.toast(sideErr + ' — move the draft lines', '');
+      this._flash(st, d.side, true);
+      return;                                // the draft stays for adjustment
     }
     desc += ' · SL ' + sl.toFixed(dg) + ' / TP ' + tp.toFixed(dg);
     const tag = TradeRoute.isDemo() ? 'DEMO ' : '';

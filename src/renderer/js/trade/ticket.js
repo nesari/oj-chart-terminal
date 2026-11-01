@@ -31,6 +31,7 @@ import { RightPanel } from '../ui/rightpanel.js';
 import { icon } from '../ui/icons.js';
 import { Trade, OT } from './state.js';
 import { TradeRoute } from './route.js';
+import { stopsCheck } from '../../../core/demo-math.js';
 import { Log } from '../../../core/logger.js';
 
 const K = {
@@ -719,6 +720,14 @@ const TradeTicket = {
     const q = TradeRoute.quote(sym) || { bid: s.bid, ask: s.ask };
     const mktRef = side === 0 ? (s.ask || q.ask) : (s.bid || q.bid);
     const entryRef = type === 'market' ? mktRef : price;
+    /* ROUND267: the levels must sit on the CORRECT side of the entry. Price
+       mode took any number: a BUY with the SL typed above the market looked
+       healthy in the preview (the distance is absolute), sized Auto lot from
+       that inverted distance and only died at the broker with a bare
+       retcode. The shared stopsCheck (the demo engine's own validator) names
+       the mistake before anything leaves the terminal. */
+    const sideErr = stopsCheck(s, this._orderTypeNum(type, side), entryRef, sl, tp);
+    if (sideErr) { this._status(sideErr + ' — fix the SL/TP', true); return; }
     const minPts = s.stops_level || 0;
     if (minPts > 0 && mktRef > 0 && entryRef > 0) {
       const pts = (p, ref) => Math.abs(p - ref) / s.point;
