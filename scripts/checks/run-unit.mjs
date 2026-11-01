@@ -18,6 +18,12 @@ const TIMEOUT_MS = 60_000;
    timing-sensitive suites instead of saturating both cores. */
 const CONCURRENCY = process.env.CI ? 2 : 4;
 
+/* Suites that assert on wall-clock liveness must not share the CPU with a
+   sibling child: on a 2-vCPU shared runner the OS can stall one of them for
+   seconds (GC, antivirus, vCPU steal) and turn a healthy run red. They run
+   alone, one after another, before the concurrent pool. */
+const SERIAL = new Set(['verify_pine80.mjs', 'test_round266_ci_timing_gate.mjs']);
+
 const files = fs.readdirSync(DIR)
   .filter((f) => f.endsWith('.mjs') && f !== 'source-utils.mjs')
   .sort();
@@ -26,6 +32,9 @@ if (files.length === 0) {
   console.error('unit gate: no suites found in tests/unit');
   process.exit(1);
 }
+
+const serial = files.filter((f) => SERIAL.has(f));
+const parallel = files.filter((f) => !SERIAL.has(f));
 
 function runOne(file) {
   return new Promise((resolve) => {
@@ -48,15 +57,17 @@ function runOne(file) {
   });
 }
 
-let next = 0;
 const results = [];
+/* quiet machine first, then the parallel pool */
+for (const file of serial) results.push(await runOne(file));
+let next = 0;
 async function worker() {
-  while (next < files.length) {
-    const file = files[next++];
+  while (next < parallel.length) {
+    const file = parallel[next++];
     results.push(await runOne(file));
   }
 }
-await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
+await Promise.all(Array.from({ length: Math.min(CONCURRENCY, parallel.length) }, worker));
 
 const failed = results.filter((r) => r.code !== 0);
 for (const r of failed) {

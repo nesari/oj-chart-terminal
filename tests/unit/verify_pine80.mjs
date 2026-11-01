@@ -60,13 +60,13 @@ function makeBars(tfSec, n, seed = 7) {
 }
 
 /* ------------- 1) event-loop liveness during runChunked --------------- */
-console.log('\n[1] runChunked time-budget — the event loop stays live');
-{
+/* One measurement: probe the loop from a timer while a chunked pass runs.
+   A fresh runtime per attempt keeps the retry independent. */
+let attempts = 0;
+async function measureLiveness(bars) {
+  attempts++;
   const c = compile(HEAVY_SRC);
-  ok(c.ok, 'heavy probe script compiles');
   const rt = c.createInstance({ tfSec: 60, symbol: 'X', mintick: 0.01 });
-  const bars = makeBars(60, 4000);
-
   let maxGap = 0, probes = 0, done = false;
   (async () => {
     let last = Date.now();
@@ -79,16 +79,38 @@ console.log('\n[1] runChunked time-budget — the event loop stays live');
     }
   })();
   const t0 = Date.now();
+  /* Test hook (used only by test_round266): freeze the process so the
+     meta-suite can prove the retry path really rescues one stalled sample
+     AND that two stalls in a row still fail. Never set in normal/CI runs. */
+  const freeze = process.env.OJ_PINE80_STALL_ALWAYS === '1'
+    || (process.env.OJ_PINE80_STALL_ONCE === '1' && attempts === 1);
+  if (freeze) {
+    const until = Date.now() + 400;
+    while (Date.now() < until) { /* simulated runner freeze */ }
+  }
   await rt.runChunked(bars, 400);
   done = true;
-  const total = Date.now() - t0;
-  ok(probes > 20, `probes ran during the pass (${probes} loops in ${total}ms)`);
-  /* Not a 12ms SLA: shared CI runners can pause the process (GC, vCPU
-     steal). The contract under test is that the loop yields throughout the
-     pass; the probe count above proves it kept running. 250ms only catches a
-     real "one monolithic synchronous pass" regression. */
-  ok(maxGap <= 250, `max event-loop gap ${maxGap}ms <= 250ms (loop yields all pass)`);
-  ok(isFinite(plotByTitle(rt, 'acc').values[bars.length - 1]), 'run completed with finite output');
+  return { rt, maxGap, probes, total: Date.now() - t0 };
+}
+
+console.log('\n[1] runChunked time-budget — the event loop stays live');
+{
+  ok(compile(HEAVY_SRC).ok, 'heavy probe script compiles');
+  const bars = makeBars(60, 4000);
+  let m = await measureLiveness(bars);
+  ok(m.probes > 20, `probes ran during the pass (${m.probes} loops in ${m.total}ms)`);
+  /* 250ms only catches a real "one monolithic synchronous pass"
+     regression: the probe count above already proves the loop kept
+     running. Shared CI runners can still freeze the whole process (GC,
+     antivirus, vCPU steal) for seconds, which is indistinguishable from
+     a regression in a single sample — so a single stall gets one clean
+     retry, and only two stalls in a row fail. */
+  if (m.maxGap > 250) {
+    console.log(`  note  first pass stalled ${m.maxGap}ms (${m.probes} probes) — retrying once`);
+    m = await measureLiveness(bars);
+  }
+  ok(m.maxGap <= 250, `max event-loop gap ${m.maxGap}ms <= 250ms (loop yields all pass)`);
+  ok(isFinite(plotByTitle(m.rt, 'acc').values[bars.length - 1]), 'run completed with finite output');
 }
 
 /* ------------- 2) chunked == full (plots + 786 drawings) -------------- */
