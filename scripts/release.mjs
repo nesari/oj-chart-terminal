@@ -86,13 +86,20 @@ export function updateIndex(text, version, clFile) {
   return lines.join('\n');
 }
 
-function sh(cmd, args, opts = {}) {
-  const r = spawnSync(cmd, args, { stdio: 'inherit', shell: process.platform === 'win32', ...opts });
+/* ROUND272 — on Windows `shell: true` re-splits arguments on spaces, so
+   `git commit -m "Release 1.9.213"` reached git as `-m Release` + a stray
+   path `1.9.213` and every release aborted after mutating the tree. Only
+   npm needs a shell there (it is a .cmd shim); git is a real executable. */
+export function sh(cmd, args, opts = {}) {
+  const shell = cmd === 'npm' && process.platform === 'win32';
+  const r = spawnSync(cmd, args, { stdio: 'inherit', shell, ...opts });
+  if (r.error) throw new Error(`${cmd} ${args.join(' ')} failed to start: ${r.error.message}`);
   if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')} failed (${r.status})`);
 }
 
 function gitOut(args) {
-  const r = spawnSync('git', args, { encoding: 'utf8', shell: process.platform === 'win32' });
+  const r = spawnSync('git', args, { encoding: 'utf8' });
+  if (r.error) throw new Error('git ' + args.join(' ') + ' failed to start: ' + r.error.message);
   if (r.status !== 0) throw new Error('git ' + args.join(' ') + ' failed: ' + (r.stderr || ''));
   return String(r.stdout || '').trim();
 }

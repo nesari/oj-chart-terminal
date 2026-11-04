@@ -5,7 +5,7 @@
  */
 
 import {
-  nextVersion, validateVersion, changelogFile, renderEntry, insertEntry, updateIndex,
+  nextVersion, validateVersion, changelogFile, renderEntry, insertEntry, updateIndex, sh,
 } from '../../scripts/release.mjs';
 
 let pass = 0, fail = 0;
@@ -50,6 +50,19 @@ const updated = updateIndex(idx, '1.10.0', 'changelog/v1.10.md');
 ok(/Current version: \*\*1\.10\.0\*\*/.test(updated), 'current version refreshed');
 ok(updated.includes('changelog/v1.10.md'), 'new changelog linked');
 ok(updateIndex(updated, '1.10.1', 'changelog/v1.10.md') === updated.replace(/\*\*1\.10\.0\*\*/, '**1.10.1**'), 'no duplicate row');
+
+console.log('[6] child args with spaces survive (Windows release fix)');
+/* ROUND272 — `shell: true` used to re-split `-m "Release 1.9.213"`, so the
+   commit step failed with "pathspec '1.9.213' did not match". */
+const argvProbe = 'process.exit(process.argv[1] === "A B" ? 0 : 3)';
+let shOk = true;
+try { sh(process.execPath, ['-e', argvProbe, 'A B'], { stdio: 'ignore' }); }
+catch (e) { shOk = false; }
+ok(shOk, 'spaced argument reaches the child intact');
+let shBad = false;
+try { sh(process.execPath, ['-e', 'process.exit(7)'], { stdio: 'ignore' }); }
+catch (e) { shBad = /\(7\)/.test(e.message); }
+ok(shBad, 'non-zero child status still throws with the code');
 
 console.log(`\nRESULT: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
