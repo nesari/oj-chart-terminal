@@ -39,7 +39,7 @@ jobs:
       - name: Python provider gate
         run: npm run check:py
 
-      - name: Unit gate (140 Node suites)
+      - name: Unit gate
         run: npm run test:unit
 
       - name: Boot smoke (demo provider + offscreen Electron)
@@ -49,17 +49,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-screenshot
+          name: smoke-screenshot-windows
           path: docs/_smoke.png
           if-no-files-found: ignore
 
   linux:
-    name: Linux — syntax + imports
+    name: Linux — full verify (real Electron smoke under Xvfb)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      # Linux only runs the static gates; skip the Electron binary download.
-      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -69,11 +66,71 @@ jobs:
         with:
           node-version: 22
 
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Python dependencies
+        run: python -m pip install --disable-pip-version-check -r provider/requirements.txt
+
+      # Electron still needs a display even with an offscreen window; Xvfb
+      # provides one. GTK/ATK/ALSA/CUPS were t64-renamed on Ubuntu 24.04, so
+      # fall back to the 22.04 names if the t64 packages are unavailable.
+      - name: Electron runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb libnss3 libgbm1 libxss1 libxtst6
+          sudo apt-get install -y --no-install-recommends \
+            libatk-bridge2.0-0t64 libgtk-3-0t64 libasound2t64 libcups2t64 \
+            || sudo apt-get install -y --no-install-recommends \
+            libatk-bridge2.0-0 libgtk-3-0 libasound2 libcups2
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Syntax gate
-        run: npm run check:syntax
+      - name: Full gate under Xvfb
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1600x900x24" npm run verify
 
-      - name: Import graph gate
-        run: npm run check:imports
+      - name: Upload smoke screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshot-linux
+          path: docs/_smoke.png
+          if-no-files-found: ignore
+
+  macos:
+    name: macOS — full verify (native offscreen Electron smoke)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Python dependencies
+        run: python -m pip install --disable-pip-version-check -r provider/requirements.txt
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Full gate
+        run: npm run verify
+
+      - name: Upload smoke screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshot-macos
+          path: docs/_smoke.png
+          if-no-files-found: ignore

@@ -65,6 +65,13 @@ function Feed(url) {
        open restores charts/watchlist/position ticks after any reconnect
        (including symbols subscribed outside Manager, e.g. Pine/trade). */
     this._desiredSubs = new Set();
+    /* ROUND274 — owner-tagged subscriptions. A plain subscribe()/unsubscribe()
+       pair keeps the historical single-symbol semantics (the '*' owner), so
+       every existing caller behaves exactly as before. Long-lived extra
+       consumers (the trade bridge's open-position symbols) pass their own
+       owner id: they can be released independently without cutting the
+       chart/watchlist feed for the same symbol. */
+    this._subOwners = new Map(); // symbol -> Set<owner>
     this._connectSeq = 0;
     this._connectPromise = null;
     this._reconnectTimer = null;
@@ -331,19 +338,38 @@ function Feed(url) {
   Feed.prototype._replaySubs = function () {
     const wanted = Array.from(this._desiredSubs);
     for (const sym of wanted) {
-      try { this.subscribe(sym); } catch (e) { Log.debug('feed', 'resubscribe failed', e) }
+      /* Send the frame directly: subscribe() is idempotent per owner now and
+         would skip the replay that a fresh provider connection needs. */
+      try { this._send({ type: 'subscribe', symbol: sym }).catch(() => {}); }
+      catch (e) { Log.debug('feed', 'resubscribe failed', e) }
     }
     return wanted.length;
   };
-  Feed.prototype.subscribe = function (symbol) {
+  Feed.prototype.subscribe = function (symbol, owner) {
     if (!symbol) return Promise.resolve();
+    const who = owner || '*';
+    let owners = this._subOwners.get(symbol);
+    if (owners && owners.has(who)) return Promise.resolve(); // already held by this owner
+    if (!owners) { owners = new Set(); this._subOwners.set(symbol, owners); }
+    const first = owners.size === 0;
+    owners.add(who);
     this._desiredSubs.add(symbol);
+    if (!first) return Promise.resolve(); // another owner already keeps it live
     if (!this.ws || this.ws.readyState !== 1) {
       return Promise.resolve(); // queued — replayed on open (BUG-004/013)
     }
     return this._send({ type: 'subscribe', symbol }).catch(() => {});
   };
-  Feed.prototype.unsubscribe = function (symbol) {
+  Feed.prototype.unsubscribe = function (symbol, owner) {
+    if (!symbol) return Promise.resolve();
+    const who = owner || '*';
+    const owners = this._subOwners.get(symbol);
+    if (owners) {
+      if (!owners.has(who)) return Promise.resolve(); // this owner never held it
+      owners.delete(who);
+      if (owners.size) return Promise.resolve(); // another owner still needs ticks
+      this._subOwners.delete(symbol);
+    }
     this._desiredSubs.delete(symbol);
     if (!this.ws || this.ws.readyState !== 1) return Promise.resolve();
     return this._send({ type: 'unsubscribe', symbol }).catch(() => {});

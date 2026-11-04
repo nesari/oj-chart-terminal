@@ -109,15 +109,23 @@ const Trade = {
       this.online = true;
       this.lastErr = '';
       this._errOnce = false;
-      /* keep the P/L of traded symbols live even with no chart open —
-         subscribe each NEW symbol once (re-subscribing every poll would
-         spam the socket with identical messages) */
-      for (const p of this.positions) {
-        if (App.feed && App.feed.connected && !this._subs) this._subs = new Set();
-        if (App.feed && App.feed.connected && !this._subs.has(p.symbol)) {
-          this._subs.add(p.symbol);
-          App.feed.subscribe(p.symbol);
-        }
+      /* keep the P/L of traded symbols live even with no chart open.
+         ROUND274 — owner-tagged: each symbol is held under the 'trade' owner
+         while a position needs it, and released as soon as the last position
+         in that symbol closes. A chart/watchlist holding the same symbol keeps
+         its own owner, so neither side cuts the other off. */
+      const want = new Set();
+      for (const p of this.positions) if (p && p.symbol) want.add(p.symbol);
+      if (!this._subs) this._subs = new Set();
+      for (const sym of Array.from(this._subs)) {
+        if (want.has(sym)) continue;
+        this._subs.delete(sym);
+        if (App.feed) App.feed.unsubscribe(sym, 'trade');
+      }
+      for (const sym of want) {
+        if (this._subs.has(sym)) continue;
+        this._subs.add(sym);
+        if (App.feed) App.feed.subscribe(sym, 'trade');
       }
       for (const f of this.onChange) { try { f(); } catch (e) {} }
     }).catch((e) => {

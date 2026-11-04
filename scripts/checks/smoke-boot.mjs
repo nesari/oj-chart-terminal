@@ -141,7 +141,14 @@ async function main() {
     console.log(`[smoke] demo provider ready on ws://127.0.0.1:${WS_PORT}`);
 
     const url = `http://127.0.0.1:${WEB_PORT}/renderer/index.html?ws=127.0.0.1:${WS_PORT}`;
-    electron = spawn(electronExe(), [HARNESS], {
+    /* ROUND275 — CI runs Electron as a normal user on Linux, where the
+       chrome-sandbox helper is not setuid; without --no-sandbox the browser
+       process aborts before loading the page. Windows/macOS keep the sandbox. */
+    const electronArgs = [HARNESS];
+    if (process.platform === 'linux' && process.env.SMOKE_NO_SANDBOX !== '0') {
+      electronArgs.unshift('--no-sandbox');
+    }
+    electron = spawn(electronExe(), electronArgs, {
       cwd: ROOT,
       env: { ...process.env, SMOKE_URL: url, SMOKE_OUT: SHOT },
       stdio: ['ignore', 'pipe', 'pipe'],

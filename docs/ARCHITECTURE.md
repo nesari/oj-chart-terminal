@@ -138,7 +138,7 @@ All renderer access is through `preload.js`; `main.js` validates every payload b
   and `assets/**`; `scripts/**`, `tests/**`, `tools/**`, `fixtures/**`, `docs/**` and
   `provider/__pycache__/**` are excluded.
 - **Quality gate.** `npm run verify` = syntax → import graph → Python compile → offscreen Electron
-  boot smoke (see README). CI runs the full gate on Windows and the static gates on Linux.
+  boot smoke (see README). CI runs the full gate on Windows, Linux (Xvfb) and macOS.
 
 ## 8. Deliberate constraints
 
