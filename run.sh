@@ -9,6 +9,7 @@
 # Usage:
 #   ./run.sh          -> demo mode (simulated data)
 #   ./run.sh mt5      -> real MetaTrader 5 mode
+#   ./run.sh [flags]  -> any other flag (e.g. --no-sandbox) is forwarded as-is
 set -euo pipefail
 cd "$(dirname "$0")"
 

@@ -363,6 +363,25 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 [x] F7.3  چک‌لیست انتشار                      (P3)
 ```
 
+### ۵.۱) وضعیت جاری (پس از آدیت کامل کد)
+
+- **مخزن:** `nesari/oj-chart-terminal` (خصوصی)، شاخه‌ی `main`. هر push با CI اجرا می‌شود:
+  Windows = verify کامل، Linux = syntax + imports.
+- **دروازه‌ی کیفیت:** `npm run verify` = syntax + imports + python + unit + smoke.
+  مجموعه‌ی unit اکنون **۱۵۴ سوئیت** است؛ هر اصلاح با یک سوئیت `tests/unit/test_roundNNN_*.mjs`
+  همراه می‌شود که هم قرارداد رفتاری و هم (برای ماژول‌های DOM-دار) متن منبع را پین می‌کند.
+- **فازهای آدیت که تمام شده‌اند:** ابزارهای ترسیم، Layout/Tabs/Session،
+  Feed/Provider/MT5، اندیکاتورها/Pine، Alerts/Bar Replay، و Trade/One-click/Security/Packaging.
+- **آخرین اصلاح‌ها (۲۶۵ تا ۲۷۰):** امضای سفارش در arm-then-confirm، دروازه‌ی liveness در CI،
+  سمت SL/TP در تیکت و پنل، کلیک‌درگ و تایپ استاپ‌ها + break-even، نام برنامه و
+  مسیر userData، و اجرای `run.sh` روی bash 3.2.
+- **باقی‌مانده:**
+  1. QA نهایی + انتشار (اسکریپت `npm run release`).
+  2. اجرای واقعی روی macOS/Linux هنوز تأیید نشده (فقط Windows اثبات شده است).
+  3. نشتی نهفته‌ی اشتراک نمادهای پوزیشن‌های باز در `Trade.refresh()` — نیازمند مسیر
+     ref-counted در `App.feed` (عمداً بدون refactor رها شده).
+- **حلقه‌ی کار:** تغییر → `npm run verify` سبز → commit → push → تأیید سبز بودن CI.
+
 ---
 
 ## ۶) دستورهای آماده‌ی کپی
