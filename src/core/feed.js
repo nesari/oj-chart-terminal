@@ -233,6 +233,9 @@ function Feed(url) {
     if (!isFinite(off) || Math.abs(off) > 14 * 3600) return; // plausibility guard
     if (off === this.serverOff) return;
     this.serverOff = off;
+    /* ROUND276: a real-account report ("every symbol says Market closed") was
+       only diagnosable by cornering the offset; log every applied change. */
+    try { Log && Log.info('feed', 'broker offset applied', { off }); } catch (e) {}
     for (const f of this.onBrokerOff) { try { f(off); } catch (e) {} }
   };
 

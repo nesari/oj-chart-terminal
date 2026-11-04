@@ -658,8 +658,13 @@ class Broker:
                 # Bid and Ask price lines (absent on the demo provider = fine)
                 price, vol = tk[0], tk[1]
                 tsec = int(tk[2]) if len(tk) > 2 else int(dt.datetime.now().timestamp())
+                # ROUND276: a provider that stamped the tick itself also hands
+                # back the offset that produced that stamp (tk[5]). Using it
+                # here keeps `time` and `off` atomic even if an estimate was
+                # refreshed between the hook and this message build.
+                off = int(tk[5]) if len(tk) > 5 and tk[5] is not None else self.current_off()
                 m = {'type': 'tick', 'symbol': sym, 'time': tsec,
-                     'price': price, 'volume': vol, 'off': self.current_off(),
+                     'price': price, 'volume': vol, 'off': off,
                      # BUG-F/R25: the symbol's real digit count rides on every
                      # tick so the renderer can express spreads in POINTS
                      # (ask-bid / 10^-digits) instead of raw price decimals —

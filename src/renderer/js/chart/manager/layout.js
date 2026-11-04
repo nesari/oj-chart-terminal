@@ -29,6 +29,7 @@ import { Manager, LWC } from './shared.js';
 import { seriesOptions, setPaneData, styleName } from './data.js';
 import { PV_H, lastTickAt, onTick, tickBA, updateCountdown } from './render.js';
 import { serverOff } from './history.js';
+import { marketChipState } from '../../../../core/market-chip.js';
 
   function updateWatermark(pane) {
     if (!pane.wm) return;
@@ -109,32 +110,42 @@ import { serverOff } from './history.js';
   }
 
   /* Open/Closed chip: a symbol is open when its ticks are fresh
-     (tick time base = server time, so compare against the estimated server clock) */
+     (tick time base = server time, so compare against the estimated server clock).
+     ROUND276: the rule lives in core/market-chip.js (unit-tested); the badge
+     now says "No live data" — not "Market closed" — when ticks stopped while
+     the history is still fresh (a stalled terminal quote feed, not a closed
+     session). Transitions are logged with the ages + offset so a real-account
+     report can be diagnosed from the app log. */
   function updateMarketChip(pane) {
     const el = pane.els.lgMkt;
     if (!el || el.style.display === 'none') return;
+    const off = (App.feed && App.feed.serverOff) || 0;
+    const serverNow = Date.now() / 1000 + off;
     const lt = lastTickAt[pane.symbol];
-    if (lt == null) {
-      /* ROUND72: no tick has EVER arrived (e.g. the app was opened on a
-         weekend/holiday — the provider now stays silent for closed symbols
-         instead of feeding frozen quotes). Infer the state from the chart
-         itself: a market whose newest bar is stale against the SERVER clock
-         is closed -> badge immediately at app open. Before any bar loads,
-         stay idle (unknown). */
-      const bars = pane.bars, tf = App.tfById[pane.tf];
-      if (bars && bars.length && tf) {
-        const ageB = Date.now() / 1000 + ((App.feed && App.feed.serverOff) || 0) - bars[bars.length - 1].time;
-        if (ageB > 180 + tf.sec) {
-          el.className = 'lg-mkt closed'; el.textContent = 'Market closed'; return;
-        }
+    const bars = pane.bars, tf = App.tfById[pane.tf];
+    const tickAge = lt == null ? null : serverNow - lt;
+    const barAge = bars && bars.length ? serverNow - bars[bars.length - 1].time : null;
+    const state = marketChipState(tickAge, barAge, tf && tf.sec);
+
+    if (state === 'open') { el.className = 'lg-mkt open'; el.textContent = 'Market open'; }
+    else if (state === 'closed') { el.className = 'lg-mkt closed'; el.textContent = 'Market closed'; }
+    else if (state === 'live-missing') { el.className = 'lg-mkt idle'; el.textContent = 'No live data'; }
+    else { el.className = 'lg-mkt idle'; el.textContent = ''; }
+
+    if (pane._mktState !== state) {
+      const was = pane._mktState;
+      pane._mktState = state;
+      if (state === 'closed' || state === 'live-missing') {
+        try {
+          Log.info('chart', state === 'closed' ? 'market chip: closed' : 'market chip: no live data', {
+            symbol: pane.symbol, tf: pane.tf, off,
+            tickAge: tickAge == null ? null : Math.round(tickAge),
+            barAge: barAge == null ? null : Math.round(barAge),
+            from: was || null,
+          });
+        } catch (e) { Log.debug('chart', 'market chip log failed', e) }
       }
-      el.className = 'lg-mkt idle'; el.textContent = ''; return;
     }
-    const serverNow = Date.now() / 1000 + ((App.feed && App.feed.serverOff) || 0);
-    const age = serverNow - lt;
-    const open = age >= -5 && age < 180;
-    el.className = 'lg-mkt ' + (open ? 'open' : 'closed');
-    el.textContent = open ? 'Market open' : 'Market closed';
   }
   Manager.updateMarketChips = function () { for (const p of App.panes) updateMarketChip(p); };
 

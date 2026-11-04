@@ -47,6 +47,20 @@ def _quantized(v, tol=120):
     return abs(v - round(v / 900.0) * 900) <= tol
 
 
+def _snap_off(v):
+    """Snap an accepted estimate to the real broker 15-minute clock grid.
+
+    ROUND276 (real-account report: every symbol showed "Market closed" while
+    history loaded). `_newest_forming_m1` samples the newest M1 BAR OPEN, and
+    the terminal publishes the new minute's forming bar a second or two after
+    :00 — so the raw estimate flickers between 7140 and 7200 at every minute
+    boundary (reproduced on a live broker). 7140 was even persisted to disk
+    and survived restarts (the ±120 s quantizer accepts it), leaving ticks and
+    bars stamped 60 s apart. A genuine broker offset is always a whole
+    multiple of 15 min, so rounding removes the lag and the jitter."""
+    return int(round(float(v) / 900.0) * 900)
+
+
 def _load_off(server=''):
     """Reload the persisted offset estimate (weekend restarts keep the good value).
 
@@ -64,7 +78,7 @@ def _load_off(server=''):
         if srv and _SRV_NAME and srv != _SRV_NAME:
             return
         if abs(v) <= GUARD and _quantized(v):
-            _SRV_OFF = v
+            _SRV_OFF = _snap_off(v)
             _SRV_ANCHORED = True
     except Exception:
         pass
@@ -117,6 +131,13 @@ def server_now():
             if m1:
                 nmin = now - now % 60
                 est = m1 - nmin
+                # ROUND276: the sample is a BAR OPEN and the terminal publishes
+                # the forming bar a moment after :00, so the raw value flickers
+                # by exactly -60 s at every minute boundary (7140 <-> 7200 on a
+                # real broker). Only a 15-min multiple is a real offset — snap
+                # the accepted estimate so ticks/bars/chip share one clock.
+                if _quantized(est):
+                    est = _snap_off(est)
                 # liveness proof against the previous reference run, >= 2
                 # device minutes apart (with a 1-minute gap a FROZEN bar,
                 # delta 0, would sit inside the +/-60 s tolerance). A live bar
@@ -999,7 +1020,9 @@ class MT5Broker(Broker):
         # closed. A quote AHEAD of the offset estimate (age < 0) is always
         # fresh: emit it.
         qt = int(t.time) if t.time else 0
-        if qt > 0 and server_now() - qt > 180:
+        stamp = server_now()   # may refresh _SRV_OFF — read it back ONCE
+        off = int(_SRV_OFF)
+        if qt > 0 and stamp - qt > 180:
             return None
         prev = TICK_CACHE.get(symbol)
         TICK_CACHE[symbol] = px
@@ -1007,9 +1030,12 @@ class MT5Broker(Broker):
         # so live updates continue the loaded chart seamlessly on any offset.
         # 4th/5th elements (bid/ask) are optional extras for the renderer's
         # Bid and Ask price lines; provider_common passes them through when set.
+        # ROUND276: the 6th element is the offset that produced THIS stamp, so
+        # the renderer can never pair a tick time with a differing estimate
+        # (the old shape re-read current_off() a moment later).
         bid = float(t.bid) if t.bid else 0.0
         ask = float(t.ask) if t.ask else 0.0
-        return px, 1, server_now(), bid, ask
+        return px, 1, stamp, bid, ask, off
 
     def current_off(self):
         # ROUND94: this runs on the EVENT-LOOP thread (every tick reply, every

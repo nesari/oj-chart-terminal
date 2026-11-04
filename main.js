@@ -924,7 +924,30 @@ function pinUserDataDir() {
 /* pinned at module load — before Chromium picks its user-data dir */
 pinUserDataDir();
 
-app.whenReady().then(() => {
+/* ROUND276: ONE app instance only.
+   Two instances share this userData folder AND provider port 8777. The second
+   provider dies with PORT_IN_USE, and — worse — two Python MetaTrader5 clients
+   calling initialize()/shutdown() against the SAME terminal make its live
+   connection flap: quotes freeze while history still loads, so every symbol
+   falls back to "Market closed" (reproduced while an installed build and a dev
+   build were open together). The second launch now focuses the first window. */
+const singleInstance = app.requestSingleInstanceLock();
+if (!singleInstance) {
+  try { mlogEvent('warn', 'app', 'second instance refused (already running)'); } catch (e) {}
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    try {
+      const win = mainWindow || (BrowserWindow.getAllWindows()[0] || null);
+      if (!win) { createWindow(); return; }
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    } catch (e) { try { mlogEvent('warn', 'app', 'second-instance focus failed', { error: String(e && e.message || e) }); } catch (e2) {} }
+  });
+}
+
+if (singleInstance) app.whenReady().then(() => {
   /* ROUND51 (user request): brand the OS notifications — the Windows toast
      header used to read "electron.app.Electron" (the dev AUMID); a fixed
      App User Model ID makes it read as OJchart.
