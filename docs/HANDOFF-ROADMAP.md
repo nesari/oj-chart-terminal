@@ -372,13 +372,15 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
   همراه می‌شود که هم قرارداد رفتاری و هم (برای ماژول‌های DOM-دار) متن منبع را پین می‌کند.
 - **فازهای آدیت که تمام شده‌اند:** ابزارهای ترسیم، Layout/Tabs/Session،
   Feed/Provider/MT5، اندیکاتورها/Pine، Alerts/Bar Replay، و Trade/One-click/Security/Packaging.
-- **آخرین اصلاح‌ها (۲۶۵ تا ۲۷۰):** امضای سفارش در arm-then-confirm، دروازه‌ی liveness در CI،
+- **آخرین اصلاح‌ها (۲۶۵ تا ۲۷۲):** امضای سفارش در arm-then-confirm، دروازه‌ی liveness در CI،
   سمت SL/TP در تیکت و پنل، کلیک‌درگ و تایپ استاپ‌ها + break-even، نام برنامه و
-  مسیر userData، و اجرای `run.sh` روی bash 3.2.
+  مسیر userData، اجرای `run.sh` روی bash 3.2، و رفع شکستن آرگومان‌های فاصله‌دار
+  در `scripts/release.mjs` روی ویندوز.
+- **انتشار:** نسخه‌ی `1.9.213` با تگ `v1.9.213` منتشر شد (نصب‌کننده‌ی ویندوز ساخته و
+  CI هر دو commit سبز است).
 - **باقی‌مانده:**
-  1. QA نهایی + انتشار (اسکریپت `npm run release`).
-  2. اجرای واقعی روی macOS/Linux هنوز تأیید نشده (فقط Windows اثبات شده است).
-  3. نشتی نهفته‌ی اشتراک نمادهای پوزیشن‌های باز در `Trade.refresh()` — نیازمند مسیر
+  1. اجرای واقعی روی macOS/Linux هنوز تأیید نشده (فقط Windows اثبات شده است).
+  2. نشتی نهفته‌ی اشتراک نمادهای پوزیشن‌های باز در `Trade.refresh()` — نیازمند مسیر
      ref-counted در `App.feed` (عمداً بدون refactor رها شده).
 - **حلقه‌ی کار:** تغییر → `npm run verify` سبز → commit → push → تأیید سبز بودن CI.
 
