@@ -77,6 +77,8 @@ Builds are **unsigned** by default — Windows SmartScreen / macOS Gatekeeper wi
 
 The Python provider ships **outside** the asar archive (`build.asarUnpack`): Python cannot read `app.asar`, so keep that entry when editing the bundler config — otherwise the installed app boots but the provider never starts.
 
+The `.github/workflows/package.yml` workflow builds all three installers on a `v*` tag (or manually via **Actions → Package → Run workflow**) and uploads them as artifacts with `SHA256SUMS.txt`. It is separate from the fast `ci.yml` quality gate.
+
 ### 🧭 Architecture
 
 ```mermaid
@@ -102,11 +104,13 @@ flowchart LR
 1. **`check:syntax`** — parses every `.js`/`.mjs` file as an ES module.
 2. **`check:imports`** — resolves every relative import/export to a real file.
 3. **`check:py`** — byte-compiles all `provider/*.py`.
-4. **`test:unit`** — runs the 156 Node suites in `tests/unit/` (chart, drawing, Pine engine, IPC contracts).
+4. **`test:unit`** — runs the 157 Node suites in `tests/unit/` (chart, drawing, Pine engine, IPC contracts).
 5. **`check:mt5`** — drives `provider/mt5.py` against a replayable `MetaTrader5` package (no terminal needed); see [`docs/MT5-HARNESS.md`](docs/MT5-HARNESS.md).
 6. **`smoke`** — boots `provider/demo.py`, serves `src/`, logs into the demo server in a hidden **offscreen Electron** window and asserts app visible, login hidden, bars loaded, canvases present, zero console errors and zero failed requests.
 
 CI (`.github/workflows/ci.yml`) runs the full gate on Windows, Linux (under Xvfb) and macOS for every push and pull request, so the real Electron boot is verified on all three desktop targets.
+
+`npm run report:core-coverage` runs the suites under `NODE_V8_COVERAGE` and prints real (approximate) line coverage for `src/core/`; `-- --min 80` turns it into a regression gate (the Windows CI job runs that). Use `--list` to see every module, including the lowest-covered ones (`feed.js`, `demo-math.js`, `indicators.js` at the time of writing).
 
 ### 🔐 Security & privacy
 

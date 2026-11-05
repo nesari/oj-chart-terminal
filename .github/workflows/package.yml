@@ -1,0 +1,94 @@
+name: Package
+
+# Builds the platform installers on demand and on release tags.
+# The regular CI workflow (`ci.yml`) stays the fast quality gate; packaging
+# is the expensive, artifact-producing half and runs only when a release is
+# being cut (tag `v*`) or when triggered manually.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Never look for a local signing identity on the runner. Set CSC_LINK /
+  # CSC_KEY_PASSWORD (and the Apple notarization secrets) as repository
+  # secrets to produce signed builds — see README "Code signing".
+  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+jobs:
+  package:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows installer
+            os: windows-latest
+            script: dist:win
+            artifact: OJchart-windows
+            files: dist/*.exe
+          - name: macOS installer
+            os: macos-latest
+            script: dist:mac
+            artifact: OJchart-macos
+            files: dist/*.dmg
+          - name: Linux installer
+            os: ubuntu-latest
+            script: dist:linux
+            artifact: OJchart-linux
+            files: dist/*.AppImage
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build installer
+        run: npm run ${{ matrix.script }} -- --publish never
+
+      - name: Checksums (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Get-ChildItem dist/*.exe | ForEach-Object {
+            $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$h  $($_.Name)"
+          } | Set-Content dist/SHA256SUMS.txt -Encoding ascii
+
+      - name: Checksums (macOS/Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          cd dist
+          shasum -a 256 *.dmg *.AppImage > SHA256SUMS.txt
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ${{ matrix.files }}
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Summary
+        shell: bash
+        run: |
+          echo "### ${{ matrix.name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat dist/SHA256SUMS.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          ls -lh dist/*.exe dist/*.dmg dist/*.AppImage 2>/dev/null >> "$GITHUB_STEP_SUMMARY" || true

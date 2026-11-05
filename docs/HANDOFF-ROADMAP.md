@@ -367,8 +367,8 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 
 - **مخزن:** `nesari/oj-chart-terminal` (خصوصی)، شاخه‌ی `main`. هر push با CI اجرا می‌شود:
   هر سه سیستم (Windows، Linux زیر Xvfb، macOS) کل `verify` را اجرا می‌کنند.
-- **دروازه‌ی کیفیت:** `npm run verify` = syntax + imports + python + unit + smoke.
-  مجموعه‌ی unit اکنون **۱۵۶ سوئیت** است؛ هر اصلاح با یک سوئیت `tests/unit/test_roundNNN_*.mjs`
+- **دروازه‌ی کیفیت:** `npm run verify` = syntax + imports + python + unit + mt5 + smoke.
+  مجموعه‌ی unit اکنون **۱۵۷ سوئیت** است؛ هر اصلاح با یک سوئیت `tests/unit/test_roundNNN_*.mjs`
   همراه می‌شود که هم قرارداد رفتاری و هم (برای ماژول‌های DOM-دار) متن منبع را پین می‌کند.
 - **فازهای آدیت که تمام شده‌اند:** ابزارهای ترسیم، Layout/Tabs/Session،
   Feed/Provider/MT5، اندیکاتورها/Pine، Alerts/Bar Replay، و Trade/One-click/Security/Packaging.
@@ -398,8 +398,17 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
     backfill تاریخچه، خطاهای اعتبارسنجی، retry روی `INVALID_FILL`، پارس `servers.dat` و کش چارت.
   - دروازه‌ی جدید `npm run check:mt5` داخل `verify` و CI هر سه سیستم.
   - مستند: [`docs/MT5-HARNESS.md`](MT5-HARNESS.md).
-- [ ] **F8.2** — ساخت نصب‌کننده‌ی macOS/Linux در CI و آپلود artifact.
-- [ ] **F8.3** — سنجش پوشش `src/core` و هدف‌گذاری روی ماژول‌های بدون سوئیت.
+- [x] **F8.2** — ساخت نصب‌کننده‌ی macOS/Linux در CI و آپلود artifact.
+  - `.github/workflows/package.yml` با ماتریس Windows/macOS/Linux، روی تگ `v*` یا اجرای دستی.
+  - `--publish never` + `CSC_IDENTITY_AUTO_DISCOVERY=false` (بیلد پیش‌فرض بدون امضا).
+  - آپلود `dist/*.exe|*.dmg|*.AppImage` همراه `SHA256SUMS.txt` و خلاصه در Step Summary.
+  - از دروازه‌ی سریع `ci.yml` جدا است تا هر push کند نشود.
+- [x] **F8.3** — سنجش پوشش `src/core` و هدف‌گذاری روی ماژول‌های کم‌پوشش.
+  - `scripts/checks/core-coverage.mjs`: اجرای سوئیت‌ها با `NODE_V8_COVERAGE` و محاسبه‌ی تقریبی پوشش خط.
+  - نتیجه‌ی فعلی: ۴۲ ماژول، **۸۸.۷٪** خط (۱۱۷۵۶/۱۳۲۵۸)، هر ۴۲ ماژول توسط سوئیت‌ها import می‌شوند.
+  - کم‌پوشش‌ترین‌ها: `feed.js` ۴۱.۲٪، `demo-math.js` ۴۸.۸٪، `indicators.js` ۶۰.۸٪، `pine/errors.js` ۶۰.۹٪، `stdlib/array.js` ۶۹.۶٪.
+  - `tests/unit/test_round277_timezone_errors.mjs` (۷۶ assertion) پوشش `timezone.js` و `errors.js` را بالا برد و باگ `TZ.ymd` (برگرداندن نام ماه به‌جای عدد) را کشف/اصلاح کرد.
+  - دروازه در CI ویندوز با `--min 80`؛ به `verify` اضافه نشد تا زمان اجرای لوکال دو برابر نشود.
 - [ ] **F8.4** — پروفایل کارایی رندر پنل/چارت با دیتاست بزرگ.
 - [ ] **F8.5** — ارتقای Electron 33 و بررسی سازگاری سازنده‌ها.
 

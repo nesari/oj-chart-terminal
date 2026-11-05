@@ -42,6 +42,9 @@ jobs:
       - name: Unit gate
         run: npm run test:unit
 
+      - name: Core coverage report (src/core)
+        run: npm run report:core-coverage -- --min 80
+
       - name: Provider harness gate (replayable MT5 fake)
         run: npm run check:mt5
 
