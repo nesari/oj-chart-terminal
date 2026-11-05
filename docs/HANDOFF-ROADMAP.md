@@ -388,6 +388,21 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
      Electron) اجرا می‌شود. اسکریپت‌های `dist:mac` و `dist:linux` آماده‌اند.
 - **حلقه‌ی کار:** تغییر → `npm run verify` سبز → commit → push → تأیید سبز بودن CI.
 
+### ۵.۲) فاز ۸ — هارنس تست MT5
+
+- [x] **F8.1** — هارنس record/replay برای `provider/mt5.py`
+  - `tests/provider/mt5_fake.py`: پیاده‌سازی replay‌پذیر API پکیج `MetaTrader5` از روی سناریو/فیکسچر JSON.
+  - `tests/provider/record_mt5.py`: ضبط فقط-خواندنی یک نشست واقعی ویندوز به فیکسچر (با redaction پیش‌فرض حساب/مسیرها).
+  - `tests/provider/test_mt5_provider.py`: ۱۹ تست برای bars/pagination، تایم‌فریم‌های ساخته‌شده، تیک و گیت بازار بسته،
+    جست‌وجو، account/spec/state، سفارش market/pending، modify/cancel، close جزئی/کامل/همه، SL/TP،
+    backfill تاریخچه، خطاهای اعتبارسنجی، retry روی `INVALID_FILL`، پارس `servers.dat` و کش چارت.
+  - دروازه‌ی جدید `npm run check:mt5` داخل `verify` و CI هر سه سیستم.
+  - مستند: [`docs/MT5-HARNESS.md`](MT5-HARNESS.md).
+- [ ] **F8.2** — ساخت نصب‌کننده‌ی macOS/Linux در CI و آپلود artifact.
+- [ ] **F8.3** — سنجش پوشش `src/core` و هدف‌گذاری روی ماژول‌های بدون سوئیت.
+- [ ] **F8.4** — پروفایل کارایی رندر پنل/چارت با دیتاست بزرگ.
+- [ ] **F8.5** — ارتقای Electron 33 و بررسی سازگاری سازنده‌ها.
+
 ---
 
 ## ۶) دستورهای آماده‌ی کپی

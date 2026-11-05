@@ -103,7 +103,8 @@ flowchart LR
 2. **`check:imports`** — resolves every relative import/export to a real file.
 3. **`check:py`** — byte-compiles all `provider/*.py`.
 4. **`test:unit`** — runs the 156 Node suites in `tests/unit/` (chart, drawing, Pine engine, IPC contracts).
-5. **`smoke`** — boots `provider/demo.py`, serves `src/`, logs into the demo server in a hidden **offscreen Electron** window and asserts app visible, login hidden, bars loaded, canvases present, zero console errors and zero failed requests.
+5. **`check:mt5`** — drives `provider/mt5.py` against a replayable `MetaTrader5` package (no terminal needed); see [`docs/MT5-HARNESS.md`](docs/MT5-HARNESS.md).
+6. **`smoke`** — boots `provider/demo.py`, serves `src/`, logs into the demo server in a hidden **offscreen Electron** window and asserts app visible, login hidden, bars loaded, canvases present, zero console errors and zero failed requests.
 
 CI (`.github/workflows/ci.yml`) runs the full gate on Windows, Linux (under Xvfb) and macOS for every push and pull request, so the real Electron boot is verified on all three desktop targets.
 

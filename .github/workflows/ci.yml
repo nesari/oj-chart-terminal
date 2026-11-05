@@ -7,7 +7,7 @@ on:
 
 jobs:
   windows:
-    name: Windows — full verify (syntax + imports + python + unit + smoke)
+    name: Windows — full verify (syntax + imports + python + unit + provider + smoke)
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -41,6 +41,9 @@ jobs:
 
       - name: Unit gate
         run: npm run test:unit
+
+      - name: Provider harness gate (replayable MT5 fake)
+        run: npm run check:mt5
 
       - name: Boot smoke (demo provider + offscreen Electron)
         run: npm run smoke
