@@ -33,16 +33,19 @@ jobs:
             script: dist:win
             artifact: OJchart-windows
             files: dist/*.exe
+            checksum: '*.exe'
           - name: macOS installer
             os: macos-latest
             script: dist:mac
             artifact: OJchart-macos
             files: dist/*.dmg
+            checksum: '*.dmg'
           - name: Linux installer
             os: ubuntu-latest
             script: dist:linux
             artifact: OJchart-linux
             files: dist/*.AppImage
+            checksum: '*.AppImage'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -72,7 +75,9 @@ jobs:
         shell: bash
         run: |
           cd dist
-          shasum -a 256 *.dmg *.AppImage > SHA256SUMS.txt
+          # Only glob this platform's own installer; a combined *.dmg *.AppImage
+          # pattern fails with "No such file or directory" on the other OS.
+          shasum -a 256 ${{ matrix.checksum }} > SHA256SUMS.txt
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
