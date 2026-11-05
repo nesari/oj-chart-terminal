@@ -130,7 +130,7 @@ const ZONES = [
 
   /* numeric y-m-d (immune to ICU month names like "Sept") */
   TZ.ymd = function (tz, chartSec) {
-    const p = TZ.parts(tz, chartSec);
+    const p = TZ.partsNum(tz, chartSec);
     return { y: p.year, m: p.month, d: p.day };
   };
 
