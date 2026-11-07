@@ -60,6 +60,7 @@ npm start            # Windows: run-demo.bat / run-mt5.bat also work
 ```
 
 1. On the login screen choose **Demo Server** (instant simulated market) or **MetaTrader 5** (login, password, server, optional terminal path).
+   The MT5 card checks for a local terminal (registry, Program Files, broker-branded folders, portable installs). When none is found it shows **Get MetaTrader 5**, **Choose terminal64.exe…**, **Check again** and **Use demo data** instead of failing with an opaque provider error.
 2. **Linux sandbox note:** if Chromium's SUID sandbox is blocked (Ubuntu 22.04+/24.04 AppArmor, Docker, WSL), use `./run.sh --no-sandbox`. Only on machines you trust.
 3. The first launch downloads Electron through the npmmirror mirror and verifies it against the official checksum (`scripts/verify-electron.js`).
 
@@ -105,7 +106,7 @@ flowchart LR
 2. **`check:imports`** — resolves every relative import/export to a real file.
 3. **`check:py`** — byte-compiles all `provider/*.py`.
 4. **`check:electron`** — asserts the pinned Electron matches `node_modules`, that main/preload avoid removed APIs, and that electron-builder supports the runtime.
-5. **`test:unit`** — runs the 157 Node suites in `tests/unit/` (chart, drawing, Pine engine, IPC contracts).
+5. **`test:unit`** — runs the 158 Node suites in `tests/unit/` (chart, drawing, Pine engine, IPC contracts).
 6. **`check:mt5`** — drives `provider/mt5.py` against a replayable `MetaTrader5` package (no terminal needed); see [`docs/MT5-HARNESS.md`](docs/MT5-HARNESS.md).
 7. **`smoke`** — boots `provider/demo.py`, serves `src/`, logs into the demo server in a hidden **offscreen Electron** window and asserts app visible, login hidden, bars loaded, canvases present, zero console errors and zero failed requests.
 
@@ -133,6 +134,7 @@ CI (`.github/workflows/ci.yml`) runs the full gate on Windows, Linux (under Xvfb
 | Symptom | Fix |
 |---|---|
 | Window opens, never connects | `python -m pip install -r provider/requirements.txt`; make sure port **8777** is free |
+| Login says *MetaTrader 5 terminal not found* | Install MT5 from your broker (or the MetaQuotes demo), click **Choose terminal64.exe…**, or switch to **Demo Server**. Live MT5 data needs Windows + a local terminal; **Get MetaTrader 5** opens the official download page. |
 | `Python 3 not found` | Install Python 3.8+ and tick “Add python.exe to PATH” (or install the `py` launcher) |
 | Blank screen after an update | Run `npm run verify` — it separates syntax/import/provider failures from UI failures |
 | Linux sandbox error | `./run.sh --no-sandbox` (trusted machines only) |
@@ -257,7 +259,7 @@ npm run dist:linux   # dist/OJchart.AppImage
 ۲. **`check:imports`** — حل شدن همه‌ی import/exportهای نسبی به فایل واقعی.
 ۳. **`check:py`** — کامپایل همه‌ی `provider/*.py`.
 ۴. **`check:electron`** — تطابق Electron پین‌شده با `node_modules`، نبود APIهای حذف‌شده در main/preload و سازگاری electron-builder با رانتایم.
-۵. **`test:unit`** — اجرای ۱۵۷ مجموعه‌ی Node در `tests/unit/` (چارت، ابزار ترسیم، موتور Pine، قراردادهای IPC).
+۵. **`test:unit`** — اجرای ۱۵۸ مجموعه‌ی Node در `tests/unit/` (چارت، ابزار ترسیم، موتور Pine، قراردادهای IPC).
 ۶. **`check:mt5`** — اجرای `provider/mt5.py` روی پکیج replay‌پذیر `MetaTrader5` (بدون نیاز به ترمینال)؛ [`docs/MT5-HARNESS.md`](docs/MT5-HARNESS.md).
 ۷. **`smoke`** — اجرای `provider/demo.py`، سرو `src/`، ورود دمو در یک پنجره‌ی **Electron آفسکرین** و بررسی: اپ دیده شود، لاگین مخفی، کندل‌ها لود شوند، canvas موجود باشد، صفر خطای کنسول و صفر درخواست ناموفق.
 
@@ -281,6 +283,7 @@ CI (`.github/workflows/ci.yml`) برای هر push و pull request کل گیت �
 | مشکل | راه‌حل |
 |---|---|
 | پنجره باز می‌شود ولی وصل نمی‌شود | `python -m pip install -r provider/requirements.txt` و آزاد بودن پورت **8777** |
+| پیام «MetaTrader 5 terminal not found» در لاگین | MT5 را از بروکر (یا دموی MetaQuotes) نصب کنید، **Choose terminal64.exe…** را بزنید، یا به **Demo Server** بروید. داده‌ی زنده فقط با ویندوز + ترمینال محلی کار می‌کند؛ دکمه‌ی **Get MetaTrader 5** صفحه‌ی دانلود رسمی را باز می‌کند. |
 | `Python 3 not found` | نصب Python 3.8+ با تیک «Add python.exe to PATH» یا نصب لانچر `py` |
 | صفحه‌ی سفید بعد از آپدیت | `npm run verify` — خطای syntax/import/provider را از خطای UI جدا می‌کند |
 | خطای sandbox لینوکس | `./run.sh --no-sandbox` (فقط ماشین مورد اعتماد) |

@@ -167,6 +167,21 @@ body.theme-light .pane-brand { filter: none; opacity: .9; }
   color: var(--text); padding: 8px 10px; font-size: 13px; outline: none;
 }
 #mt5-fields input:focus { border-color: var(--blue); }
+/* F8.6: MT5 terminal detection banner. Warning-toned, compact, and fully
+   keyboard reachable (the login form scrolls, so it never hides Connect). */
+#mt5-hint {
+  border: 1px solid rgba(232, 179, 57, .45); border-radius: 6px;
+  background: rgba(232, 179, 57, .08); padding: 9px 10px;
+  font-size: 11.5px; line-height: 1.55; color: var(--text);
+}
+#mt5-hint-text { margin-bottom: 7px; }
+.mt5-hint-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.mt5-hint-actions button {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); padding: 5px 9px; font-size: 11.5px; cursor: pointer;
+}
+.mt5-hint-actions button:hover { border-color: var(--blue); color: var(--white); }
+#mt5-download { border-color: rgba(41, 98, 255, .55); color: var(--blue); font-weight: 600; }
 /* ROUND55: broker server scan (MT5 login-dialog parity) — Network Rescan +
    access-server rows with measured pings; fastest auto-selected, click to
    switch, rescan re-measures. Rows mirror the terminal: bars icon, name,

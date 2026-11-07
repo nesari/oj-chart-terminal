@@ -368,7 +368,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 - **مخزن:** `nesari/oj-chart-terminal` (خصوصی)، شاخه‌ی `main`. هر push با CI اجرا می‌شود:
   هر سه سیستم (Windows، Linux زیر Xvfb، macOS) کل `verify` را اجرا می‌کنند.
 - **دروازه‌ی کیفیت:** `npm run verify` = syntax + imports + python + electron + unit + mt5 + smoke.
-  مجموعه‌ی unit اکنون **۱۵۷ سوئیت** است؛ هر اصلاح با یک سوئیت `tests/unit/test_roundNNN_*.mjs`
+  مجموعه‌ی unit اکنون **۱۵۸ سوئیت** است؛ هر اصلاح با یک سوئیت `tests/unit/test_roundNNN_*.mjs`
   همراه می‌شود که هم قرارداد رفتاری و هم (برای ماژول‌های DOM-دار) متن منبع را پین می‌کند.
 - **فازهای آدیت که تمام شده‌اند:** ابزارهای ترسیم، Layout/Tabs/Session،
   Feed/Provider/MT5، اندیکاتورها/Pine، Alerts/Bar Replay، و Trade/One-click/Security/Packaging.
@@ -420,9 +420,16 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
   - سازنده‌ها عملاً تأیید شدند: `Package` run `41993096406` هر سه نصب‌کننده‌ی Windows/macOS/Linux را ساخت و artifact+SHA256 را آپلود کرد.
   - دروازه‌ی جدید `npm run check:electron` (داخل `verify` و CI): تطابق نسخه‌ی پین با `node_modules`، اسکن ۵ فایل main/preload برای APIهای حذف‌شده (`remote`، `enableRemoteModule`، `allowRendererProcessReuse`، `getPrinters`، `webSecurity:false`) و حداقل نسخه‌ی سازنده.
   - هیچ API حذف‌شده‌ای در کد پیدا نشد؛ رندرر sandbox+contextIsolation و رمز اکانت با `safeStorage` بدون تغییر باقی ماند.
+- [x] **F8.6** — راهنمای نصب MT5 در صفحه‌ی لاگین (بدون نصب خودکار).
+  - `src/platform/electron/mt5-detect.js`: تشخیص از رجیستری (HKLM/HKCU)، مسیرهای استاندارد Program Files/x86/Programs، اسکن یک‌سطحی پوشه‌های برند بروکر (مثل `AMarkets - MetaTrader 5`) و نصب‌های portable در `%APPDATA%\MetaQuotes\Terminal\*`.
+  - IPCهای `mt5-status`، `mt5-pick-terminal` (file picker) و `mt5-open-download` (فقط URL ثابت MetaQuotes، بدون URL از رندرر).
+  - بنر `#mt5-hint` در کارت MT5: پیام دقیق + «Get MetaTrader 5»، «Choose terminal64.exe…»، «Check again»، «Use demo data».
+  - `connect()` وقتی ترمینالی پیدا نشود پرووایدر را spawn نمی‌کند و همان راهنما را نشان می‌دهد؛ حالت دمو بدون هیچ پیش‌نیازی کار می‌کند.
+  - فیلد Terminal path هم فایل `terminal64.exe` و هم پوشه‌ی نصب را می‌پذیرد؛ تشخیص advisory است و مسیر دستی را بلاک نمی‌کند.
+  - `tests/unit/test_round278_mt5_detect.mjs` (۴۷ assertion) شامل تست روی ساختار واقعی پوشه‌های برند بروکر.
 
-**وضعیت نهایی فاز ۸:** همه‌ی F8.1–F8.5 انجام و روی `main` سبز شدند —
-`verify` شامل ۲۸۳ فایل syntax، ۹۳۱ import، ۴ فایل Python، دروازه‌ی Electron، **۱۵۷/۱۵۷** سوئیت unit،
+**وضعیت نهایی فاز ۸:** همه‌ی F8.1–F8.6 انجام و روی `main` سبز شدند —
+`verify` شامل ۲۸۸ فایل syntax، ۹۳۳ import، ۴ فایل Python، دروازه‌ی Electron، **۱۵۸/۱۵۸** سوئیت unit،
 **۱۹** تست MT5 و smoke واقعی؛ پوشش `src/core` **۸۸.۷٪**؛ `Package` هر سه نصب‌کننده را ساخت و آپلود کرد.
 
 ---

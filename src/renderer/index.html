@@ -64,6 +64,18 @@
         </label>
         <label>Server<input type="text" id="mt5-server" placeholder="e.g. MetaQuotes-Demo" spellcheck="false"></label>
         <label>Terminal path <span class="opt">(optional)</span><input type="text" id="mt5-path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" spellcheck="false"></label>
+        <!-- MT5 missing/unusable guidance (F8.6): detection is advisory and
+             never blocks a manual path; the Demo button keeps the app usable
+             on machines without a Windows MT5 terminal. -->
+        <div id="mt5-hint" class="hidden" role="status" aria-live="polite">
+          <div id="mt5-hint-text"></div>
+          <div class="mt5-hint-actions">
+            <button type="button" id="mt5-download">Get MetaTrader 5</button>
+            <button type="button" id="mt5-choose">Choose terminal64.exe…</button>
+            <button type="button" id="mt5-recheck">Check again</button>
+            <button type="button" id="mt5-demo">Use demo data</button>
+          </div>
+        </div>
         <label class="remember-row"><input type="checkbox" id="mt5-remember" checked> <span>Remember this account</span></label>
       </div>
       <!-- ROUND97 (user request): the login-screen broker server scan box

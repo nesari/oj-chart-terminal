@@ -61,8 +61,10 @@ let mode = 'demo';
          in the in-app broker-servers menu (toolbar.js). */
     };
     cardDemo.addEventListener('click', () => { mode = 'demo'; apply(); });
-    cardMt5.addEventListener('click', () => { mode = 'mt5'; apply(); });
+    cardMt5.addEventListener('click', () => { mode = 'mt5'; apply(); refreshMt5Status(); });
     apply();
+    initMt5Hint(apply);
+    if (mode === 'mt5') refreshMt5Status();
 
     // show / hide password
     const eye = document.getElementById('pw-eye');
@@ -109,6 +111,74 @@ let mode = 'demo';
 
     initAccounts();
     initAccMenu();
+  }
+
+  /* ---------- MT5 terminal detection (login guidance) ----------
+   * The Python provider can only reach a LOCALLY INSTALLED MetaTrader 5
+   * terminal. Detection is advisory: a false negative never blocks the
+   * manual path field, and Demo mode always works without any terminal. */
+  let mt5Status = { installed: false, checked: false, hint: '', path: '', supported: true };
+
+  async function refreshMt5Status() {
+    const box = document.getElementById('mt5-hint');
+    const text = document.getElementById('mt5-hint-text');
+    const api = window.electronAPI;
+    if (!box || !text || !api || !api.mt5Status) return mt5Status;
+    const pathEl = document.getElementById('mt5-path');
+    let st = null;
+    try {
+      st = await api.mt5Status({ path: (pathEl && pathEl.value.trim()) || '' });
+    } catch (e) {
+      Log.warn('mt5', 'terminal detection failed', e);
+      return mt5Status;
+    }
+    if (!st) return mt5Status;
+    mt5Status = Object.assign({}, st, { checked: true });
+    box.classList.toggle('hidden', !!st.installed);
+    if (st.installed) {
+      /* Remember the detected exe in the placeholder, never as a value: the
+         provider falls back to its own default when the field stays empty. */
+      if (pathEl && !pathEl.value.trim() && st.path) pathEl.placeholder = st.path;
+      return mt5Status;
+    }
+    text.textContent = st.hint || 'MetaTrader 5 terminal not found. Install it from your broker, '
+      + 'pick its terminal64.exe, or keep using the built-in Demo data.';
+    /* On non-Windows systems a local terminal cannot exist at all, so the
+       download and picker buttons would only send the user in circles. */
+    for (const id of ['mt5-download', 'mt5-choose']) {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden', st.supported === false);
+    }
+    return mt5Status;
+  }
+
+  function initMt5Hint(apply) {
+    const dl = document.getElementById('mt5-download');
+    const choose = document.getElementById('mt5-choose');
+    const recheck = document.getElementById('mt5-recheck');
+    const demo = document.getElementById('mt5-demo');
+    const pathEl = document.getElementById('mt5-path');
+
+    if (dl) dl.addEventListener('click', () => {
+      const api = window.electronAPI;
+      if (api && api.mt5OpenDownload) { api.mt5OpenDownload(); return; }
+      const st = document.getElementById('login-status');
+      if (st) st.textContent = 'Download MetaTrader 5 from your broker or https://www.metatrader5.com/en/download';
+    });
+    if (choose) choose.addEventListener('click', async () => {
+      const api = window.electronAPI;
+      if (!api || !api.mt5PickTerminal) return;
+      try {
+        const r = await api.mt5PickTerminal();
+        if (r && r.ok && r.path && pathEl) {
+          pathEl.value = r.path;
+          await refreshMt5Status();
+        }
+      } catch (e) { Log.warn('mt5', 'terminal picker failed', e); }
+    });
+    if (recheck) recheck.addEventListener('click', () => { refreshMt5Status(); });
+    if (demo) demo.addEventListener('click', () => { mode = 'demo'; apply(); });
+    if (pathEl) pathEl.addEventListener('change', () => { refreshMt5Status(); });
   }
 
   /* ---------- ROUND97 (user request): login-screen server scan removed ----------
@@ -292,6 +362,18 @@ let mode = 'demo';
          non-secret identity fields are included */
       try { Log && Log.info('login', 'connect attempt', { mode, login: mode === 'mt5' ? creds.login : undefined, server: creds.server || undefined, force }); } catch (e) {}
       if (window.electronAPI) {
+        /* F8.6: do not spawn the Python provider when no Windows MT5 terminal
+           exists and the user did not point at one — the provider would only
+           fail with an opaque IPC error. Demo mode skips this entirely. */
+        if (mode === 'mt5') {
+          const mt5st = await refreshMt5Status();
+          if (mt5st && mt5st.checked && !mt5st.installed) {
+            st.classList.add('error');
+            st.textContent = mt5st.hint || 'MetaTrader 5 terminal not found — install it, pick terminal64.exe, or use Demo data.';
+            btn.disabled = false;
+            return;
+          }
+        }
         const r = await window.electronAPI.startProvider({ mode, ...creds, force, tickInterval: savedRefreshRate() });
         if (!r || !r.ok) throw new Error((r && r.error) || 'Provider failed to start');
       }

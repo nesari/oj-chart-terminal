@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Notification, ipcMain, dialog, clipboard, nativeImage, safeStorage } = require('electron');
+const { app, BrowserWindow, Menu, Notification, ipcMain, dialog, clipboard, nativeImage, safeStorage, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { spawn, spawnSync } = require('node:child_process');
@@ -183,7 +183,7 @@ function hintFor(line) {
      the network/terminal-status check first; only suggest re-checking
      credentials as the fallback if that isn't it. */
   if (/\(-6,|Authorization failed/i.test(line)) return 'Check your internet connection and that the MT5 terminal is running and shows it is connected to its server (bottom-right of the terminal). If it is connected and this persists, double-check the login / password / server name.';
-  if (/initialize failed|login failed/i.test(line)) return 'Check login / password / server name, or open the MT5 terminal once so it memorizes this server';
+  if (/initialize failed|login failed/i.test(line)) return 'Check login / password / server name. If MetaTrader 5 is not installed, install it from your broker and pick its terminal64.exe — or use Demo data';
   if (/PORT_IN_USE|address already in use/i.test(line)) return 'Restart the app (an old provider is still holding the port)';
   if (/DLL load failed|WinError 126/i.test(line)) return 'Reinstall the MT5 terminal (64-bit) and Python 64-bit';
   if (/bad option|syntax ?error|invalid syntax/i.test(line)) return 'Python 3.8+ (64-bit) is required';
@@ -231,6 +231,11 @@ async function waitPort(port, attempts) {
    instead of assuming `python` exists. The probe itself lives in
    platform/electron/python-detect.js so it stays unit-testable. */
 const { pythonCandidates, probePython, pythonMissingHelp } = require('./src/platform/electron/python-detect.js');
+const {
+  DOWNLOAD_URL: MT5_DOWNLOAD_URL,
+  resolveMt5Status,
+  parseRegistryInstalls,
+} = require('./src/platform/electron/mt5-detect.js');
 let _pyCmd = null;
 function pyExe() {
   if (!_pyCmd) _pyCmd = probePython(spawnSync) || pythonCandidates()[0];
@@ -558,6 +563,64 @@ ipcMain.handle('start-provider', (e, payload) => {
   return startProvider(v);
 });
 ipcMain.on('stop-provider', () => { mlogEvent('info', 'ipc', 'stop-provider'); stopProvider(); });
+
+/* ===== MT5 terminal detection (login guidance) =====
+ * `provider/mt5.py` talks to a locally installed MetaTrader 5 terminal; the
+ * Python package starts the terminal itself but cannot invent one. These
+ * channels let the login screen tell "not installed" apart from "wrong
+ * password" and point the user at the two real fixes: install/pick the
+ * terminal, or continue with the built-in Demo data. Detection is
+ * best-effort (registry + usual install folders + portable data folders):
+ * a false negative still lets the user choose terminal64.exe explicitly. */
+function registryTerminalPaths() {
+  if (process.platform !== 'win32') return [];
+  const out = [];
+  for (const root of ['HKLM\\SOFTWARE\\MetaQuotes\\Terminal', 'HKCU\\SOFTWARE\\MetaQuotes\\Terminal']) {
+    try {
+      const r = spawnSync('reg', ['query', root, '/s', '/v', 'InstallPath'], {
+        encoding: 'utf8', windowsHide: true, timeout: 5000,
+      });
+      if (r && r.status === 0 && r.stdout) out.push(...parseRegistryInstalls(r.stdout));
+    } catch (e) { /* registry access is best-effort */ }
+  }
+  return out;
+}
+
+function mt5Status(requestedPath) {
+  return resolveMt5Status({
+    requestedPath,
+    platform: process.platform,
+    registryPaths: registryTerminalPaths(),
+  });
+}
+
+ipcMain.handle('mt5-status', (e, p) => {
+  const st = mt5Status(p && typeof p === 'object' ? p.path : '');
+  mlogEvent('debug', 'mt5', 'status', { installed: st.installed, supported: st.supported, source: st.source || undefined });
+  return st;
+});
+
+ipcMain.handle('mt5-pick-terminal', async (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender) || mainWindow;
+  const opts = {
+    title: 'Select the MetaTrader 5 terminal (terminal64.exe)',
+    properties: ['openFile'],
+    filters: [{ name: 'MetaTrader 5 terminal', extensions: ['exe'] }],
+  };
+  try {
+    const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+    if (!r || r.canceled || !r.filePaths || !r.filePaths[0]) return { ok: false };
+    return { ok: true, path: r.filePaths[0] };
+  } catch (err) {
+    mlogEvent('warn', 'mt5', 'terminal picker failed', { error: String(err && err.message || err) });
+    return { ok: false, error: String(err && err.message || err) };
+  }
+});
+
+ipcMain.on('mt5-open-download', () => {
+  mlogEvent('info', 'mt5', 'open download page');
+  try { shell.openExternal(MT5_DOWNLOAD_URL).catch(() => {}); } catch (e) { /* no-op */ }
+});
 
 /* ===== ROUND122 channels: chart-tab undock / dock-back (Chrome-style) =====
  * The renderer owns all tab state; main only opens / routes windows.

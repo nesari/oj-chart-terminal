@@ -10,6 +10,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   copyImage: (dataUrl) => ipcRenderer.invoke('copy-image', dataUrl),
   accountsLoad: () => ipcRenderer.invoke('accounts-load'),
   accountsSave: (data) => ipcRenderer.invoke('accounts-save', data),
+  /* MT5 terminal detection + guidance on the login screen. `mt5Status` is
+     read-only; the picker returns the user-chosen terminal64.exe and the
+     download channel opens the fixed MetaQuotes page (no arbitrary URLs). */
+  mt5Status: (p) => ipcRenderer.invoke('mt5-status', p),
+  mt5PickTerminal: () => ipcRenderer.invoke('mt5-pick-terminal'),
+  mt5OpenDownload: () => ipcRenderer.send('mt5-open-download'),
   /* round 28: logging & diagnostics bridge (batched, validated in main) */
   logBatch: (entries) => ipcRenderer.send('log-batch', entries),
   logsExport: (text, json, fileName) => ipcRenderer.invoke('logs-export', text, json, fileName),
