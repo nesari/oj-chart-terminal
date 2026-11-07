@@ -104,9 +104,10 @@ flowchart LR
 1. **`check:syntax`** — parses every `.js`/`.mjs` file as an ES module.
 2. **`check:imports`** — resolves every relative import/export to a real file.
 3. **`check:py`** — byte-compiles all `provider/*.py`.
-4. **`test:unit`** — runs the 157 Node suites in `tests/unit/` (chart, drawing, Pine engine, IPC contracts).
-5. **`check:mt5`** — drives `provider/mt5.py` against a replayable `MetaTrader5` package (no terminal needed); see [`docs/MT5-HARNESS.md`](docs/MT5-HARNESS.md).
-6. **`smoke`** — boots `provider/demo.py`, serves `src/`, logs into the demo server in a hidden **offscreen Electron** window and asserts app visible, login hidden, bars loaded, canvases present, zero console errors and zero failed requests.
+4. **`check:electron`** — asserts the pinned Electron matches `node_modules`, that main/preload avoid removed APIs, and that electron-builder supports the runtime.
+5. **`test:unit`** — runs the 157 Node suites in `tests/unit/` (chart, drawing, Pine engine, IPC contracts).
+6. **`check:mt5`** — drives `provider/mt5.py` against a replayable `MetaTrader5` package (no terminal needed); see [`docs/MT5-HARNESS.md`](docs/MT5-HARNESS.md).
+7. **`smoke`** — boots `provider/demo.py`, serves `src/`, logs into the demo server in a hidden **offscreen Electron** window and asserts app visible, login hidden, bars loaded, canvases present, zero console errors and zero failed requests.
 
 CI (`.github/workflows/ci.yml`) runs the full gate on Windows, Linux (under Xvfb) and macOS for every push and pull request, so the real Electron boot is verified on all three desktop targets.
 
@@ -255,10 +256,14 @@ npm run dist:linux   # dist/OJchart.AppImage
 ۱. **`check:syntax`** — پارس همه‌ی فایل‌های `.js`/`.mjs` به‌عنوان ماژول ES.
 ۲. **`check:imports`** — حل شدن همه‌ی import/exportهای نسبی به فایل واقعی.
 ۳. **`check:py`** — کامپایل همه‌ی `provider/*.py`.
-۴. **`test:unit`** — اجرای ۱۵۶ مجموعه‌ی Node در `tests/unit/` (چارت، ابزار ترسیم، موتور Pine، قراردادهای IPC).
-۵. **`smoke`** — اجرای `provider/demo.py`، سرو `src/`، ورود دمو در یک پنجره‌ی **Electron آفسکرین** و بررسی: اپ دیده شود، لاگین مخفی، کندل‌ها لود شوند، canvas موجود باشد، صفر خطای کنسول و صفر درخواست ناموفق.
+۴. **`check:electron`** — تطابق Electron پین‌شده با `node_modules`، نبود APIهای حذف‌شده در main/preload و سازگاری electron-builder با رانتایم.
+۵. **`test:unit`** — اجرای ۱۵۷ مجموعه‌ی Node در `tests/unit/` (چارت، ابزار ترسیم، موتور Pine، قراردادهای IPC).
+۶. **`check:mt5`** — اجرای `provider/mt5.py` روی پکیج replay‌پذیر `MetaTrader5` (بدون نیاز به ترمینال)؛ [`docs/MT5-HARNESS.md`](docs/MT5-HARNESS.md).
+۷. **`smoke`** — اجرای `provider/demo.py`، سرو `src/`، ورود دمو در یک پنجره‌ی **Electron آفسکرین** و بررسی: اپ دیده شود، لاگین مخفی، کندل‌ها لود شوند، canvas موجود باشد، صفر خطای کنسول و صفر درخواست ناموفق.
 
 CI (`.github/workflows/ci.yml`) برای هر push و pull request کل گیت را روی ویندوز، لینوکس (زیر Xvfb) و مک اجرا می‌کند؛ بنابراین بوت واقعی Electron روی هر سه هدف دسکتاپ بررسی می‌شود.
+
+`npm run report:core-coverage` با `NODE_V8_COVERAGE` پوشش تقریبی خط `src/core/` را می‌سنجد (`-- --min 80` برای گیت CI ویندوز). `npm run report:perf` هم رندر چارت با ۵k/۲۰k/۵۰k کندل را پروفایل می‌کند (`-- --sizes`، `--json`، `--out`، `--budget`).
 
 ### 🔐 امنیت و حریم خصوصی
 

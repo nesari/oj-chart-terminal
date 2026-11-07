@@ -367,7 +367,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 
 - **مخزن:** `nesari/oj-chart-terminal` (خصوصی)، شاخه‌ی `main`. هر push با CI اجرا می‌شود:
   هر سه سیستم (Windows، Linux زیر Xvfb، macOS) کل `verify` را اجرا می‌کنند.
-- **دروازه‌ی کیفیت:** `npm run verify` = syntax + imports + python + unit + mt5 + smoke.
+- **دروازه‌ی کیفیت:** `npm run verify` = syntax + imports + python + electron + unit + mt5 + smoke.
   مجموعه‌ی unit اکنون **۱۵۷ سوئیت** است؛ هر اصلاح با یک سوئیت `tests/unit/test_roundNNN_*.mjs`
   همراه می‌شود که هم قرارداد رفتاری و هم (برای ماژول‌های DOM-دار) متن منبع را پین می‌کند.
 - **فازهای آدیت که تمام شده‌اند:** ابزارهای ترسیم، Layout/Tabs/Session،
@@ -415,7 +415,11 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
   - نمونه‌ی اجرای لوکال (offscreen، بدون شتاب سخت‌افزاری): بوت ~۲.۲s؛ ۵k: ۵.۹ms نوشتن + ۲۳.۳ms رنگ؛ ۲۰k: ۱۷.۹ + ۳۸.۵؛ ۵۰k: ۵۱.۹ + ۸۰.۱؛ overlay ~۱ms؛ pan ~۳۳ms/فریم؛ heap ~۶۶MB.
   - `--sizes`، `--json`، `--out` و `--budget <ms>` (برای گیت دستی) دارد؛ به `verify` اضافه نشد چون زمان‌ها به ماشین/GPU وابسته‌اند.
   - منطق مشترک بوت (سرور استاتیک، انتظار پورت، پیدا کردن Electron، kill tree) به `scripts/checks/lib/renderer-boot.mjs` منتقل شد و `smoke-boot.mjs` هم از همان استفاده می‌کند.
-- [ ] **F8.5** — ارتقای Electron 33 و بررسی سازگاری سازنده‌ها.
+- [x] **F8.5** — ارتقای Electron 33 و بررسی سازگاری سازنده‌ها.
+  - رانتایم پین‌شده `electron@33.4.11` (آخرین پچ ۳۳) و `electron-builder@24.13.3`؛ اجرای `electron --version` مقدار `v33.4.11` را تأیید می‌کند.
+  - سازنده‌ها عملاً تأیید شدند: `Package` run `41993096406` هر سه نصب‌کننده‌ی Windows/macOS/Linux را ساخت و artifact+SHA256 را آپلود کرد.
+  - دروازه‌ی جدید `npm run check:electron` (داخل `verify` و CI): تطابق نسخه‌ی پین با `node_modules`، اسکن ۵ فایل main/preload برای APIهای حذف‌شده (`remote`، `enableRemoteModule`، `allowRendererProcessReuse`، `getPrinters`، `webSecurity:false`) و حداقل نسخه‌ی سازنده.
+  - هیچ API حذف‌شده‌ای در کد پیدا نشد؛ رندرر sandbox+contextIsolation و رمز اکانت با `safeStorage` بدون تغییر باقی ماند.
 
 ---
 
