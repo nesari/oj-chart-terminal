@@ -409,7 +409,12 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
   - کم‌پوشش‌ترین‌ها: `feed.js` ۴۱.۲٪، `demo-math.js` ۴۸.۸٪، `indicators.js` ۶۰.۸٪، `pine/errors.js` ۶۰.۹٪، `stdlib/array.js` ۶۹.۶٪.
   - `tests/unit/test_round277_timezone_errors.mjs` (۷۶ assertion) پوشش `timezone.js` و `errors.js` را بالا برد و باگ `TZ.ymd` (برگرداندن نام ماه به‌جای عدد) را کشف/اصلاح کرد.
   - دروازه در CI ویندوز با `--min 80`؛ به `verify` اضافه نشد تا زمان اجرای لوکال دو برابر نشود.
-- [ ] **F8.4** — پروفایل کارایی رندر پنل/چارت با دیتاست بزرگ.
+- [x] **F8.4** — پروفایل کارایی رندر پنل/چارت با دیتاست بزرگ.
+  - `scripts/checks/perf-profile.mjs` + `scripts/checks/perf-electron.cjs`: بوت واقعی رندرر با پرووایدر دمو، سپس تزریق ۵k/۲۰k/۵۰k کندل مصنوعی از مسیر عمومی `Manager.setPaneData`.
+  - ستون‌ها: نوشتن سری (`transformData` + `setData`)، `fitContent`، رنگ‌آمیزی کامل چارت (`chart.takeScreenshot`)، بازرسم overlay، بازمحاسبه‌ی اندیکاتورها، heap و هزینه‌ی هر فریم pan.
+  - نمونه‌ی اجرای لوکال (offscreen، بدون شتاب سخت‌افزاری): بوت ~۲.۲s؛ ۵k: ۵.۹ms نوشتن + ۲۳.۳ms رنگ؛ ۲۰k: ۱۷.۹ + ۳۸.۵؛ ۵۰k: ۵۱.۹ + ۸۰.۱؛ overlay ~۱ms؛ pan ~۳۳ms/فریم؛ heap ~۶۶MB.
+  - `--sizes`، `--json`، `--out` و `--budget <ms>` (برای گیت دستی) دارد؛ به `verify` اضافه نشد چون زمان‌ها به ماشین/GPU وابسته‌اند.
+  - منطق مشترک بوت (سرور استاتیک، انتظار پورت، پیدا کردن Electron، kill tree) به `scripts/checks/lib/renderer-boot.mjs` منتقل شد و `smoke-boot.mjs` هم از همان استفاده می‌کند.
 - [ ] **F8.5** — ارتقای Electron 33 و بررسی سازگاری سازنده‌ها.
 
 ---

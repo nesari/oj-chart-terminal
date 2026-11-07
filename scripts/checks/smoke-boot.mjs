@@ -12,106 +12,18 @@
  * review harness (8888 / 8899) and never touch the real 8777 provider.
  */
 import fs from 'node:fs';
-import http from 'node:http';
-import net from 'node:net';
-import os from 'node:os';
 import path from 'node:path';
-import { spawn, spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
+import {
+  ROOT, electronExe, findPython, startStaticServer, waitForPort, killTree,
+} from './lib/renderer-boot.mjs';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const SRC = path.join(ROOT, 'src');
+
 const WEB_PORT = Number(process.env.SMOKE_WEB_PORT || 8888);
 const WS_PORT = Number(process.env.SMOKE_WS_PORT || 8899);
 const SHOT = path.join(ROOT, 'docs', '_smoke.png');
 const HARNESS = path.join(ROOT, 'scripts', 'checks', 'smoke-electron.cjs');
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 90000);
-
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-  '.pine': 'text/plain; charset=utf-8',
-};
-
-function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
-
-function electronExe() {
-  const dist = path.join(ROOT, 'node_modules', 'electron', 'dist');
-  const candidates = process.platform === 'win32'
-    ? [path.join(dist, 'electron.exe')]
-    : process.platform === 'darwin'
-      ? [path.join(dist, 'Electron.app', 'Contents', 'MacOS', 'Electron')]
-      : [path.join(dist, 'electron')];
-  for (const c of candidates) if (fs.existsSync(c)) return c;
-  throw new Error('Electron binary not found under node_modules/electron/dist — run npm install');
-}
-
-function findPython() {
-  for (const c of [{ cmd: 'python', prefix: [] }, { cmd: 'python3', prefix: [] }, { cmd: 'py', prefix: ['-3'] }]) {
-    const r = spawnSync(c.cmd, [...c.prefix, '--version'], { encoding: 'utf8' });
-    if (r.status === 0) return c;
-  }
-  return null;
-}
-
-function startStaticServer() {
-  const server = http.createServer((req, res) => {
-    let pathname;
-    try { pathname = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch (e) {
-      res.writeHead(400); res.end('bad request'); return;
-    }
-    if (pathname === '/') pathname = '/renderer/index.html';
-    const file = path.resolve(SRC, '.' + pathname);
-    if (file !== SRC && !file.startsWith(SRC + path.sep)) {
-      res.writeHead(403); res.end('forbidden'); return;
-    }
-    fs.readFile(file, (err, buf) => {
-      if (err) { res.writeHead(404); res.end('not found'); return; }
-      res.writeHead(200, { 'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream' });
-      res.end(buf);
-    });
-  });
-  return new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(WEB_PORT, '127.0.0.1', () => resolve(server));
-  });
-}
-
-function waitForPort(port, timeoutMs) {
-  const deadline = Date.now() + timeoutMs;
-  return new Promise((resolve) => {
-    const tryOnce = () => {
-      const sock = net.connect({ host: '127.0.0.1', port });
-      sock.once('connect', () => { sock.destroy(); resolve(true); });
-      sock.once('error', () => {
-        sock.destroy();
-        if (Date.now() > deadline) resolve(false);
-        else setTimeout(tryOnce, 200);
-      });
-    };
-    tryOnce();
-  });
-}
-
-function killTree(child) {
-  if (!child || child.killed) return;
-  try {
-    if (process.platform === 'win32') {
-      spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
-    } else {
-      child.kill('SIGTERM');
-    }
-  } catch (e) { /* best effort */ }
-}
 
 async function main() {
   if (!fs.existsSync(HARNESS)) throw new Error('missing harness: ' + HARNESS);
@@ -122,7 +34,7 @@ async function main() {
   let provider = null;
   let electron = null;
   try {
-    server = await startStaticServer();
+    server = await startStaticServer(WEB_PORT);
     console.log(`[smoke] serving src/ on http://127.0.0.1:${WEB_PORT}`);
 
     provider = spawn(py.cmd, [...py.prefix, '-u', path.join(ROOT, 'provider', 'demo.py')], {

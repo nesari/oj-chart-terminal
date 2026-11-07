@@ -112,6 +112,8 @@ CI (`.github/workflows/ci.yml`) runs the full gate on Windows, Linux (under Xvfb
 
 `npm run report:core-coverage` runs the suites under `NODE_V8_COVERAGE` and prints real (approximate) line coverage for `src/core/`; `-- --min 80` turns it into a regression gate (the Windows CI job runs that). Use `--list` to see every module, including the lowest-covered ones (`feed.js`, `demo-math.js`, `indicators.js` at the time of writing).
 
+`npm run report:perf` profiles chart rendering with large datasets: it boots the real renderer against the demo provider, replays 5k/20k/50k synthetic bars through `Manager.setPaneData`, and reports series-write, full-chart paint, overlay repaint, indicator recompute, resident heap and per-frame pan cost. `-- --sizes 1000,100000` changes the dataset sizes, `-- --json` / `-- --out perf.json` give machine-readable output, and `-- --budget 250` fails when write+paint for the largest dataset exceeds 250 ms. It is a measurement tool (not part of `verify`) because absolute timings are machine- and GPU-dependent — the harness runs with hardware acceleration disabled, so treat pan frames as a software-rendering floor.
+
 ### 🔐 Security & privacy
 
 - Credentials never enter `localStorage`: MT5 accounts go through the `accounts-save` IPC and are encrypted with OS `safeStorage` (DPAPI on Windows).
