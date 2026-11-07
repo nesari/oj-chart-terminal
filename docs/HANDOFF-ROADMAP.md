@@ -421,6 +421,10 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
   - دروازه‌ی جدید `npm run check:electron` (داخل `verify` و CI): تطابق نسخه‌ی پین با `node_modules`، اسکن ۵ فایل main/preload برای APIهای حذف‌شده (`remote`، `enableRemoteModule`، `allowRendererProcessReuse`، `getPrinters`، `webSecurity:false`) و حداقل نسخه‌ی سازنده.
   - هیچ API حذف‌شده‌ای در کد پیدا نشد؛ رندرر sandbox+contextIsolation و رمز اکانت با `safeStorage` بدون تغییر باقی ماند.
 
+**وضعیت نهایی فاز ۸:** همه‌ی F8.1–F8.5 انجام و روی `main` سبز شدند —
+`verify` شامل ۲۸۳ فایل syntax، ۹۳۱ import، ۴ فایل Python، دروازه‌ی Electron، **۱۵۷/۱۵۷** سوئیت unit،
+**۱۹** تست MT5 و smoke واقعی؛ پوشش `src/core` **۸۸.۷٪**؛ `Package` هر سه نصب‌کننده را ساخت و آپلود کرد.
+
 ---
 
 ## ۶) دستورهای آماده‌ی کپی
