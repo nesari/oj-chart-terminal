@@ -127,10 +127,13 @@ const WIN_ENV = {
 
 /* ---------- 4b. full status resolution (manual path wins) ---------- */
 {
-  const exe = 'C:\\Apps\\MT5\\terminal64.exe';
+  /* path.join uses the HOST separator: these assertions run on Windows,
+     Linux and macOS CI runners, so never hard-code a backslash join. */
+  const dir = 'C:\\Apps\\MT5';
+  const exe = path.join(dir, 'terminal64.exe');
   const fakeFs = {
     statSync: (p) => {
-      if (p === 'C:\\Apps\\MT5') return { isDirectory: () => true, isFile: () => false };
+      if (p === dir) return { isDirectory: () => true, isFile: () => false };
       if (p === exe) return { isDirectory: () => false, isFile: () => true };
       throw new Error('ENOENT');
     },
@@ -142,7 +145,7 @@ const WIN_ENV = {
     'an existing exe is used as-is (source: manual)');
   ok(manual.hint === '' && manual.downloadUrl === DOWNLOAD_URL, 'a found terminal carries no warning');
 
-  const folder = resolveMt5Status({ requestedPath: 'C:\\Apps\\MT5', platform: 'win32', fs: fakeFs });
+  const folder = resolveMt5Status({ requestedPath: dir, platform: 'win32', fs: fakeFs });
   ok(folder.installed && folder.path === exe, 'an install folder resolves to its terminal64.exe');
 
   const missing = resolveMt5Status({
