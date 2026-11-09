@@ -1,7 +1,7 @@
 # PINE-ENGINE-PLAN — نسخهٔ زندهٔ نقشه‌راه Pine Script v6
 
 > این سند، نسخهٔ نگهداشت‌شوندهٔ `PINE-ENGINE-ROADMAP.md` اصلی است و با پیشرفت فازها به‌روز می‌شود.
-> وضعیت تا **راند ۲۸۱ (پس از انتشار v1.9.216)** — نوامبر ۲۰۲۶.
+> وضعیت تا **راند ۲۸۲ (پس از انتشار v1.9.216)** — نوامبر ۲۰۲۶.
 
 ## وضعیت فازها
 
@@ -16,7 +16,7 @@
 | ۷ | اتصال Alert (`alertcondition`/`alert` → موتور Alerts + صدا) | ✅ راند ۲۷۹ — نوار رویداد زنده + کارت «Script alerts» در پنل Alerts | `interpreter/builtins.js`, `pine-ui/runtime.js`, `panels/alerts.js` |
 | ۸ | کارایی (chunked run، به‌روزرسانی فقط forming-bar، سقف نرم حلقه) | ✅ انجام شد — گیت بودجه‌ی کورپوس در راند ۲۸۱ اضافه شد؛ Web Worker لازم نشد (پاس chunked هر ۱۶–۲۱ms به حلقهٔ رویداد yield می‌دهد) | `compile.js`, `pine-ui/` |
 | ۹ | `strategy.*` + Strategy Tester | ✅ راند ۱۷۱–۱۷۳ (سفارش، حساب، پنل) | `stdlib/strategy.js`, `trade/tester.js` |
-| ۱۰ | تست تطبیق (فیکسچرها + پاریتی عددی + e2e هدلس + اسکرین‌شات) | ✅ ۱۶۱ سوئیت unit + corpus + E2E + گیت بودجه | `tests/unit/`, `tests/archive/e2e/` |
+| ۱۰ | تست تطبیق (فیکسچرها + پاریتی عددی + e2e هدلس + اسکرین‌شات) | ✅ ۱۶۲ سوئیت unit + corpus (۶ اسکریپت) + E2E + گیت بودجه | `tests/unit/`, `tests/archive/e2e/` |
 | ۱۱ | مستندسازی و یکپارچگی فرآیند | ✅ همین سند + CHANGELOG + README | `docs/` |
 
 ## معیار پذیرش نهایی — تحقق یافت
@@ -32,3 +32,4 @@
 3. ~~**رندر `polyline` / `linefill`**~~ — ✅ **راند ۲۸۰: از قبل رندر می‌شدند.** `_paintPolyline`/`_paintLinefill` از راند ۱۳۶/۱۴۱ در پاس اشیای FG هستند و linefill هر فریم خطوط سازنده را دوباره می‌خواند؛ تنها کمبود واقعی، نبودِ کلید نمایش در تب Style بود که راند ۲۸۰ اضافه کرد (`polylines`/`linefills`).
 4. ~~**`math.bitwise_*`**~~ — ❌ **اصلاً وجود ندارد.** رفرنس رسمی v6 هیچ namespace بیت‌وایزی زیر `math` ندارد؛ فهرست کامل `math.*` مرجع (۲۶ تابع + ۶ ثابت) با موتور دقیقاً یکی است. ادعای قبلی این سند غلط بود و تصحیح شد.
 5. **`request.dividends/earnings/splits/financial`** عمداً خارج از دامنه‌اند (نیازمند فید بنیادی)؛ خطای صریح می‌دهند.
+6. ~~**راند ۲۸۲ (آدیت کامل مرجع):**~~ ✅ سه باگ/گپ واقعی پیدا و بسته شد: (الف) `ta.max` / `ta.min` (اکسترمم‌های تمام‌تاریخ، تک‌آرگومان) وجود نداشتند؛ (ب) `ta.pivot_point_levels` با هر ۶ نوع و ۱۱ سطح و `anchor`/`developing` پیاده شد؛ (ج) متغیرهای سری زمانی خام (`hour`، `year`، `dayofmonth`، `minute`، `second`، `dayofweek`، `weekofyear`) و فرم تک‌آرگومانی `time("D")`/`time_close("D")` بی‌صدا `na` می‌دادند — یعنی لنگرهای روزانه (`ta.change(time("D"))`) هرگز فعال نمی‌شدند. `session.regular`/`session.extended` و یک `case 'basecurrency'` تکراری (کد مرده) هم اصلاح شد.

@@ -22,6 +22,25 @@
 
 import { NA, isNA, num, pineNum } from '../types.js';
 import { runtimeError } from '../errors.js';
+import { PineArray } from './array.js';
+
+/* ROUND282: ta.pivot_point_levels helpers — the documented type spellings are
+   case-insensitive in practice ("Traditional"/"traditional"), and the result
+   is an array<float> in the fixed 11-slot order. */
+function normalizePivotType(v) {
+  const s = String(isNA(v) || v == null ? '' : v).trim();
+  const lc = s.toLowerCase();
+  /* "DM" is the one documented spelling that is not title-case. */
+  if (lc === 'dm') return 'DM';
+  if (lc === 'traditional' || lc === 'classic' || lc === 'fibonacci' || lc === 'woodie'
+    || lc === 'camarilla') {
+    return lc.charAt(0).toUpperCase() + lc.slice(1);
+  }
+  return s;
+}
+function arrFromList(items) { return new PineArray('float', items); }
+const maxNum = (a, b) => (isFinite(a) && isFinite(b)) ? Math.max(a, b) : (isFinite(a) ? a : b);
+const minNum = (a, b) => (isFinite(a) && isFinite(b)) ? Math.min(a, b) : (isFinite(a) ? a : b);
 
 /* ======================= 1) BATCH KERNELS (verbatim) ==================== */
 
@@ -527,6 +546,23 @@ const taFns = {
     return ok ? pineNum(m) : NA;
   },
 
+  /* ROUND282 (TV parity, verified against the v6 reference): ta.max(source)
+     and ta.min(source) are the ALL-TIME extreme from the first bar up to the
+     current one — no length argument, no window. They are not ta.highest()
+     with an implicit length: the reference documents one argument only.
+     na values never win the comparison (they are skipped, like TV). */
+  max(site, src) {
+    const v = num(src);
+    if (isFinite(v)) site.m = (site.m == null) ? v : Math.max(site.m, v);
+    return site.m == null ? NA : pineNum(site.m);
+  },
+
+  min(site, src) {
+    const v = num(src);
+    if (isFinite(v)) site.m = (site.m == null) ? v : Math.min(site.m, v);
+    return site.m == null ? NA : pineNum(site.m);
+  },
+
   /* ROUND227 (TV parity, verified against the v6 reference): ta.range
      returns the highest-high minus lowest-low over length bars (na values
      ignored); na when the window holds no finite value. Argless = current
@@ -995,6 +1031,102 @@ const taFns = {
     const dsapc = taFns.ema(sub(site, 'e3'), taFns.ema(sub(site, 'e4'), apc, Lg), S);
     if (isNA(dspc) || isNA(dsapc) || dsapc === 0) return NA;
     return pineNum((100 * dspc) / dsapc);
+  },
+
+  /* ROUND282 (TV parity, per the v6 reference): ta.pivot_point_levels(type,
+     anchor, developing) returns an array<float> of 11 levels in the fixed
+     order [P, R1, S1, R2, S2, R3, S3, R4, S4, R5, S5]. Levels a type does not
+     define come back as na (e.g. "DM" only fills P/R1/S1). The anchor resets
+     accumulation: its true bar snapshots H/L/C and every later bar recomputes
+     from that snapshot — `developing` then uses the live (in-progress) H/L/C
+     of the current period instead of the snapshot, exactly as documented.
+     Woodie cannot develop (its open is period-scoped), so that combination is
+     a runtime error like TV. */
+  pivot_point_levels(site, typeV, anchorV, developingV) {
+    const type = normalizePivotType(typeV);
+    const developing = !isNA(developingV) && developingV === true;
+    if (developing && type === 'Woodie') {
+      throw runtimeError('ta.pivot_point_levels: the "Woodie" type cannot be used with developing=true');
+    }
+    const bar = site.env && site.env.bar;
+    const H = bar ? bar.high : NA, L = bar ? bar.low : NA, C = bar ? bar.close : NA;
+    const O = bar ? bar.open : NA;
+    if (anchorV === true || site.ph == null) {
+      /* reset: start a fresh period at this bar (bar zero also lands here) */
+      site.ph = H; site.pl = L; site.pc = C; site.po = O;
+    }
+    const useH = developing ? maxNum(site.ph, H) : site.ph;
+    const useL = developing ? minNum(site.pl, L) : site.pl;
+    const useC = developing ? C : site.pc;
+    const out = new Array(11).fill(NA);
+    if (!isFinite(useH) || !isFinite(useL) || !isFinite(useC)) return arrFromList(out);
+    const range = useH - useL;
+    const P = (useH + useL + useC) / 3;
+    const set = (i, v) => { out[i] = isFinite(v) ? pineNum(v) : NA; };
+    switch (type) {
+      case 'Traditional': case 'Classic': {
+        set(0, P);
+        set(1, 2 * P - useL);               // R1
+        set(2, 2 * P - useH);               // S1
+        set(3, P + range);                  // R2
+        set(4, P - range);                  // S2
+        set(5, useH + 2 * (P - useL));      // R3
+        set(6, useL - 2 * (useH - P));      // S3
+        set(7, useH + 3 * (P - useL));      // R4
+        set(8, useL - 3 * (useH - P));      // S4
+        set(9, useH + 4 * (P - useL));      // R5
+        set(10, useL - 4 * (useH - P));     // S5
+        break;
+      }
+      case 'Fibonacci': {
+        set(0, P);
+        set(1, P + 0.382 * range);          // R1
+        set(2, P - 0.382 * range);          // S1
+        set(3, P + 0.618 * range);          // R2
+        set(4, P - 0.618 * range);          // S2
+        set(5, P + range);                  // R3
+        set(6, P - range);                  // S3
+        set(7, P + 1.618 * range);          // R4
+        set(8, P - 1.618 * range);          // S4
+        set(9, P + 2.618 * range);          // R5
+        set(10, P - 2.618 * range);         // S5
+        break;
+      }
+      case 'Woodie': {
+        /* P weights the OPEN double: (H + L + 2*O) / 4 */
+        const wp = (useH + useL + 2 * (site.po == null ? useC : site.po)) / 4;
+        set(0, wp);
+        set(1, 2 * wp - useL);
+        set(2, 2 * wp - useH);
+        set(3, wp + range);
+        set(4, wp - range);
+        set(5, useH + 2 * (wp - useL));
+        set(6, useL - 2 * (useH - wp));
+        break;
+      }
+      case 'DM': {
+        set(0, P);
+        set(1, useH - useL); // R1 for DM is the range above P
+        set(2, P - (useH - useL));
+        break;
+      }
+      case 'Camarilla': {
+        const r = range;
+        set(0, P);
+        set(1, useC + r * 1.1 / 12);
+        set(2, useC - r * 1.1 / 12);
+        set(3, useC + r * 1.1 / 6);
+        set(4, useC - r * 1.1 / 6);
+        set(5, useC + r * 1.1 / 4);
+        set(6, useC - r * 1.1 / 4);
+        set(7, useC + r * 1.1 / 2);
+        set(8, useC - r * 1.1 / 2);
+        break;
+      }
+      default:
+        throw runtimeError(`ta.pivot_point_levels: unknown type "${typeV}" (expected "Traditional", "Fibonacci", "Woodie", "Classic", "DM" or "Camarilla")`);
+    }
+    return arrFromList(out);
   },
 };
 

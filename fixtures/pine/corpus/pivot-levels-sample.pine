@@ -1,0 +1,85 @@
+//@version=6
+// ============================================================================
+// pivot-levels-sample — ROUND282 corpus fixture
+//
+// Exercises the APIs added/closed in ROUND282 through real rendering paths:
+//   * ta.pivot_point_levels(type, anchor, developing) — all four documented
+//     call shapes, iterated with `for ... in` and indexed with array.get()
+//   * ta.max() / ta.min() — all-time extremes (one-argument form)
+//   * session.regular / session.extended — simple string constants compared
+//     against syminfo.session
+//   * named-argument form ta.max(source = ...)
+//
+// Kept small on purpose: it is a coverage fixture, not a strategy.
+// ============================================================================
+indicator("Pivot Levels Sample", overlay = true, max_lines_count = 100, max_labels_count = 100)
+
+// ---------------------------------------------------------------------------
+// Period anchor: a new day starts a new pivot period (same shape TV's docs use
+// with timeframe.change). time() on the chart TF keeps this independent of the
+// chart's own timeframe setting.
+// ---------------------------------------------------------------------------
+dayChange = ta.change(time("D")) != 0
+
+// ---------------------------------------------------------------------------
+// The four documented shapes.
+// ---------------------------------------------------------------------------
+traditional = ta.pivot_point_levels("Traditional", dayChange)
+fibonacci   = ta.pivot_point_levels("Fibonacci", dayChange, true)
+woodie      = ta.pivot_point_levels("Woodie", dayChange)
+camarilla   = ta.pivot_point_levels("Camarilla", dayChange, true)
+
+// ---------------------------------------------------------------------------
+// The reference example iterates the returned array with `for ... in`.
+// ---------------------------------------------------------------------------
+if dayChange
+    for level in traditional
+        if not na(level)
+            line.new(bar_index, level, bar_index + 1, level, extend = extend.right,
+              color = color.new(color.blue, 40))
+
+// Indexed access: P, R1, S1 of the developing Fibonacci set.
+fibP  = array.get(fibonacci, 0)
+fibR1 = array.get(fibonacci, 1)
+fibS1 = array.get(fibonacci, 2)
+
+// ---------------------------------------------------------------------------
+// All-time extremes (ROUND282). max/min take exactly one argument.
+// ---------------------------------------------------------------------------
+allHigh = ta.max(high)
+allLow = ta.min(low)
+allHighNamed = ta.max(source = high)
+allLowNamed = ta.min(source = low)
+
+// ---------------------------------------------------------------------------
+// Session-type constants. This feed is a 24-hour FX session, so the chart's
+// session type equals session.regular.
+// ---------------------------------------------------------------------------
+isRegularSession = syminfo.session == session.regular
+isExtendedSession = syminfo.session == session.extended
+
+// ---------------------------------------------------------------------------
+// Rendering: one label per session/day with the notable values.
+// ---------------------------------------------------------------------------
+if dayChange
+    txt = "P " + str.tostring(math.round(fibP, 5)) +
+      "\nR1 " + str.tostring(math.round(fibR1, 5)) +
+      "\nS1 " + str.tostring(math.round(fibS1, 5)) +
+      "\nrange " + str.tostring(math.round(allHigh - allLow, 5))
+    label.new(bar_index, high, txt, style = label.style_label_down,
+      color = color.new(color.gray, 80), textcolor = color.white, size = size.small)
+
+// Plots keep the engine on a normal indicator path even when no day boundary
+// falls inside the loaded window.
+plot(allHigh, "All-time high", color = color.new(color.green, 0))
+plot(allLow, "All-time low", color = color.new(color.red, 0))
+plot(allHighNamed - allLowNamed, "Named-source range", display = display.data_window)
+
+// Woodie differs from Traditional only by weighting the period open twice;
+// plotting the difference proves both arrays were produced.
+plot(array.get(woodie, 0) - array.get(traditional, 0), "Woodie vs Traditional",
+  display = display.data_window)
+plot(array.get(camarilla, 1), "Camarilla R1", display = display.data_window)
+
+plotshape(isRegularSession and not isExtendedSession, "Regular session",
+  shape.triangleup, location.bottom, color.new(color.teal, 0), size = size.tiny)

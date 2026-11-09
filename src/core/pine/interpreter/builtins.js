@@ -829,6 +829,38 @@ const builtins = {
     };
   },
 
+  /* ROUND282 (TV parity): the ONE-argument timeframe form of time()/time_close()
+     — `time("D")`, `time(timeframe.period)`, `time("1M", bars_back = 3)`.
+     `_timeSession` only covered the (timeframe, session) overload, so this
+     documented form fell into the legacy bare `input.time` tolerance and
+     returned na. Scripts use it as a period anchor (`ta.change(time("D"))`),
+     which quietly never fired.
+
+     Returns the TRUE-UTC millisecond stamp of the requested timeframe's bar
+     that contains the current chart bar, floored on the exchange wall-clock
+     grid (so `time("D")` changes at exchange midnight, like TV). `bars_back`
+     shifts N CHART bars first (the reference: "bar offset on the script's
+     main timeframe"); the actual loaded bar is used when it exists, so gaps
+     and weekends are honoured. */
+  _timeForTf(tfA, barsBack, forClose) {
+    const chartSec = this.env.tfSec || 60;
+    const sec = (typeof tfA === 'string' && tfA !== '' && tfSeconds(tfA) > 0) ? tfSeconds(tfA) : chartSec;
+    if (sec < chartSec) {
+      throw runtimeError('time(): a timeframe below the chart needs lower-timeframe data (not supported here)');
+    }
+    const n = (barsBack == null || isNA(barsBack)) ? 0 : Math.trunc(num(barsBack));
+    let wall;
+    if (n > 0 && this.bars && this.barIndex - n >= 0 && this.bars[this.barIndex - n]) {
+      wall = this.bars[this.barIndex - n].time;
+    } else {
+      /* no such bar loaded (or a forward offset): approximate on the grid */
+      wall = this.env.barTimeMs / 1000 + (this.env.serverOffSec || 0) - n * chartSec;
+    }
+    const bs = Math.floor(wall / sec) * sec;
+    const ms = (bs - (this.env.serverOffSec || 0)) * 1000;
+    return forClose ? ms + sec * 1000 : ms;
+  },
+
   _timeSession(positional, forClose) {
     const tfA = positional[0], specA = positional[1];
     const tzA = positional.length > 2 ? positional[2] : null;

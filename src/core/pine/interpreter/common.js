@@ -42,6 +42,9 @@ const NS_PARAMS = {
   'ta.stoch': ['source', 'high', 'low', 'length'],
   'ta.wpr': ['length'], 'ta.mfi': ['series', 'length'],
   'ta.highest': ['source', 'length'], 'ta.lowest': ['source', 'length'],
+  /* ROUND282: all-time extremes take exactly one argument (no length). */
+  'ta.max': ['source'], 'ta.min': ['source'],
+  'ta.pivot_point_levels': ['type', 'anchor', 'developing'],
   'ta.highestbars': ['source', 'length'], 'ta.lowestbars': ['source', 'length'],
   'ta.crossover': ['source1', 'source2'], 'ta.crossunder': ['source1', 'source2'],
   'ta.cross': ['source1', 'source2'],

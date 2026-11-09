@@ -368,11 +368,11 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 - **مخزن:** `nesari/oj-chart-terminal` (خصوصی)، شاخه‌ی `main`. هر push با CI اجرا می‌شود:
   هر سه سیستم (Windows، Linux زیر Xvfb، macOS) کل `verify` را اجرا می‌کنند.
 - **دروازه‌ی کیفیت:** `npm run verify` = syntax + imports + python + electron + unit + mt5 + smoke.
-  مجموعه‌ی unit اکنون **۱۶۱ سوئیت** است؛ هر اصلاح با یک سوئیت `tests/unit/test_roundNNN_*.mjs`
+  مجموعه‌ی unit اکنون **۱۶۲ سوئیت** است؛ هر اصلاح با یک سوئیت `tests/unit/test_roundNNN_*.mjs`
   همراه می‌شود که هم قرارداد رفتاری و هم (برای ماژول‌های DOM-دار) متن منبع را پین می‌کند.
 - **فازهای آدیت که تمام شده‌اند:** ابزارهای ترسیم، Layout/Tabs/Session،
   Feed/Provider/MT5، اندیکاتورها/Pine، Alerts/Bar Replay، و Trade/One-click/Security/Packaging.
-- **آخرین اصلاح‌ها (۲۶۵ تا ۲۸۱ + فاز ۸):** امضای سفارش در arm-then-confirm، دروازه‌ی liveness در CI،
+- **آخرین اصلاح‌ها (۲۶۵ تا ۲۸۲ + فاز ۸):** امضای سفارش در arm-then-confirm، دروازه‌ی liveness در CI،
   سمت SL/TP در تیکت و پنل، کلیک‌درگ و تایپ استاپ‌ها + break-even، نام برنامه و
   مسیر userData، اجرای `run.sh` روی bash 3.2، رفع شکستن آرگومان‌های فاصله‌دار
   در `scripts/release.mjs`، اشتراک فید با مالکیت (`Feed._subOwners`) تا
@@ -394,6 +394,12 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
   کارِ هر بار به‌صورت واحدهای قطعیِ مفسر + نسبت زمانِ هم‌ماشین برای رد O(n²) + هزینهٔ تیک
   به‌اندازهٔ یک بار. اندازه‌گیری همین راند نشان داد Web Worker لازم نیست (yield هر ۱۶–۲۱ms).
   چون این گیت نسبت زمان می‌سنجد، در مجموعهٔ SERIAL سوئیت‌ها تنها اجرا می‌شود.
+  در راند ۲۸۲ آدیت کامل فهرست مرجع v6 سه گپ واقعی را پیدا کرد: `ta.max`/`ta.min`
+  (اکسترمم تمام‌تاریخ) و `ta.pivot_point_levels` اضافه شدند، و متغیرهای سری زمانی خام
+  (`hour`, `year`, `dayofmonth`, …) به‌همراه فرم `time("D")`/`time_close("D")` که بی‌صدا
+  `na` می‌دادند اصلاح شدند — یعنی لنگرهای روزانه (`ta.change(time("D"))`) که در
+  اسکریپت‌های پیوت استانداردند، از این پس واقعاً فعال می‌شوند. یک فیکسچر کورپوس جدید
+  (`pivot-levels-sample.pine`) هم اضافه شد.
 - **انتشار:** نسخه‌ی `1.9.216` با تگ `v1.9.216` منتشر شد؛ `Package` هر سه نصب‌کننده‌ی
   Windows/macOS/Linux را ساخت و artifact+SHA256 را آپلود کرد.
 - **باقی‌مانده:**

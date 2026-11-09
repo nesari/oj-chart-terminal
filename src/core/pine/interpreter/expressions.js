@@ -35,6 +35,14 @@ import {
   HTF_BUILTINS, srcHandle, LIB_BANNED_IDENTS, LIB_BANNED_NS,
 } from './common.js';
 
+/* ROUND282: documented bare time SERIES VARIABLES (v4 calls them time
+   variables). They read the same wall-clock fields as the call form with no
+   argument, so `plot(hour)` and `hour(time)` agree. Kept as a Set (not a
+   truthiness check) so a future plainFns addition cannot accidentally become
+   a variable. */
+const timeGetterNames = new Set(['year', 'month', 'dayofmonth', 'dayofweek',
+  'hour', 'minute', 'second', 'weekofyear']);
+
 const expressions = {
   _tick() {
     if (++this.steps > this.maxOpsPerBar) {
@@ -142,6 +150,17 @@ const expressions = {
       return this.env.bar ? (this.env.bar.time - this.env.serverOffSec) * this.env.timeScale : NA;
     }
     // bare time getters (year, hour, ...) without a call — bar-time forms
+    /* ROUND282 (TV parity): `hour`, `year`, `dayofmonth`, ... are documented
+       SERIES VARIABLES in Pine v5/v6, not only functions. A bare read used to
+       fall into the plainFns-NA branch below, so `plot(hour)` drew nothing and
+       `dayofmonth != dayofmonth[1]` was always false (a day-anchor pattern
+       used by pivot scripts). Reading them now evaluates the getter for the
+       current bar, exactly like the call form `hour(time)`. */
+    if (timeGetterNames.has(name)) {
+      const site = this._site(this._frameKey(frame) + ':tg:' + node.id, {});
+      if (!site.env) site.env = this.env;
+      return this.plainFns[name](site, this.env.barTimeMs);
+    }
     /* ROUND222a (v4 parity): bare series vars (plot(accdist)) read through
        taVars with a per-node site, like the ta.* member path. They used to
        fall into the plainFns-NA branch below (silent blank plot). taVars
@@ -452,6 +471,13 @@ const expressions = {
       }
       if (base === 'syminfo') return this._syminfoProp(node.name);
       if (base === 'timeframe') return this._timeframeProp(node.name);
+      /* ROUND282 (TV parity): session.regular / session.extended are simple
+         string CONSTANTS ("the session type of the chart main series"), used
+         by scripts as syminfo.session comparisons. This feed is a 24h FX
+         session, i.e. regular, so both read from syminfo.session. */
+      if (base === 'session' && (node.name === 'regular' || node.name === 'extended')) {
+        return this._syminfoProp('session');
+      }
       /* ROUND229 (TV parity): session.isfirstbar/islastbar(+_regular) read
          as VARIABLES (no call) — each member node owns a site like taVars. */
       if (base === 'session' && sessionFns[node.name] &&
@@ -594,7 +620,6 @@ const expressions = {
         const m = /^([A-Z]{3})([A-Z]{3})([./-].*)?$/.exec(s);
         return m ? m[1] : NA;
       }
-      case 'basecurrency': return NA;
       case 'prefix': return NA;
       case 'limit': return NA;
       default: return NA;
@@ -1116,26 +1141,34 @@ const expressions = {
         if (!site.env) site.env = this.env; // ta kernels read the current bar through it
         return this.plainFns[name](site, ...positional);
       }
-      if (name === 'time' && node.args && node.args.length >= 2) {
+      if (name === 'time' && node.args && node.args.length >= 1) {
         /* ROUND204: bare time(timeframe, session[, tz]) is the SESSION
            overload (session-filtered bar time or na) — NOT the input.time
-           picker. Route it here on (timeframe-like, session-like) shapes;
-           anything else keeps the legacy bare-input tolerance below. */
-        const { positional: tpos } = this._mergeCallArgs(node, frame);
+           picker. ROUND282 adds the ONE-argument timeframe form
+           (time("D"), time(timeframe.period, bars_back = 3)). */
+        const { positional: tpos, named: tnamed } = this._mergeCallArgs(node, frame);
         const tfA = tpos[0], sessA = tpos[1];
         const looksTf = tfA === '' || (typeof tfA === 'string' && tfSeconds(tfA) > 0);
         const looksSess = typeof sessA === 'string' && sessA.indexOf('-') >= 0;
         if (looksTf && looksSess) return this._timeSession(tpos);
+        if (looksTf && tpos.length < 2) {
+          const bb = tnamed.find((x) => x.name === 'bars_back');
+          return this._timeForTf(tfA, bb ? bb.value : undefined, false);
+        }
       }
       /* ROUND223 (TV parity): time_close(timeframe, session[, tz]) mirrors
          time() but yields the bar's CLOSE time (open + TF span) when the bar
-         belongs to the session, else na. */
-      if (name === 'time_close' && node.args && node.args.length >= 2) {
-        const { positional: cpos } = this._mergeCallArgs(node, frame);
+         belongs to the session, else na. ROUND282: same one-argument form. */
+      if (name === 'time_close' && node.args && node.args.length >= 1) {
+        const { positional: cpos, named: cnamed } = this._mergeCallArgs(node, frame);
         const tfC = cpos[0], sessC = cpos[1];
         const looksTf = tfC === '' || (typeof tfC === 'string' && tfSeconds(tfC) > 0);
         const looksSess = typeof sessC === 'string' && sessC.indexOf('-') >= 0;
         if (looksTf && looksSess) return this._timeSession(cpos, true);
+        if (looksTf && cpos.length < 2) {
+          const bb = cnamed.find((x) => x.name === 'bars_back');
+          return this._timeForTf(tfC, bb ? bb.value : undefined, true);
+        }
       }
       if (this.inputFns[name]) { // input.* called WITHOUT namespace (unofficial but tolerated)
         const { positional, named } = this._mergeCallArgs(node, frame);

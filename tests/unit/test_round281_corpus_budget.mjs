@@ -112,6 +112,7 @@ function measureMs(src, nBars, passes) {
 const CEILING = {
   '786-zones.pine': 400,
   'algoalpha.pine': 450,
+  'pivot-levels-sample.pine': 120, /* ROUND282 coverage fixture: measured 48/bar */
   'sessions.pine': 900,
   'smartmoney.pine': 1200,
   'wyckoff.pine': 9000,
