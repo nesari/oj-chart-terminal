@@ -393,7 +393,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 - [x] **F8.1** — هارنس record/replay برای `provider/mt5.py`
   - `tests/provider/mt5_fake.py`: پیاده‌سازی replay‌پذیر API پکیج `MetaTrader5` از روی سناریو/فیکسچر JSON.
   - `tests/provider/record_mt5.py`: ضبط فقط-خواندنی یک نشست واقعی ویندوز به فیکسچر (با redaction پیش‌فرض حساب/مسیرها).
-  - `tests/provider/test_mt5_provider.py`: ۱۹ تست برای bars/pagination، تایم‌فریم‌های ساخته‌شده، تیک و گیت بازار بسته،
+  - `tests/provider/test_mt5_provider.py`: ۲۰ تست برای bars/pagination، تایم‌فریم‌های ساخته‌شده، تیک و گیت بازار بسته،
     جست‌وجو، account/spec/state، سفارش market/pending، modify/cancel، close جزئی/کامل/همه، SL/TP،
     backfill تاریخچه، خطاهای اعتبارسنجی، retry روی `INVALID_FILL`، پارس `servers.dat` و کش چارت.
   - دروازه‌ی جدید `npm run check:mt5` داخل `verify` و CI هر سه سیستم.
@@ -427,10 +427,14 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
   - `connect()` وقتی ترمینالی پیدا نشود پرووایدر را spawn نمی‌کند و همان راهنما را نشان می‌دهد؛ حالت دمو بدون هیچ پیش‌نیازی کار می‌کند.
   - فیلد Terminal path هم فایل `terminal64.exe` و هم پوشه‌ی نصب را می‌پذیرد؛ تشخیص advisory است و مسیر دستی را بلاک نمی‌کند.
   - `tests/unit/test_round278_mt5_detect.mjs` (۴۷ assertion) شامل تست روی ساختار واقعی پوشه‌های برند بروکر.
+- [x] **F8.7** — فیکسچر واقعی بروکر در مخزن و replay همیشگی در CI.
+  - `tests/provider/fixtures/mt5_session.json` از یک ترمینال متصل ضبط شد: ۳ نماد (EURUSD/USDJPY/XAUUSD)، ۵ تایم‌فریم، ۳۰۰ کندل و ۱۰۰۰ تیک برای هر نماد (حساب/نام/موجودی و مسیرها redact شده‌اند).
+  - `test_replay_committed_real_fixture` بدون هیچ متغیر محیطی روی هر سه سیستم اجرا می‌شود: صفحه‌ی جدید/قدیمی bars، تطابق دقیق آخرین کندل و `digits/point` واقعی بروکر.
+  - `record_mt5.py`: موجودی/equity و margin در حالت redaction خنثی می‌شوند و پنجره‌ی تیک در بازار بسته (آخر هفته/تعطیلات) پله‌ای بزرگ می‌شود تا فیکسچر، تیک واقعی آخرین نشست را از دست ندهد.
 
-**وضعیت نهایی فاز ۸:** همه‌ی F8.1–F8.6 انجام و روی `main` سبز شدند —
+**وضعیت نهایی فاز ۸:** همه‌ی F8.1–F8.7 انجام و روی `main` سبز شدند —
 `verify` شامل ۲۸۸ فایل syntax، ۹۳۳ import، ۴ فایل Python، دروازه‌ی Electron، **۱۵۸/۱۵۸** سوئیت unit،
-**۱۹** تست MT5 و smoke واقعی؛ پوشش `src/core` **۸۸.۷٪**؛ `Package` هر سه نصب‌کننده را ساخت و آپلود کرد.
+**۲۰** تست MT5 و smoke واقعی؛ پوشش `src/core` **۸۸.۷٪**؛ `Package` هر سه نصب‌کننده را ساخت و آپلود کرد.
 
 ---
 

@@ -42,9 +42,25 @@ $env:MT5_FIXTURE = 'tests/provider/fixtures/mt5_session.json'
 npm run check:mt5
 ```
 
-Account number/holder name are redacted by default and local paths are
-dropped, so a fixture is safe to commit. Use `--include-account` /
-`--include-paths` only for a private fixture.
+Account number/holder name and account money are neutralized by default and
+local paths are dropped, so a fixture is safe to commit. Use `--include-account`
+/ `--include-paths` only for a private fixture. When the market is closed
+(weekend/holiday) the tick window widens step by step (1 h → 1 d → 7 d → 30 d)
+so the fixture still carries the last real session ticks instead of no ticks.
+
+## Committed fixture
+
+`tests/provider/fixtures/mt5_session.json` is a real broker session (3 symbols,
+5 native timeframes, 300 bars and 1000 ticks each) recorded from a live
+terminal. `test_replay_committed_real_fixture` always replays it — on Windows,
+Linux and macOS CI — so real symbol specs, bar values and pagination are
+regression-tested without a terminal. Regenerate it on a Windows machine:
+
+```powershell
+python tests/provider/record_mt5.py --symbols "EURUSD,XAUUSD,USDJPY" ^
+  --timeframes M1,M5,M15,H1,D1 --bars 300 --ticks 1000 ^
+  --output tests/provider/fixtures/mt5_session.json
+```
 
 ## Fixture schema
 
@@ -80,6 +96,7 @@ empty scenario produces realistic candles.
 - `servers.dat` harvest/tree parse and gateway fallback
 - offset quantization/snap
 - chart-cache tail served twice from disk
+- committed real-broker fixture (specs, bars, pagination) replayed on every CI OS
 - optional replay of a recorded real fixture (`MT5_FIXTURE`)
 
 ## Adding a test for a bug report

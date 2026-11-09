@@ -21,6 +21,10 @@ import unittest
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 PROVIDER = ROOT / 'provider'
+# Real broker session recorded with record_mt5.py (account id/name/money
+# redacted). Committed so every CI runner replays real symbol specs, bars and
+# ticks — not just the synthetic scenarios above.
+FIXTURE = HERE / 'fixtures' / 'mt5_session.json'
 
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(PROVIDER))
@@ -428,6 +432,51 @@ class ProviderHarness(unittest.TestCase):
         spec = b.trade_rpc({'op': 'spec', 'symbol': sym})
         if spec.get('ok'):
             self.assertEqual(spec['data']['symbol'], sym)
+
+    def test_replay_committed_real_fixture(self):
+        """The committed real-broker fixture replays on every OS/CI runner.
+
+        Unlike `test_replay_recorded_fixture` (MT5_FIXTURE, private sessions)
+        this always runs: the fixture is recorded from a live terminal, so it
+        pins the shapes a real broker actually returns (symbol suffix-free
+        names, digits/point, 5 native timeframes, real ticks) and catches any
+        change that only works against synthetic scenarios.
+        """
+        if not FIXTURE.exists():
+            self.skipTest('committed fixture missing: ' + str(FIXTURE))
+        sc = mt5_fake.load_scenario(str(FIXTURE))
+        self.assertTrue(sc.get('symbols'), 'fixture carries symbol specs')
+
+        sym = sc['symbols'][0]['name']
+        tfs = sc.get('bars', {}).get(sym) or {}
+        if not tfs:
+            self.skipTest('fixture has no bars for the first symbol')
+        tf = 'M5' if 'M5' in tfs else next(iter(tfs))
+        recorded = tfs[tf]
+        self.assertGreaterEqual(len(recorded), 50, 'fixture is big enough to page')
+
+        mod, broker = self.load(sc)
+        server = sc.get('account', {}).get('server', '') or 'Acme-Live'
+        b = self.connected(mod, broker, server)
+
+        # Newest page: last bar must be the recorded bar, value-exact.
+        rows = b.raw_bars(sym, tf, 100)
+        self.assertEqual(len(rows), 100)
+        self.assertEqual(rows[-1]['time'], recorded[-1][0])
+        self.assertAlmostEqual(rows[-1]['close'], recorded[-1][4], places=6)
+        self.assertEqual([r['time'] for r in rows], sorted(r['time'] for r in rows))
+
+        # Older-page pagination against real data (to is exclusive).
+        older = b.raw_bars(sym, tf, 50, to=rows[0]['time'])
+        self.assertEqual(len(older), 50)
+        self.assertTrue(all(r['time'] < rows[0]['time'] for r in older))
+
+        # Real broker spec round-trips through trade_rpc.
+        spec = b.trade_rpc({'op': 'spec', 'symbol': sym})
+        self.assertTrue(spec.get('ok'), spec.get('error'))
+        self.assertEqual(spec['data']['symbol'], sym)
+        self.assertEqual(int(spec['data']['digits']), int(sc['symbols'][0]['digits']))
+        self.assertAlmostEqual(float(spec['data']['point']), float(sc['symbols'][0]['point']), places=10)
 
 
 if __name__ == '__main__':

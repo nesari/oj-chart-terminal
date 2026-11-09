@@ -19,9 +19,9 @@ Then replay it (any OS, no terminal needed):
     set MT5_FIXTURE=tests/provider/fixtures/mt5_session.json
     python -m unittest discover -s tests/provider -p "test_*.py" -v
 
-By default account number and holder name are redacted and local paths are
-dropped, so a fixture is safe to commit. Pass --include-account / --include-paths
-only for a private fixture.
+By default account number, holder name and account money are redacted and
+local paths are dropped, so a fixture is safe to commit. Pass
+--include-account / --include-paths only for a private fixture.
 
 The JSON schema is described in tests/provider/mt5_fake.py.
 """
@@ -158,6 +158,14 @@ def main(argv=None):
     if not a.include_account:
         account['login'] = 0
         account['name'] = 'Replay Account'
+        # Account money is private too: a committed fixture must not leak the
+        # real balance/equity. Neutral values keep every replay path working.
+        account['balance'] = 10000.0
+        account['equity'] = 10000.0
+        account['profit'] = 0.0
+        account['margin'] = 0.0
+        account['margin_free'] = 10000.0
+        account['margin_level'] = 0.0
     terminal = {
         'connected': bool(_g(term, 'connected', True)),
         'trade_allowed': bool(_g(term, 'trade_allowed', False)),
@@ -224,10 +232,17 @@ def main(argv=None):
                 for r in rates
             ]
         if a.ticks > 0:
-            span = max(60, int(a.ticks * 1.2))
-            frm = dt.datetime.fromtimestamp(now - span, tz=dt.timezone.utc)
-            to = dt.datetime.fromtimestamp(now + 1, tz=dt.timezone.utc)
-            ticks = mt5.copy_ticks_range(name, frm, to, mt5.COPY_TICKS_ALL)
+            # A closed market (weekend / holiday) has NO ticks in the tight
+            # window. Widen step by step so a fixture recorded on Saturday
+            # still carries the most recent real ticks (with a true quote_age)
+            # instead of silently dropping the whole tick section.
+            ticks = None
+            for span in (max(60, int(a.ticks * 1.2)), 86400, 7 * 86400, 30 * 86400):
+                frm = dt.datetime.fromtimestamp(now - span, tz=dt.timezone.utc)
+                to = dt.datetime.fromtimestamp(now + 1, tz=dt.timezone.utc)
+                ticks = mt5.copy_ticks_range(name, frm, to, mt5.COPY_TICKS_ALL)
+                if ticks is not None and len(ticks):
+                    break
             if ticks is not None and len(ticks):
                 rows = [
                     [int(t['time']), float(t['bid'] or 0), float(t['ask'] or 0),
