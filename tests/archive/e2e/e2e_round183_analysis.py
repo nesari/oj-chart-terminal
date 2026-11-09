@@ -2,7 +2,7 @@
 """ROUND183 e2e — Trades analysis tabs (Distribution/Streaks/Time)."""
 import http.server, functools, os, socket, subprocess, sys, threading, time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT_HTTP, PORT_WS = 8986, 8814
 FAILS = []
 

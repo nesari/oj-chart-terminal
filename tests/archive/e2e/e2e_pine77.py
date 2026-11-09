@@ -20,7 +20,7 @@ rebuild keeps the drawings. Exits 0 only if every check passes error-free.
 """
 import subprocess, sys, time, threading, http.server, functools, os, socket
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 SHOTS = os.path.join(ROOT, 'docs', 'shots-legacy')
 FIXTURE = os.path.join(ROOT, 'fixtures', 'pine', 'corpus', '786-zones.pine')
 PORT_HTTP, PORT_WS = 8899, 8777

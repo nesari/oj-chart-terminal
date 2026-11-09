@@ -3,7 +3,7 @@
 FRESH profile (cleared localStorage) and each compiles."""
 import http.server, functools, os, subprocess, sys, threading, time, pathlib
 
-ROOT = pathlib.Path(__file__).parent.parent.parent
+ROOT = pathlib.Path(__file__).parent.parent.parent.parent
 PORT_HTTP, PORT_WS = 8952, 8779
 FAILS = []
 try:

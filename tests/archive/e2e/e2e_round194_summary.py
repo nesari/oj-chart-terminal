@@ -2,7 +2,7 @@
 """ROUND194 e2e — Performance Summary table (TV All/Long/Short)."""
 import http.server, functools, os, re, socket, subprocess, sys, threading, time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT_HTTP, PORT_WS = 8987, 8815
 FAILS = []
 

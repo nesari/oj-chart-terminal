@@ -22,7 +22,7 @@ Layers:
 """
 import json, os, re, subprocess, sys, hashlib
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PREV = os.path.join(os.path.dirname(ROOT), 'mt5-round56')
 os.chdir(ROOT)
 

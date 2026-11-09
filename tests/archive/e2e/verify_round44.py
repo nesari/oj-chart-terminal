@@ -15,7 +15,7 @@ from playwright.sync_api import sync_playwright
 
 OUT = '/home/z/my-project/work/shots44'
 os.makedirs(OUT, exist_ok=True)
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 results = []
 def check(name, cond, detail=''):

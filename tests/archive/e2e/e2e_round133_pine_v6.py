@@ -14,7 +14,7 @@ Exits 0 only if every check passes.
 """
 import http.server, functools, os, socket, subprocess, sys, threading, time, pathlib
 
-ROOT = pathlib.Path(__file__).parent.parent.parent
+ROOT = pathlib.Path(__file__).parent.parent.parent.parent
 PORT_HTTP, PORT_WS = 8951, 8778
 SHOTS = ROOT / 'docs' / 'shots-round133'
 FAILS = []

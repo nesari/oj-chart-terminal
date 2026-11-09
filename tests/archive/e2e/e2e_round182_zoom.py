@@ -2,7 +2,7 @@
 """ROUND182 e2e — chart extras: 4 toggles, excursions, zoom, day ticks."""
 import http.server, functools, os, socket, subprocess, sys, threading, time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT_HTTP, PORT_WS = 8984, 8812
 FAILS = []
 

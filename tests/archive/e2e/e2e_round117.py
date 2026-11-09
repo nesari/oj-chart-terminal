@@ -24,7 +24,7 @@ Exits 0 only if every check passes with zero page errors.
 """
 import subprocess, sys, time, threading, http.server, functools, os, socket
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT_HTTP, PORT_WS = 8907, 8777
 FAILS = []
 try:

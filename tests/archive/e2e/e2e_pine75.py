@@ -9,7 +9,7 @@ Ok/Escape -> NO leftover backdrop -> the chart must still be interactive
 """
 import subprocess, sys, time, threading, http.server, functools, os, socket
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 SHOTS = os.path.join(ROOT, 'docs', 'shots-legacy')
 PORT_HTTP = 8899
 PORT_WS = 8777

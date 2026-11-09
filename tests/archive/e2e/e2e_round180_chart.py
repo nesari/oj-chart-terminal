@@ -2,7 +2,7 @@
 """ROUND180 e2e — redesigned Performance chart + full trade-list pager."""
 import http.server, functools, os, re, socket, subprocess, sys, threading, time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT_HTTP, PORT_WS = 8980, 8808
 FAILS = []
 

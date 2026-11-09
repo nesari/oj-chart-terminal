@@ -98,6 +98,11 @@ const PineUI = {
       bars: st.rt ? st.rt.totalBars : 0,
       /* ROUND78 perf/timezone observability */
       lastRunMs: st.lastRunMs != null ? st.lastRunMs : -1,
+      /* ROUND283: the Pine-alert drain cursor — tests and Diagnostics need to
+         prove a full pass was suppressed as history replay. */
+      alertCursor: st._alertCursor != null ? st._alertCursor : 0,
+      alertSeq: st.rt ? (st.rt._alertSeq || 0) : 0,
+      alerts: st.rt && st.rt.out && st.rt.out.pineAlerts ? st.rt.out.pineAlerts.length : 0,
       memoHits: st.rt ? (st.rt._memoHits || 0) : 0,
       serverOffSec: st.rt && st.rt.env ? (st.rt.env.serverOffSec || 0) : null,
       intrabars: st.rt && st.rt.env.intrabars ? st.rt.env.intrabars.filter(Boolean).length : 0,

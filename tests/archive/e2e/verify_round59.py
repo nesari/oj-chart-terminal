@@ -33,7 +33,7 @@ Checks:
 """
 import json, os, subprocess, sys, hashlib
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PREV = '/home/z/my-project/work/mt5-round58'
 os.chdir(ROOT)
 

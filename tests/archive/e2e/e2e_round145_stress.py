@@ -8,7 +8,7 @@ window.onerror anymore. Any page error fails the run.
 """
 import http.server, functools, os, socket, subprocess, sys, threading, time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT_HTTP, PORT_WS = 8961, 8889
 FAILS = []
 

@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from e2e_helper_round32 import open_app  # noqa: E402
 from playwright.sync_api import sync_playwright  # noqa: E402
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 OUT = os.path.join(ROOT, '..', '..', 'work', 'shots48-verify')
 os.makedirs(OUT, exist_ok=True)
 

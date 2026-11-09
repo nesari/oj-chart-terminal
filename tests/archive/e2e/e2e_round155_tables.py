@@ -10,7 +10,7 @@ Boots demo feed + renderer, then for each dashboard script
 """
 import http.server, functools, os, socket, subprocess, sys, threading, time, json
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT_HTTP, PORT_WS = 8955, 8883
 FAILS = []
 

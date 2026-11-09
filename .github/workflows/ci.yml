@@ -48,6 +48,18 @@ jobs:
       - name: Pine corpus cost budget (ROUND281)
         run: npm run check:pine-budget
 
+      # The archived Playwright suites are not part of `verify` (each boots a
+      # server + provider + Chromium). A curated set runs here so the browser
+      # paths stay honest: ROUND283 repaired these suites' ROOT path after the
+      # move into tests/archive/e2e/, which had silently broken all 126.
+      - name: Install Playwright (browser E2E gate)
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install chromium
+
+      - name: Browser E2E gate (curated)
+        run: npm run check:e2e
+
       - name: Provider harness gate (replayable MT5 fake)
         run: npm run check:mt5
 

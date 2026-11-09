@@ -2,7 +2,7 @@
 """ROUND178 e2e — tester visual-polish pass (pills, chart furniture, export)."""
 import http.server, functools, os, socket, subprocess, sys, threading, time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT_HTTP, PORT_WS = 8978, 8806
 FAILS = []
 

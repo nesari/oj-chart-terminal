@@ -2,7 +2,7 @@
 """ROUND192 e2e — Bar Magnifier declaration + dialog opt-in, live app."""
 import http.server, functools, os, socket, subprocess, sys, threading, time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT_HTTP, PORT_WS = 8990, 8818
 FAILS = []
 

@@ -7,7 +7,7 @@
 """
 import http.server, functools, os, socket, subprocess, sys, threading, time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT_HTTP, PORT_WS = 8989, 8817
 FAILS = []
 
@@ -64,15 +64,23 @@ ADD_JS = """async ({name, src}) => {
     errors: (st && st.errors) || [], vals: {}, idx: -1 };
   if (st && st.rt && st.rt.out) {
     const bars = pane.bars;
-    for (let i = bars.length - 2; i >= Math.max(0, bars.length - 12); i--) {
-      if (bars[i].open !== bars[i].close) { out.idx = i; break; }
+    /* ROUND283: the plots are computed against the runtime's OWN bar array.
+       A live tick can append a bar between the rebuild and this read, which
+       shifts one index and made this suite flaky under load. Read the
+       runtime's bars (the array the pass actually used), and pick a bar whose
+       values are settled (not the forming last bar). */
+    const rb = (st.rt.bars && st.rt.bars.length) ? st.rt.bars : bars;
+    out.barsSeen = rb.length;
+    for (let i = Math.min(rb.length - 2, st.rt.totalBars - 2); i >= Math.max(0, rb.length - 12); i--) {
+      if (i < 0) continue;
+      if (rb[i].open !== rb[i].close) { out.idx = i; break; }
     }
     if (out.idx >= 0) {
       for (const key of st.rt.out.plotsOrder) {
         const p = st.rt.out.plots.get(key);
         out.vals[p.title] = p.values[out.idx];
       }
-      out.close = bars[out.idx].close;
+      out.close = rb[out.idx].close;
     }
   }
   return out;

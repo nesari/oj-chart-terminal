@@ -7,8 +7,8 @@ Pattern copied from scripts/harness.py.
 import time, threading, http.server, functools, subprocess, os
 from playwright.sync_api import sync_playwright
 
-ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'src')
-PROV = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'provider', 'demo.py')
+ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), 'src')
+PROV = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), 'provider', 'demo.py')
 PORT = 8977
 BASE = f'http://127.0.0.1:{PORT}/renderer/index.html'
 
