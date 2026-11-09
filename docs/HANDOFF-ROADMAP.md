@@ -368,11 +368,11 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
 - **مخزن:** `nesari/oj-chart-terminal` (خصوصی)، شاخه‌ی `main`. هر push با CI اجرا می‌شود:
   هر سه سیستم (Windows، Linux زیر Xvfb، macOS) کل `verify` را اجرا می‌کنند.
 - **دروازه‌ی کیفیت:** `npm run verify` = syntax + imports + python + electron + unit + mt5 + smoke.
-  مجموعه‌ی unit اکنون **۱۵۹ سوئیت** است؛ هر اصلاح با یک سوئیت `tests/unit/test_roundNNN_*.mjs`
+  مجموعه‌ی unit اکنون **۱۶۰ سوئیت** است؛ هر اصلاح با یک سوئیت `tests/unit/test_roundNNN_*.mjs`
   همراه می‌شود که هم قرارداد رفتاری و هم (برای ماژول‌های DOM-دار) متن منبع را پین می‌کند.
 - **فازهای آدیت که تمام شده‌اند:** ابزارهای ترسیم، Layout/Tabs/Session،
   Feed/Provider/MT5، اندیکاتورها/Pine، Alerts/Bar Replay، و Trade/One-click/Security/Packaging.
-- **آخرین اصلاح‌ها (۲۶۵ تا ۲۷۹ + فاز ۸):** امضای سفارش در arm-then-confirm، دروازه‌ی liveness در CI،
+- **آخرین اصلاح‌ها (۲۶۵ تا ۲۸۰ + فاز ۸):** امضای سفارش در arm-then-confirm، دروازه‌ی liveness در CI،
   سمت SL/TP در تیکت و پنل، کلیک‌درگ و تایپ استاپ‌ها + break-even، نام برنامه و
   مسیر userData، اجرای `run.sh` روی bash 3.2، رفع شکستن آرگومان‌های فاصله‌دار
   در `scripts/release.mjs`، اشتراک فید با مالکیت (`Feed._subOwners`) تا
@@ -387,15 +387,19 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
   در راند ۲۷۹ پل Pine → Alerts بسته شد: `alert()`/`alertcondition()` روی نوار رویداد زنده
   (فقط بار زنده، با `seq` یکنوا و de-dupe روی تیک‌های هم‌بار) و کارت «Script alerts» در پنل
   Alerts با کلید اصلی/پیام/arm هر شرط که از همان مسیر toast + نوتیفیکیشن + صدا عبور می‌کند.
+  در راند ۲۸۰ هم پوشش drawings کامل شد: `polyline`/`linefill` (که از راند ۱۳۶/۱۴۱ رندر
+  می‌شدند) کلید نمایش در تب Style گرفتند و موجودی `math.*` با مرجع رسمی v6 تطبیق داده شد
+  (نتیجه: کامل است؛ `math.bitwise_*` در مرجع وجود ندارد و ادعای قبلی اسناد غلط بود).
 - **انتشار:** نسخه‌ی `1.9.216` با تگ `v1.9.216` منتشر شد؛ `Package` هر سه نصب‌کننده‌ی
   Windows/macOS/Linux را ساخت و artifact+SHA256 را آپلود کرد.
 - **باقی‌مانده:**
   1. تست با حساب واقعی MT5 (نیازمند ویندوز + ترمینال و اعتبارنامه) هنوز خودکار نیست؛
      فیکسچر واقعی دمو در CI replay می‌شود ولی ارسال سفارش real باید دستی بماند.
   2. امضای کد/notarization نیازمند گواهی ویندوز و Apple Developer ID است (بیلد فعلی بدون امضا).
-  3. موارد اختیاری: Web Worker برای اسکریپت‌های سنگین، رندر `polyline/linefill`،
-     `math.bitwise_*`، فیکسچر بروکر دوم، گیت بودجه‌ی کارایی در CI، و گسترش corpus/E2E.
-     (پل Pine → پنل Alerts در راند ۲۷۹ بسته شد.)
+  3. موارد اختیاری: Web Worker برای اسکریپت‌های سنگین، فیکسچر بروکر دوم، گیت بودجه‌ی
+     کارایی در CI، و گسترش corpus/E2E.
+     (پل Pine → پنل Alerts در راند ۲۷۹ و رندر `polyline/linefill` + `math.*` در راند ۲۸۰
+     بسته شدند — `math.bitwise_*` در مرجع رسمی v6 اصلاً وجود ندارد.)
 - **حلقه‌ی کار:** تغییر → `npm run verify` سبز → commit → push → تأیید سبز بودن CI.
 
 ### ۵.۲) فاز ۸ — هارنس تست MT5

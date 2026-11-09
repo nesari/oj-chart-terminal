@@ -1,10 +1,10 @@
 # PINE Engine — گزارش انطباق فنی و نقشه راه استاندارد (v3 تا v6)
 
-> تاریخ: اکتبر ۲۰۲۶ (بازبینی: نوامبر ۲۰۲۶ — راند ۲۷۹، پس از انتشار v1.9.216). مبنا: سورس `src/core/pine/` + مستندات رسمی TV (Sphinx docs قابل fetch) + چک‌لیست مهاجرت v3→v4→v5→v6 + موجودی کامل موتور (همه ادعاها با `file:line`).
+> تاریخ: اکتبر ۲۰۲۶ (بازبینی: نوامبر ۲۰۲۶ — راند ۲۸۰، پس از انتشار v1.9.216). مبنا: سورس `src/core/pine/` + مستندات رسمی TV (Sphinx docs قابل fetch) + چک‌لیست مهاجرت v3→v4→v5→v6 + موجودی کامل موتور (همه ادعاها با `file:line`).
 > هدف: **هر اندیکاتور عمومی Pine روی اپ بدون دیباگ تکی اجرا شود** — یعنی انطباق با استاندارد، نه fix موردی.
 > روش پیشنهادی پذیرش: corpus-based (§۷) — نه «سوپرترند بعدی».
 
-> **بازبینی v1.9.216 / راند ۲۷۹ (نوامبر ۲۰۲۶):** بخش‌های ۲–۶ «تصویر لحظه‌ی کشف» در اکتبر ۲۰۲۶ هستند و به‌عنوان تاریخچه نگه داشته می‌شوند. تقریباً همه‌ی گپ‌های آن‌ها تا راند ۲۳۰ بسته شده‌اند؛ جدول زیر وضعیت فعلی است.
+> **بازبینی راند ۲۸۰ (نوامبر ۲۰۲۶):** بخش‌های ۲–۶ «تصویر لحظه‌ی کشف» در اکتبر ۲۰۲۶ هستند و به‌عنوان تاریخچه نگه داشته می‌شوند. تقریباً همه‌ی گپ‌های آن‌ها تا راند ۲۳۰ بسته شده‌اند؛ جدول زیر وضعیت فعلی است.
 
 | گپ (بخش قدیمی) | وضعیت فعلی |
 |---|---|
@@ -29,8 +29,8 @@
 | واحد `time` در HTF-aggregate (§۱۱) | ✅ راند ۱۹۹ |
 | آیتم تقویمی `verify_pine78` (§۱۰) | ✅ راند ۱۹۹ |
 | qualifierها (§۳) | 🔶 جزئی — فقط جاهایی که کامپایلر TV عملاً اعمال می‌کند (`plot` style/linestyle و آرگومان‌های `request.*`) |
-| رندر `polyline` / `linefill` (§۴-۷) | 🔶 باز — موتور `new/delete` دارد، نقاشی ندارد |
-| `math.bitwise_*` (§۴-۳) | 🔶 باز — کم‌کاربرد |
+| رندر `polyline` / `linefill` (§۴-۷) | ✅ راند ۲۸۰ تأیید شد — از راند ۱۳۶/۱۴۱ نقاشی می‌شوند؛ کلید نمایش تب Style اضافه شد |
+| `math.bitwise_*` (§۴-۳) | ✅ بسته — مرجع رسمی v6 چنین چیزی ندارد؛ `math.*` کامل است |
 | حسابداری ۶۴-پلات TV (§۴-۱۰) | 🔶 جزئی — سقف هست، محاسبه‌ی رنگ سری×N و hline رایگان نیست |
 | `request.dividends/earnings/splits/financial` (§۴-۹) | 🔶 خارج از دامنه — خطای صریح |
 | پل Pine → پنل Alerts (`alert`/`alertcondition`) | ✅ راند ۲۷۹ — نوار رویداد زنده + کارت «Script alerts» |
@@ -110,11 +110,11 @@
 
 ### ۴-۱. `ta.*` — موجود (۴۰): `sma ema rma wma vwma hma rsi change mom roc cum rising falling tr atr stdev dev bb bbw macd supertrend cci stoch wpr mfi obv highest lowest highestbars lowestbars crossover crossunder cross barssince valuewhen pivothigh pivotlow linreg sar vwap` (`ta.js:176-649`)
 ### ‏۴-۲. `ta.*` — ✅ راندهای ۱۵۳/۱۵۴/۱۹۰/۲۲۷: `alma cmo cog correlation dmi kc kcw median mode percentile_linear_interpolation percentile_nearest_rank percentrank rci swma tsi variance` و وِرهای سری `ta.accdist ta.iii ta.nvi ta.obv ta.pvi ta.pvt ta.wad ta.wvad` اضافه شدند.
-### ۴-۳. `math.*` — موجود (۲۶+۶ const، `math.js:22-97`، شامل `round_to_mintick:85`)؛ 🔶 `math.bitwise_*` هنوز نیست (namespace کم‌کاربرد v6)؛ `avg/sum` روی آرایه پوشش دارد.
+### ۴-۳. `math.*` — ✅ **کامل و مطابق مرجع** (۲۶ تابع + ۶ ثابت، `math.js:22-97`، شامل `round_to_mintick:85`). راند ۲۸۰ با رفرنس رسمی v6 تطبیق داده شد: مرجع هم هیچ `math.bitwise_*` ندارد، پس این ردیف بسته است. `avg/sum` روی آرایه پوشش دارد.
 ### ۴-۴. `str.*` — ✅ `str.format` (جاوا‌استایل) راند ۱۵۱ اضافه شد؛ بقیهٔ توابع نمایشی موجودند.
 ### ۴-۵. `color.*` — کامل عملی (۷ تابع + ~۹۰ const، `color.js` + `types.js:37-71`)
 ### ۴-۶. `array.*` — کامل عملی (۲۷ متد + namespace/method دابل‌دیسپچ)؛ ✅ `matrix.*`/`map.*` از راند ۱۹۶ کامل‌اند (creation/generics/get/set/reshape/sort/aggregations/persistence).
-### ۴-۷. drawings — `line/box/label` کامل عملی؛ ✅ `table.*` موتور (راند ۱۵۱) و رندر DOM (راند ۱۵۵) دارد؛ ✅ `box.extend` راند ۲۰۰؛ 🔶 `polyline/linefill` فقط new/delete دارند و رندر نمی‌شوند.
+### ۴-۷. drawings — `line/box/label` کامل عملی؛ ✅ `table.*` موتور (راند ۱۵۱) و رندر DOM (راند ۱۵۵) دارد؛ ✅ `box.extend` راند ۲۰۰؛ ✅ **`polyline/linefill` هم رندر می‌شوند** (راند ۱۳۶/۱۴۱ + کلید نمایش در تب Style از راند ۲۸۰) — ادعای قبلی «رندر نمی‌شوند» غلط بود.
 ### ۴-۸. `input.*` — ✅ ۱۲ namespaced + legacy/v4؛ ✅ `input.enum()` + `active` از راندهای ۱۵۱/۱۵۴ (با دیالوگ E2E راند ۱۶۱).
 ### ۴-۹. متفرقه — ✅ `log.*` راند ۱۹۰، مولتی‌لاین `"""` راند ۲۲۴، `session.*`/`ticker.*`/`order.*`/`currency.*` و `timeframe.main_period` (راند ۲۲۷) پیاده شدند؛ 🔶 `request.dividends/earnings/splits/financial` عمداً خارج از دامنه‌اند (خطای صریح) و `syminfo.main_tickerid/isin` همچنان جزئی است.
 ### ۴-۱۰. محدودیت‌های رسمی — سقف ۶۴ پلات هست (`866-873`) ولی 🔶 حسابداری TV (رنگ سری‌مقدار ×N، hline رایگان) هنوز کامل نیست؛ کپ drawings ۵۰۰ پیش‌فرض در برابر ۵۰/۵۰۰ رسمی (`objects.js:26-52` — نزدیک و کافی)؛ سقف ۴۰ `request.*`، کپ ۱۰۰K کالکشن، «na-ID هم می‌شمارد» — پیاده نشده‌اند.
@@ -123,7 +123,7 @@
 
 ## ۵. گپ‌های خروجی/رندر (پس از اجرای درست)
 
-`plot/plotshape/plotchar/plotarrow/plotcandle/fill/bgcolor/barcolor/hline` پینت می‌شوند (راندهای ۱۳۸–۱۴۹)؛ `table.*` از راند ۱۵۵ موتور و رندر DOM دارد؛ `polyline`/`linefill` هنوز نقاشی نمی‌شوند؛ `plot.offset` ایندکس را شیفت می‌دهد و اسلات‌های آینده drop (`820-863` — مرز viewport باید تست شود)؛ `plotarrow.offset`/`plotshape.offset` نادیده (یادداشت راند ۱۴۹).
+`plot/plotshape/plotchar/plotarrow/plotcandle/fill/bgcolor/barcolor/hline` پینت می‌شوند (راندهای ۱۳۸–۱۴۹)؛ `table.*` از راند ۱۵۵ موتور و رندر DOM دارد؛ `polyline`/`linefill` هم از راند ۱۳۶/۱۴۱ روی کانواس FG نقاشی می‌شوند (راند ۲۸۰ تأیید و کلید نمایش گرفت)؛ `plot.offset` ایندکس را شیفت می‌دهد و اسلات‌های آینده drop (`820-863` — مرز viewport باید تست شود)؛ `plotarrow.offset`/`plotshape.offset` نادیده (یادداشت راند ۱۴۹).
 
 ---
 
@@ -134,7 +134,7 @@
 3. **tick-model واقعی** — ✅ راند ۱۹۸ (`calc_on_every_tick` + fillهای realtime). Web Worker همچنان اختیاری است.
 4. **`library/import/export`** — ✅ راند ۱۹۵ با resolver روی استور محلی (بدون شبکه؛ نسخه advisory).
 5. **نسخه‌گیتینگ** — ✅ راندهای ۱۵۲/۱۵۶/۱۹۷/۲۲۴ (`//@version`، bool سخت‌گیر v6، int-div قدیمی، `study()`).
-6. **رندر `polyline`/`linefill` و `math.bitwise_*`** — 🔶 باقی‌مانده‌های کوچک؛ جزئیات در `PINE-ENGINE-PLAN.md`.
+6. **رندر `polyline`/`linefill` و `math.bitwise_*`** — ✅ هر دو بسته شدند (راند ۲۸۰): رندر از قبل وجود داشت و `bitwise` در مرجع رسمی نیست.
 
 ---
 
@@ -149,10 +149,10 @@
 
 ## ۸. نقشه راه فازی (هر فاز = ۱–۳ راند، قابل‌عرضه مستقل)
 
-> **وضعیت راند ۲۷۹:** فازهای A، C، D، F، G و H بسته شدند؛ B جز `math.bitwise_*` و E جز رندر `polyline/linefill` و حسابداری کامل ۶۴-پلات، انجام شده‌اند. پل Pine → Alerts هم در راند ۲۷۹ بسته شد. فهرست بسته‌ها در جدول «بازبینی» بالای سند است.
+> **وضعیت راند ۲۸۰:** فازهای A، C، D، F، G و H بسته شدند؛ B (شامل `math.*` که کامل است) و E (شامل رندر `polyline/linefill`) هم بسته‌اند؛ تنها باقی‌ماندهٔ E حسابداری کامل ۶۴-پلات است. پل Pine → Alerts هم در راند ۲۷۹ بسته شد. فهرست بسته‌ها در جدول «بازبینی» بالای سند است.
 
 - **فاز A — معناشناسی (بحرانی)**: lazy ‏`?:` ‏(فقط شاخه گرفته + ثبت اینکه `ta.*` داخل شاخه هیستوری نمی‌سازد — همان هشدار رسمی)، short-circuit ‏`and/or`، ‏`varip` واقعی در rollback (`snapshot/restore` + `dropObjectsBornAfter`)، گیت bool سخت‌گیر پشت `version>=6`، تست int-div روی v6.
-- **فاز B — `ta.*` کامل**: ۱۴ تابع مفقود §۴-۲ + وِرهای سری + هارنس فرمولی؛ سپس `math.bitwise_*` و `str.format`.
+- **فاز B — `ta.*` کامل**: ۱۴ تابع مفقود §۴-۲ + وِرهای سری + هارنس فرمولی؛ سپس `str.format`. (`math.bitwise_*` بسته شد: در مرجع رسمی وجود ندارد.)
 - **فاز C — ورودی/نسخه**: `input.enum()` + `active`، گیت `//@version` (حداقل: v3/v4 `study` پذیرفته شود، رفتارهای v6 گیت شود)، `transp=` به `color.new` مپ شود (سازگاری v4 خاموش-درست)، مولتی‌لاین، `log.*` (لااقل collect مثل `alert()`).
 - **فاز D — دیتا**: `gaps_on` تزریق na واقعی، بافر OHLCV تا ۱۰۰۰۰، `syminfo/timeframe/chart.session` تکمیلی، `request.*` غیر-secruity با خطای دقیق (زنده/mرده مثل `quandl`).
 - **فاز E — drawings کامل**: `table.*` (موتور + رندر — بزرگ‌ترین آیتم رندری)، `box.extend`، متدهای `polyline`، حسابداری ۶۴-پلات TV.

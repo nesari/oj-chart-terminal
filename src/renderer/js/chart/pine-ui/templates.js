@@ -711,6 +711,10 @@ function openSettingsDialog(pane, inst) {
         mkObjCheck('Boxes', 'boxes');
         mkObjCheck('Lines', 'lines');
         mkObjCheck('Pane labels', 'labels');
+        /* ROUND280: polylines/linefills were always painted but had no
+           Style-tab master toggle; TV lists them as graphic objects. */
+        mkObjCheck('Polylines', 'polylines');
+        mkObjCheck('Line fills', 'linefills');
       }
       /* OUTPUT VALUES (TV footer of the Style tab) */
       U.el('div', 'ist-sec', styleBody).textContent = 'Output values';

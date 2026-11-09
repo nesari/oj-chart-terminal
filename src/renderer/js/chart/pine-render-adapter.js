@@ -971,8 +971,11 @@ class PineRenderAdapter {
     const paintObjs = (list) => {
       // boxes / polylines / linefills first (fills), then lines, then labels on top
       for (const o of list) if (o.kind === 'box' && this._drawKindOn('boxes')) this._paintBox(ctx, o);
-      for (const o of list) if (o.kind === 'polyline') this._paintPolyline(ctx, o);
-      for (const o of list) if (o.kind === 'linefill') this._paintLinefill(ctx, o);
+      /* ROUND280: polylines/linefills join the TV "Graphic objects" master
+         toggles. drawKindOn() defaults to ON for an absent key, so styles
+         saved before this round keep showing them. */
+      for (const o of list) if (o.kind === 'polyline' && this._drawKindOn('polylines')) this._paintPolyline(ctx, o);
+      for (const o of list) if (o.kind === 'linefill' && this._drawKindOn('linefills')) this._paintLinefill(ctx, o);
       for (const o of list) if (o.kind === 'line' && this._drawKindOn('lines')) this._paintLine(ctx, o);
       for (const o of list) if (o.kind === 'label' && this._drawKindOn('labels')) this._paintLabel(ctx, o);
     };

@@ -71,7 +71,7 @@ function effServerOffSec(inst) {
  *   fills:  { [fillIdx]: { visible?: bool, color0?: css, color1?: css } },
  *   candles: { visible?: bool, color?: css, wickcolor?: css, bordercolor?: css },
  *   hlines: { [idx]: { visible?: bool, color?: css } },
- *   objects: { boxes?: bool, lines?: bool, labels?: bool },
+ *   objects: { boxes?: bool, lines?: bool, labels?: bool, polylines?: bool, linefills?: bool },
  *   precision?: 'default' | 0..8, priceLabels?: bool, statusValues?: bool, statusInputs?: bool }
  * Applied as a post-pass over rt.out after every run (full + forming) so
  * canvas painters, legend and native series all see one consistent output.
