@@ -1,7 +1,7 @@
 # PINE-ENGINE-PLAN — نسخهٔ زندهٔ نقشه‌راه Pine Script v6
 
 > این سند، نسخهٔ نگهداشت‌شوندهٔ `PINE-ENGINE-ROADMAP.md` اصلی است و با پیشرفت فازها به‌روز می‌شود.
-> وضعیت تا **v1.9.216 / راند ۲۷۸** — نوامبر ۲۰۲۶.
+> وضعیت تا **راند ۲۷۹ (پس از انتشار v1.9.216)** — نوامبر ۲۰۲۶.
 
 ## وضعیت فازها
 
@@ -13,10 +13,10 @@
 | ۴ | کتابخانهٔ استاندارد (`ta/math/str/time/color/array/matrix/map/objects/inputs/request`) | ✅ انجام شد | `stdlib/*` |
 | ۵ | لایهٔ نمایش (plot*/fill/bgcolor/barcolor/hline/line/box/label/table) | ✅ انجام شد — `polyline`/`linefill` هنوز رندر نمی‌شوند | `pine-render-adapter.js` |
 | ۶ | پنل Pine Editor (ادیتور صفر-وابستگی، اسکریپت‌استور، Inputs خودکار، کنسول CE/RE، Import/Export) | ✅ انجام شد | `pine-ui/panel.js`, `pine-scripts-store.js` |
-| ۷ | اتصال Alert (`alertcondition`/`alert` → موتور Alerts + صدا) | 🔶 موتور شرایط را جمع می‌کند؛ پل نهایی به پنل Alerts هنوز بسته نشده | `interpreter/builtins.js`, `panels/alerts.js` |
+| ۷ | اتصال Alert (`alertcondition`/`alert` → موتور Alerts + صدا) | ✅ راند ۲۷۹ — نوار رویداد زنده + کارت «Script alerts» در پنل Alerts | `interpreter/builtins.js`, `pine-ui/runtime.js`, `panels/alerts.js` |
 | ۸ | کارایی (chunked run، به‌روزرسانی فقط forming-bar، سقف نرم حلقه) | ✅ انجام شد؛ Web Worker همچنان اختیاری و پیاده‌نشده | `compile.js`, `pine-ui/` |
 | ۹ | `strategy.*` + Strategy Tester | ✅ راند ۱۷۱–۱۷۳ (سفارش، حساب، پنل) | `stdlib/strategy.js`, `trade/tester.js` |
-| ۱۰ | تست تطبیق (فیکسچرها + پاریتی عددی + e2e هدلس + اسکرین‌شات) | ✅ ۱۵۸ سوئیت unit + corpus + E2E | `tests/unit/`, `tests/archive/e2e/` |
+| ۱۰ | تست تطبیق (فیکسچرها + پاریتی عددی + e2e هدلس + اسکرین‌شات) | ✅ ۱۵۹ سوئیت unit + corpus + E2E | `tests/unit/`, `tests/archive/e2e/` |
 | ۱۱ | مستندسازی و یکپارچگی فرآیند | ✅ همین سند + CHANGELOG + README | `docs/` |
 
 ## معیار پذیرش نهایی — تحقق یافت
@@ -27,7 +27,7 @@
 
 ## موارد باز / اختیاری
 
-1. **پل Pine → Alerts (تنها نیمه‌تمام فاز ۷):** `alertcondition()` شرایط را در `out.alertconds` جمع می‌کند و `alert()` پیام را در `out.alerts` نگه می‌دارد، ولی هنوز مصرف‌کننده‌ای در رندرر/پنل Alerts ندارد؛ `_fnAlert` هم صریحاً MVP است (فقط collect، بدون firing). تکمیل آن نیاز به تصمیم دربارهٔ نگاشت هر اسکریپت به شرط‌های پنل و سیاست تکرار/صدا دارد.
+1. ~~**پل Pine → Alerts**~~ — ✅ **راند ۲۷۹ انجام شد.** `alertcondition()` و `alert()` حالا روی نوار رویداد زندهٔ `out.pineAlerts` (با `seq` یکنوا) منتشر می‌شوند؛ بارهای تاریخی هرگز رویداد نمی‌دهند، پاس کامل فقط بار آخر را افشا می‌کند و رندرر همان پاس را به‌عنوان replay تاریخچه حذف می‌کند. `alertcondition()` یک‌بار در هر بار زنده تا وقتی شرط برقرار است فعال می‌شود و `alert()` پیام یکسان را در همان بار de-dupe می‌کند. رندرر با `PineUI.pollAlerts()` (کرسر per-instance) رویدادها را می‌کشد و به همان مسیر `UI.toast` + `electronAPI.notify` + `playSound()` می‌فرستد؛ کارت «Script alerts» در پنل Alerts کلید اصلی، کلید پیام‌های `alert()` و کلید arm هر شرط را دارد (ذخیره در `mt5_pa_cfg`).
 2. **Web Worker** برای اسکریپت‌های خیلی سنگین (benchmark واقعی: 786 Zones روی تایم‌فریم بالا) — الان chunked روی main thread است.
 3. **رندر `polyline` / `linefill`** در `pine-render-adapter.js` (موتور `new/delete` دارد، نقاشی ندارد).
 4. **`math.bitwise_*`** (namespace کم‌کاربرد v6) پیاده نشده است.

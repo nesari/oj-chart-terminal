@@ -134,6 +134,13 @@ class PineRuntime {
     this._pointSeq = 0; // ROUND215: unique chart.point ids (reference `==`)
 
     this.out = this._createOutput();
+    /* ROUND279 (Pine alerts): live event tape + floor. Historical bars never
+       emit, full passes only expose the final bar, and the renderer suppresses
+       that first pass (history replay is not a live alert). */
+    this._alertSeq = 0;
+    this._alertFloor = Infinity;
+    this._alertMsgBar = -1;
+    this._alertMsgSet = new Set();
     this._histPushed = new Set();
     this._htfActiveSite = null; // ROUND160: security call-site owning bucket history reads
     brokerInit(this); // ROUND171/phase-2a: backtester order state (fresh per runtime; reset per full run)
@@ -174,8 +181,11 @@ class PineRuntime {
       bgcolor: [],            // per-bar PineColor|null
       barcolor: [],           // per-bar PineColor|null
       hlines: [],
-      alertconds: [],         // { title, message }
-      alerts: [],
+      alertconds: [],         // { title, message, lastCond, lastFiredBar }
+      alerts: [],             // { message, at, bar } (legacy collect tape)
+      /* ROUND279: live alert events for the renderer bridge —
+         { seq, kind:'alert'|'condition', title, message, bar, at } */
+      pineAlerts: [],
       _pushed: new Set(),     // site keys that pushed on the current bar
       nextId: 1,
     };

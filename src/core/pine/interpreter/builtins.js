@@ -1754,16 +1754,53 @@ const builtins = {
     const cond = positional[0];
     const title = positional[1] != null && !isNA(positional[1]) ? String(positional[1]) : '';
     const message = positional[2] != null && !isNA(positional[2]) ? String(positional[2]) : '';
-    let a = this.out.alertconds.find((x) => x.title === title);
-    if (!a) { a = { title, message }; this.out.alertconds.push(a); }
-    a.lastCond = truthy(cond);
+    /* ROUND279: an unnamed condition still needs a stable panel key; TV itself
+       requires a title, so a generated one only covers malformed scripts. It
+       must key off the CALL SITE (node id), not the current inventory length —
+       the length grows while the bar loop runs, which minted a fresh condition
+       per bar. */
+    const key = title || ('Alert condition ' + (node && node.id != null ? node.id : this.out.alertconds.length + 1));
+    let a = this.out.alertconds.find((x) => x.title === key);
+    if (!a) { a = { title: key, message, lastFiredBar: -1 }; this.out.alertconds.push(a); }
+    const on = truthy(cond);
+    a.lastCond = on;
+    /* One event per live bar while the condition holds. `lastFiredBar` also
+       survives updateForming's rollback (the tape is not part of the snapshot),
+       so a re-run of the same bar never double-fires. */
+    if (on && a.lastFiredBar !== this.barIndex) {
+      a.lastFiredBar = this.barIndex;
+      this._pushPineAlert({ kind: 'condition', title: key, message });
+    }
     return undefined;
   },
 
+  /* ROUND279: the single gate for the renderer-facing alert tape. Historical
+     bars are below `_alertFloor`; a full pass only exposes its FINAL bar, and
+     the renderer drops that pass as history replay. */
+  _pushPineAlert(ev) {
+    if (!(this.barIndex >= this._alertFloor)) return;
+    const out = this.out.pineAlerts || (this.out.pineAlerts = []);
+    const seq = ++this._alertSeq;
+    out.push(Object.assign({ seq, bar: this.barIndex, at: Date.now() }, ev));
+    while (out.length > 500) out.shift();
+  },
+
   _fnAlert([positional, named, node]) {
-    // MVP stub (roadmap phase 7 → next round): collect the message, no firing
+    /* ROUND279: alert() is no longer a collect-only stub — the message joins
+       the live alert tape (toast + OS notification + sound in the renderer).
+       Per-bar de-duplication keeps updateForming re-runs quiet. */
     const message = positional[0] != null && !isNA(positional[0]) ? String(positional[0]) : '';
-    if (message) this.out.alerts.push({ message, at: Date.now(), bar: this.barIndex });
+    if (!message) return undefined;
+    this.out.alerts.push({ message, at: Date.now(), bar: this.barIndex });
+    if (this.out.alerts.length > 200) this.out.alerts.shift();
+    if (this._alertMsgBar !== this.barIndex) {
+      this._alertMsgBar = this.barIndex;
+      this._alertMsgSet.clear();
+    }
+    if (!this._alertMsgSet.has(message)) {
+      this._alertMsgSet.add(message);
+      this._pushPineAlert({ kind: 'alert', title: '', message });
+    }
     return undefined;
   },
 

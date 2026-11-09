@@ -120,6 +120,7 @@ const series = {
     this.env.lastBarIndex = bars.length - 1; // ROUND184b: last_bar_index is the final bar (was never set — fell back to the current bar, so `bar_index == last_bar_index - N` never fired)
     this._preFormSnap = null;
     this._resetForFullRun();
+    this._alertFloor = bars.length - 1; // ROUND279: only the final (live) bar may emit (after reset)
     for (let i = 0; i < bars.length; i++) {
       if (i === bars.length - 1) this._preFormSnap = this.snapshot();
       this.runBar(i, i === bars.length - 1);
@@ -145,6 +146,16 @@ const series = {
     this._memoBarIdx = -1;
     this._gwEpoch++;
     brokerInit(this); // ROUND171/phase-2a: full recalc restarts the backtest
+    /* ROUND279: a full recalc replays history — clear the live alert tape and
+       re-arm the per-condition per-bar guards. `_alertSeq` deliberately keeps
+       counting: the renderer cursor is a high-water mark, so a restarted
+       sequence would make every later live event look "already seen". */
+    this._alertFloor = Infinity;
+    this._alertMsgBar = -1;
+    this._alertMsgSet.clear();
+    this.out.pineAlerts.length = 0;
+    this.out.alerts.length = 0;
+    for (const a of this.out.alertconds) a.lastFiredBar = -1;
     /* ROUND195: libraries reset with the host (fresh globals/series/sites). */
     if (this.libs) for (const [, lib] of this.libs) lib.rt._resetForFullRun();
   },
@@ -160,6 +171,7 @@ const series = {
     /* ROUND87: TV full-recalc semantics — every complete re-run starts from
        an empty drawing store and FRESH var state (see _resetForFullRun) */
     this._resetForFullRun();
+    this._alertFloor = bars.length - 1; // ROUND279 (see runAll; after reset)
     const n = bars.length;
     let sliceStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     const nowMs = () => ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now());
@@ -179,6 +191,7 @@ const series = {
     this.env.bars = bars; // ROUND229 (see runAll)
     this.totalBars = bars.length;
     this.env.lastBarIndex = bars.length - 1; // ROUND184b (see runAll)
+    this._alertFloor = Math.min(this._alertFloor, bars.length - 1); // ROUND279
     if (!this._preFormSnap) this._preFormSnap = this.snapshot();
     this.restore(this._preFormSnap);
     // visuals born during the PREVIOUS forming run die with the rollback
@@ -208,6 +221,7 @@ const series = {
     this.env.bars = bars; // ROUND229 (see runAll)
     this.totalBars = bars.length;
     this.env.lastBarIndex = bars.length - 1; // ROUND184b (see runAll)
+    this._alertFloor = Math.min(this._alertFloor, bars.length - 1); // ROUND279
     this._preFormSnap = this.snapshot();
     this.runBar(bars.length - 1, true);
   },

@@ -18,6 +18,7 @@ import { Watchlist } from './watchlist.js';
 import { ObjectTree } from './objects.js';
 import { TradeAlerts } from '../trade/alerts.js';
 import { OT_NAME } from '../trade/state.js';
+import { PineUI } from '../chart/pine-ui.js'; /* ROUND279: Pine -> Alerts bridge */
 
 let audioCtx = null;
 
@@ -470,6 +471,7 @@ let audioCtx = null;
         if (Manager && Manager.applyPriceLines) for (const pn of App.panes) if (pn.symbol === symbol) Manager.applyPriceLines(pn);
       }
     }
+    pollPineAlerts(); /* ROUND279: drain live Pine alerts on every tick stream */
     if (changed) { save(); render(); }
   };
 
@@ -668,6 +670,123 @@ let audioCtx = null;
   }
   Alerts.renderNotifyLog = renderNotifyLog;
 
+  /* ================= ROUND279: Pine script alerts =================
+     Pine's alert() / alertcondition() now reach this panel. The engine
+     publishes a LIVE-ONLY tape (historical bars never emit, a full pass only
+     exposes its final bar and the renderer skips that pass as replay) and
+     PineUI.pollAlerts() drains it through the sink registered below.
+     Everything routes through the SAME toast + OS notification + sound path
+     as price/trade alerts. Per-condition arm switches persist in mt5_pa_cfg. */
+  Alerts.pineCfg = Object.assign({ enabled: true, messages: true, conds: {} }, U.lsGet('mt5_pa_cfg', {}));
+  if (!Alerts.pineCfg.conds || typeof Alerts.pineCfg.conds !== 'object') Alerts.pineCfg.conds = {};
+  function savePineCfg() { U.lsSet('mt5_pa_cfg', Alerts.pineCfg); }
+  let paOpen = U.lsGet('mt5_pa_open', false) === true;
+  function setPaOpen(v) { paOpen = !!v; try { U.lsSet('mt5_pa_open', paOpen); } catch (e) {} }
+  let paSig = '';
+
+  function pineInvSig(items) { return items.map((x) => x.key).join('\n'); }
+
+  function renderPineAlerts(inv) {
+    const box = document.getElementById('pine-alert-settings');
+    if (!box) return;
+    const c = Alerts.pineCfg;
+    const enabled = c.enabled !== false;
+    const items = inv || PineUI.pineAlertInventory();
+    paSig = pineInvSig(items);
+    box.innerHTML = `
+      <div class="al-card${paOpen ? ' al-open' : ''}">
+        <div class="al-head" title="Pine script alerts">
+          <span class="al-ico">${icon('bolt')}</span>
+          <span class="al-t">Script alerts</span>
+          <label class="sw-mini al-sw" title="Notify about Pine script alerts">
+            <input type="checkbox" id="pa-enabled"><i></i>
+          </label>
+          <span class="al-chev">${icon('chevdown')}</span>
+        </div>
+        ${!paOpen ? '' : !enabled ? `
+        <div class="al-collapse"><div class="al-collapse-in">
+        <div class="al-body"><div class="ta-dim">Off — alert() and alertcondition() calls from Pine scripts are silent. Turn the switch above on to receive their messages here.</div></div>
+        </div></div>`
+        : `
+        <div class="al-collapse"><div class="al-collapse-in">
+        <div class="al-body">
+          <div class="ta-defs">
+            <label class="sw-row"><input type="checkbox" id="pa-messages"><i></i><span>alert() messages</span></label>
+          </div>
+          <div class="ta-defs" id="pa-live"></div>
+          <div class="ta-dim" id="pa-hint">Live bars only — history replay is silent. Each condition keeps its own arm switch; alert() messages share the switch above.</div>
+        </div></div></div>`}
+      </div>`;
+    const head = box.querySelector('.al-head');
+    head.addEventListener('click', (e) => {
+      if (e.target.closest('.al-sw')) return; /* the switch is not the expander */
+      accToggle('pine-alert-settings', () => paOpen, setPaOpen, renderPineAlerts);
+    });
+    const en = box.querySelector('#pa-enabled');
+    en.checked = enabled;
+    en.addEventListener('change', () => {
+      c.enabled = en.checked;
+      savePineCfg();
+      if (en.checked) { setPaOpen(true); renderPineAlerts(); } /* show what just got armed */
+    });
+    if (!paOpen || !enabled) return;
+    const msg = box.querySelector('#pa-messages');
+    msg.checked = c.messages !== false;
+    msg.addEventListener('change', () => { c.messages = msg.checked; savePineCfg(); });
+    const live = box.querySelector('#pa-live');
+    if (!items.length) {
+      live.innerHTML = '<div class="ta-dim">No alertconditions yet — they appear here once a Pine indicator with alertcondition() loads.</div>';
+      return;
+    }
+    for (const it of items) {
+      const row = U.el('div', 'ta-row', live);
+      const nm = U.el('div', 'ta-name', row);
+      nm.innerHTML = `<b>${U.esc(it.script || 'Pine Script')}</b> <span class="ta-t">${U.esc(it.title || 'Alert condition')}</span>`;
+      const l = U.el('label', 'sw-mini sw-xs ta-tog', row);
+      l.innerHTML = '<input type="checkbox"><i></i><em>ARM</em>';
+      const input = l.querySelector('input');
+      input.checked = c.conds[it.key] !== false;
+      input.addEventListener('change', () => {
+        c.conds[it.key] = input.checked;
+        savePineCfg();
+      });
+    }
+  }
+  Alerts.renderPineAlerts = renderPineAlerts;
+
+  /* fired Pine alerts use the SAME notification path as price alerts */
+  Alerts.onPineAlert = function (ev) {
+    if (!ev) return;
+    const c = Alerts.pineCfg;
+    if (c.enabled === false) return;
+    if (ev.kind === 'alert' && c.messages === false) return;
+    if (ev.kind === 'condition' && c.conds[ev.key] === false) return;
+    const parts = [];
+    if (ev.kind === 'condition' && ev.title) parts.push(ev.title);
+    if (ev.message) parts.push(ev.message);
+    const body = parts.join(' — ') || 'Script alert fired';
+    const label = (ev.script ? ev.script + ' · ' : '');
+    UI.toast('Pine alert: ' + label + body, 'warn');
+    try { window.electronAPI && window.electronAPI.notify('Pine Alert', label + body); } catch (e) {}
+    playSound();
+  };
+
+  /* drain the live tape; a signature check keeps idle ticks from repainting.
+     A fired event never needs a repaint — the card only lists conditions. */
+  let paPollAt = 0;
+  function pollPineAlerts(force) {
+    const now = Date.now();
+    if (!force && now - paPollAt < 200) return;
+    paPollAt = now;
+    PineUI.pollAlerts();
+    const items = PineUI.pineAlertInventory();
+    const sig = pineInvSig(items);
+    if (sig === paSig) return;
+    paSig = sig;
+    if (paOpen) renderPineAlerts(items); /* collapsed: the next open re-renders */
+  }
+  Alerts.pollPineAlerts = pollPineAlerts;
+
   Alerts.init = function () {
     document.getElementById('alert-new-btn').innerHTML = icon('plus');
     document.getElementById('alert-new-btn').addEventListener('click', () => {
@@ -676,6 +795,8 @@ let audioCtx = null;
     renderSoundSettings(); /* ROUND73: notification-sound settings block */
     renderTradeAlerts();   /* ROUND85E: trading-alerts settings block */
     renderNotifyLog();     /* ROUND128: trade-notification list block */
+    renderPineAlerts();    /* ROUND279: Pine script alerts block */
+    try { PineUI.setAlertSink(Alerts.onPineAlert); } catch (e) {} /* ROUND279 */
     TradeAlerts.onChange.push(renderTradeAlerts);
     TradeAlerts.onChange.push(renderNotifyLog);
     render();

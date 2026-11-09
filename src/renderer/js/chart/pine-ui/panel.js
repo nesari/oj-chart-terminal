@@ -102,7 +102,7 @@ async function rebuild(pane, inst, opts) {
   const adapter = new PineRenderAdapter(pane, inst);
   /* ROUND77 (BUG-76-B): running/pendingRerun serialize the lifecycle — see runFull */
   const st = { adapter, rt: null, status: 'loading', errors: [], errorLine: 0, script, scriptId: inst.scriptId,
-    running: false, pendingRerun: false,
+    running: false, pendingRerun: false, _alertCursor: 0, /* ROUND279: last Pine alert seq seen */
     /* ROUND80: the TF this runtime was built for — a TF switch must REBUILD
        (fresh globals + correct env.tfSec), never re-run the old runtime */
     tf: pane.tf,
@@ -147,6 +147,10 @@ async function rebuild(pane, inst, opts) {
     chartBg: (typeof document !== 'undefined' && document.body && document.body.classList.contains('theme-light')) ? '#ffffff' : '#0f0f0f',
   });
   st.rt = rt;
+  /* ROUND279: a rebuilt runtime starts its own alert sequence at 0, so the
+     renderer cursor must reset with it — otherwise every live event from the
+     new instance would look older than the high-water mark and be swallowed. */
+  st._alertCursor = 0;
   adapter.attach(rt);
   /* ROUND168 (phase 1a: cross-symbol history): prefetch literal
      request.security("SYM","TF",...) pairs so the engine branch finds
@@ -330,6 +334,15 @@ async function runFull(pane, inst) {
     st.lastRunMs = Math.round(performance.now() - t0);
     st.lastRunBars = pane.bars.length;
     st.lastRunAt = Date.now();
+    /* ROUND279: a full pass replays history, so its alert tape is never live.
+       Advance the cursor past everything that pass produced; only events from
+       updateForming/pushNewBar (real ticks / new bars) reach the panel.
+       Runs on FAILED passes too: an erroring script may already have emitted
+       replay events before it threw, and those must not surface as live. */
+    if (st.rt && st.rt.out) {
+      const evs = st.rt.out.pineAlerts || [];
+      st._alertCursor = evs.length ? evs[evs.length - 1].seq : 0;
+    }
     /* ROUND163 (user report: "extra SMC lines that look higher-timeframe"):
        one census line per successful full pass — alive/added/GC'd drawings +
        line-span histogram + longest lines + top labels — so the next user log

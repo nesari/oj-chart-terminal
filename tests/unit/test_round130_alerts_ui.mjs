@@ -38,8 +38,8 @@ const tabAlerts = (html.match(/<div class="rtab hidden" id="tab-alerts">[\s\S]*?
 check('index: #alert-list moved ABOVE the settings stack',
   tabAlerts.indexOf('id="alert-list"') > -1 &&
   tabAlerts.indexOf('id="alert-list"') < tabAlerts.indexOf('id="al-stack"'));
-check('index: the three sections live inside #al-stack (notifications first, sound last)',
-  /<div id="al-stack">\s*<div id="trade-notify-log"><\/div>\s*<div id="trade-alert-settings"><\/div>\s*<div id="alert-sound-settings"><\/div>\s*<\/div>/.test(tabAlerts));
+check('index: the settings sections live inside #al-stack (notifications first, sound last, Pine alerts after)',
+  /<div id="al-stack">\s*<div id="trade-notify-log"><\/div>\s*<div id="trade-alert-settings"><\/div>\s*<div id="alert-sound-settings"><\/div>\s*<div id="pine-alert-settings"><\/div>\s*<\/div>/.test(tabAlerts));
 check('css: #al-stack is a shrinking, scrolling column that never squeezes the list flat',
   /#al-stack \{[^}]*flex: 0 1 auto; min-height: 0; overflow-y: auto;/.test(panelsCss));
 check('css: #alert-list keeps a usable minimum height',

@@ -23,6 +23,11 @@ import { add, onTickPane, rebuild, recomputePine, remove, runFull, toggleVisible
 import { ensureM1Cache, state } from './data.js';
 import { openSettingsDialog } from './templates.js';
 
+/* ROUND279 (Pine alerts): panel.js (history/full-pass cursor) and the Alerts
+   panel (notification sink) meet here without a new import cycle. */
+let pineAlertSink = null;
+function setPineAlertSink(fn) { pineAlertSink = typeof fn === 'function' ? fn : null; }
+
 /* ------------------------------ pane teardown ------------------------- */
 
 function dropPane(pane) {
@@ -320,6 +325,66 @@ const PineUI = {
     const n = Math.max(1, Math.min(500, Math.floor(maxN) || 200));
     return out.slice(-n);
   },
+  /* ROUND279 (Pine alerts): live alertconditions across every ok instance —
+     the Alerts panel renders one arm/disarm switch per entry. */
+  pineAlertInventory() {
+    const out = [];
+    try {
+      for (const [pane, map] of RT) {
+        for (const [instId, st] of map) {
+          if (!st || !st.rt || st.running || st.status !== 'ok' || !st.rt.out) continue;
+          const script = (st.rt.meta && st.rt.meta.title) || (st.script && st.script.name) || 'Pine Script';
+          const scriptId = st.scriptId || '';
+          for (const a of (st.rt.out.alertconds || [])) {
+            out.push({
+              pane, instId, scriptId, script,
+              title: a.title || '', message: a.message || '',
+              key: scriptId + '|' + (a.title || ''),
+            });
+          }
+        }
+      }
+    } catch (e) {}
+    return out;
+  },
+  /* ROUND279 (Pine alerts): drain each instance's live tape past its cursor.
+     Returns how many entries were forwarded to the sink. */
+  pollAlerts() {
+    let n = 0;
+    try {
+      for (const [pane, map] of RT) {
+        const bars = (pane && pane.bars) || [];
+        for (const [instId, st] of map) {
+          if (!st || !st.rt || st.status !== 'ok' || !st.rt.out) continue;
+          /* A pass in flight is a history replay: its tape is discarded when
+             runFull advances the cursor. Never forward mid-pass events. */
+          if (st.running) continue;
+          const evs = st.rt.out.pineAlerts || [];
+          let cur = st._alertCursor || 0;
+          for (const ev of evs) {
+            if (!ev || !(ev.seq > cur)) continue;
+            cur = ev.seq;
+            if (!pineAlertSink) continue;
+            const script = (st.rt.meta && st.rt.meta.title) || (st.script && st.script.name) || 'Pine Script';
+            const scriptId = st.scriptId || '';
+            const bar = bars[ev.bar];
+            try {
+              pineAlertSink({
+                kind: ev.kind, title: ev.title || '', message: ev.message || '',
+                bar: ev.bar, time: bar && bar.time != null ? bar.time : null,
+                script, scriptId, key: scriptId + '|' + (ev.title || ''),
+                pane, instId,
+              });
+            } catch (e) { Log.debug('pine', 'alert sink failed', e); }
+            n++;
+          }
+          st._alertCursor = cur;
+        }
+      }
+    } catch (e) {}
+    return n;
+  },
+  setAlertSink: setPineAlertSink,
 };
 
 /* ROUND184: strategy trade markers ride the Manager marker funnel
