@@ -30,7 +30,7 @@ const UNIT = path.join(ROOT, 'tests', 'unit');
 const CORE = path.join(ROOT, 'src', 'core');
 const TIMEOUT_MS = 90_000;
 const CONCURRENCY = process.env.CI ? 2 : 4;
-const SERIAL = new Set(['verify_pine80.mjs', 'test_round266_ci_timing_gate.mjs']);
+const SERIAL = new Set(['verify_pine80.mjs', 'test_round266_ci_timing_gate.mjs', 'test_round281_corpus_budget.mjs']);
 
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {

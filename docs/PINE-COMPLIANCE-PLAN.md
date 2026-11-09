@@ -131,7 +131,7 @@
 
 1. **کراس‌نماد `security`** — ✅ راند ۱۶۸–۱۷۰ (هیستوری، کراس‌تایم‌فریم، تیک زنده و نماد داینامیک).
 2. **بک‌تستر `strategy.*`** — ✅ راند ۱۷۱–۱۷۳ (سفارش، حساب، پنل Strategy Tester). `request.*` بنیادی همچنان خارج از دامنه است.
-3. **tick-model واقعی** — ✅ راند ۱۹۸ (`calc_on_every_tick` + fillهای realtime). Web Worker همچنان اختیاری است.
+3. **tick-model واقعی** — ✅ راند ۱۹۸ (`calc_on_every_tick` + fillهای realtime). Web Worker ارزیابی شد (راند ۲۸۱) و لازم نیست: پاس chunked هر ۱۶–۲۱ms yield می‌دهد و هزینه خطی است؛ به‌جایش گیت بودجه‌ی کورپوس در CI اضافه شد.
 4. **`library/import/export`** — ✅ راند ۱۹۵ با resolver روی استور محلی (بدون شبکه؛ نسخه advisory).
 5. **نسخه‌گیتینگ** — ✅ راندهای ۱۵۲/۱۵۶/۱۹۷/۲۲۴ (`//@version`، bool سخت‌گیر v6، int-div قدیمی، `study()`).
 6. **رندر `polyline`/`linefill` و `math.bitwise_*`** — ✅ هر دو بسته شدند (راند ۲۸۰): رندر از قبل وجود داشت و `bitwise` در مرجع رسمی نیست.

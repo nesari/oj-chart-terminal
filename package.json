@@ -17,6 +17,7 @@
     "check:mt5": "node scripts/checks/check-mt5.mjs",
     "report:core-coverage": "node scripts/checks/core-coverage.mjs",
     "report:perf": "node scripts/checks/perf-profile.mjs",
+    "check:pine-budget": "node tests/unit/test_round281_corpus_budget.mjs",
     "smoke": "node scripts/checks/smoke-boot.mjs",
     "test": "npm run verify",
     "release": "node scripts/release.mjs"

@@ -48,6 +48,10 @@ console.log('\n[1] timing-sensitive suites run alone');
     'verify_pine80.mjs is in the SERIAL set');
   ok(/const SERIAL = new Set\(\[[^\]]*'test_round266_ci_timing_gate\.mjs'/.test(sched),
     'this suite is in the SERIAL set too (it spawns children)');
+  /* ROUND281: the corpus budget gate measures a same-process wall-time ratio;
+     a sibling child on a 2-vCPU runner can perturb that, so it must run alone. */
+  ok(/const SERIAL = new Set\(\[[^\]]*'test_round281_corpus_budget\.mjs'/.test(sched),
+    'the corpus budget gate is in the SERIAL set (it measures wall time)');
   const serialPick = sched.slice(sched.indexOf('const serial ='), sched.indexOf('const parallel ='));
   ok(/files\.filter\(\(f\) => SERIAL\.has\(f\)\)/.test(serialPick), 'serial = SERIAL members');
   const parallelPick = sched.slice(sched.indexOf('const parallel ='));

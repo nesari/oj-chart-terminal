@@ -45,6 +45,9 @@ jobs:
       - name: Core coverage report (src/core)
         run: npm run report:core-coverage -- --min 80
 
+      - name: Pine corpus cost budget (ROUND281)
+        run: npm run check:pine-budget
+
       - name: Provider harness gate (replayable MT5 fake)
         run: npm run check:mt5
 

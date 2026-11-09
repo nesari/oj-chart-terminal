@@ -22,7 +22,7 @@ const CONCURRENCY = process.env.CI ? 2 : 4;
    sibling child: on a 2-vCPU shared runner the OS can stall one of them for
    seconds (GC, antivirus, vCPU steal) and turn a healthy run red. They run
    alone, one after another, before the concurrent pool. */
-const SERIAL = new Set(['verify_pine80.mjs', 'test_round266_ci_timing_gate.mjs']);
+const SERIAL = new Set(['verify_pine80.mjs', 'test_round266_ci_timing_gate.mjs', 'test_round281_corpus_budget.mjs']);
 
 const files = fs.readdirSync(DIR)
   .filter((f) => f.endsWith('.mjs') && f !== 'source-utils.mjs')
