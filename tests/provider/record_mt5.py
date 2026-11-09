@@ -105,6 +105,30 @@ def _symbol(s):
     return info
 
 
+def _mini_json(obj, level=0):
+    """Serialize with one bar/tick row per line.
+
+    ``json.dump(indent=1)`` puts every NUMBER on its own line, which turns a
+    small session into ~60k diff lines. Rows of scalars stay on one line while
+    objects and arrays of objects keep their readable multi-line layout.
+    """
+    pad = ' ' * level
+    if isinstance(obj, dict):
+        if not obj:
+            return '{}'
+        parts = ['%s %s: %s' % (pad, json.dumps(str(k)), _mini_json(obj[k], level + 1))
+                 for k in sorted(obj.keys())]
+        return '{\n' + ',\n'.join(parts) + '\n' + pad + '}'
+    if isinstance(obj, list):
+        if not obj:
+            return '[]'
+        if all(not isinstance(x, (dict, list)) for x in obj):
+            return json.dumps(obj, separators=(', ', ': '))
+        inner = ',\n'.join('%s %s' % (pad, _mini_json(x, level + 1)) for x in obj)
+        return '[\n' + inner + '\n' + pad + ']'
+    return json.dumps(obj)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description='Record a MetaTrader 5 session into a replay fixture.')
     ap.add_argument('--login', default='')
@@ -260,8 +284,8 @@ def main(argv=None):
             fixture['deals'] = [_deal(d) for d in deals]
 
     os.makedirs(os.path.dirname(os.path.abspath(a.output)), exist_ok=True)
-    with open(a.output, 'w', encoding='utf-8') as f:
-        json.dump(fixture, f, indent=1, sort_keys=True)
+    with open(a.output, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(_mini_json(fixture))
     mt5.shutdown()
     print('wrote %s: %d symbols, %d bars sets, %d tick sets, %d deals'
           % (a.output, len(fixture['symbols']), sum(len(v) for v in fixture['bars'].values()),

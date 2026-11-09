@@ -51,7 +51,7 @@ so the fixture still carries the last real session ticks instead of no ticks.
 ## Committed fixture
 
 `tests/provider/fixtures/mt5_session.json` is a real broker session (3 symbols,
-5 native timeframes, 300 bars and 1000 ticks each) recorded from a live
+5 native timeframes, 300 bars and up to 1000 ticks each) recorded from a live
 terminal. `test_replay_committed_real_fixture` always replays it — on Windows,
 Linux and macOS CI — so real symbol specs, bar values and pagination are
 regression-tested without a terminal. Regenerate it on a Windows machine:

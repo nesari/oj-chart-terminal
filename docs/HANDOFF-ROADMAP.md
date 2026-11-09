@@ -428,7 +428,7 @@ scripts/         ← فقط verify-electron.js, harness, checks/, make_app_icon.
   - فیلد Terminal path هم فایل `terminal64.exe` و هم پوشه‌ی نصب را می‌پذیرد؛ تشخیص advisory است و مسیر دستی را بلاک نمی‌کند.
   - `tests/unit/test_round278_mt5_detect.mjs` (۴۷ assertion) شامل تست روی ساختار واقعی پوشه‌های برند بروکر.
 - [x] **F8.7** — فیکسچر واقعی بروکر در مخزن و replay همیشگی در CI.
-  - `tests/provider/fixtures/mt5_session.json` از یک ترمینال متصل ضبط شد: ۳ نماد (EURUSD/USDJPY/XAUUSD)، ۵ تایم‌فریم، ۳۰۰ کندل و ۱۰۰۰ تیک برای هر نماد (حساب/نام/موجودی و مسیرها redact شده‌اند).
+  - `tests/provider/fixtures/mt5_session.json` از یک ترمینال متصل ضبط شد: ۳ نماد (EURUSD/USDJPY/XAUUSD)، ۵ تایم‌فریم، ۳۰۰ کندل و تا ۱۰۰۰ تیک برای هر نماد (حساب/نام/موجودی و مسیرها redact شده‌اند).
   - `test_replay_committed_real_fixture` بدون هیچ متغیر محیطی روی هر سه سیستم اجرا می‌شود: صفحه‌ی جدید/قدیمی bars، تطابق دقیق آخرین کندل و `digits/point` واقعی بروکر.
   - `record_mt5.py`: موجودی/equity و margin در حالت redaction خنثی می‌شوند و پنجره‌ی تیک در بازار بسته (آخر هفته/تعطیلات) پله‌ای بزرگ می‌شود تا فیکسچر، تیک واقعی آخرین نشست را از دست ندهد.
 
