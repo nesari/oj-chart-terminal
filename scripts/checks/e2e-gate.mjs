@@ -47,7 +47,9 @@ const CURATED = [
   'e2e_round283_alerts_pivots.py',
 ];
 
-let TIME_LIMIT_MS = 120_000;
+/* Per attempt. A cold Windows runner needs ~30s for a heavy suite; the retry
+   path may therefore take up to twice this. */
+let TIME_LIMIT_MS = 90_000;
 
 function findPython() {
   for (const cmd of ['python', 'python3', 'py']) {
@@ -79,6 +81,24 @@ function runSuite(py, file) {
       resolve({ file, ok: code === 0, ms: Date.now() - started, out, err });
     });
   });
+}
+
+/* A cold CI runner occasionally needs longer than the suites' own 20s boot
+   window before the demo provider + WebSocket handshake settle: the FIRST
+   suite of a run then dies in wait_for_selector while its neighbours pass.
+   That is environmental, not a code defect (ROUND266 made the same call for
+   the liveness probe). Retry ONCE — a real failure still fails twice. */
+function looksLikeBootTimeout(r) {
+  return /wait_for_selector|Timeout \d+ms exceeded|ERR_CONNECTION|ECONNREFUSED/i.test(r.out + r.err);
+}
+
+async function runWithRetry(py, file) {
+  const first = await runSuite(py, file);
+  if (first.ok || !looksLikeBootTimeout(first)) return first;
+  process.stdout.write('(boot timeout, retrying) ');
+  const second = await runSuite(py, file);
+  second.retried = true;
+  return second;
 }
 
 async function main() {
@@ -119,10 +139,10 @@ async function main() {
   const results = [];
   for (const f of files) {
     process.stdout.write(`[e2e] ${f} ... `);
-    const r = await runSuite(py, f);
+    const r = await runWithRetry(py, f);
     results.push(r);
     const summary = (r.out.split(/\r?\n/).reverse().find((l) => /all green|failed|FAIL/.test(l)) || '').trim();
-    console.log(r.ok ? 'ok' : 'FAIL', `${r.ms}ms${summary ? ' — ' + summary : ''}`);
+    console.log(r.ok ? 'ok' : 'FAIL', `${r.ms}ms${r.retried ? ' (retried)' : ''}${summary ? ' — ' + summary : ''}`);
     if (!r.ok) {
       const tail = (r.out + '\n' + r.err).split(/\r?\n/).filter((l) => l.includes('FAIL') || l.includes('Error') || l.includes('Traceback')).slice(0, 8);
       for (const l of tail) console.log('      ' + l.trim());

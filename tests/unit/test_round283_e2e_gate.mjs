@@ -103,6 +103,18 @@ const ok = (cond, label, extra) => {
   ok(/readdirSync\(DIR\)\.filter\(\(f\) => f\.endsWith\('\.py'\)\)/.test(g), '--all enumerates the archive directory');
   /* a per-suite timeout keeps CI bounded */
   ok(/TIME_LIMIT_MS/.test(g) && /timed out/.test(g), 'each suite has a timeout');
+  /* A cold-runner boot timeout must be retried ONCE, not failed outright —
+     ROUND266's precedent for the liveness probe. A real failure stays failed. */
+  ok(/function runWithRetry/.test(g) && /looksLikeBootTimeout/.test(g),
+    'a boot timeout is retried once');
+  ok(/boot timeout, retrying/.test(g), 'the retry is visible in the log');
+  ok(/second\.retried = true/.test(g) && /\(retried\)/.test(g), 'a retried suite is labelled');
+  /* retry only for the boot-timeout signature, never for an assertion failure */
+  {
+    const fn = (g.match(/function looksLikeBootTimeout[\s\S]*?\n\}/) || [''])[0];
+    ok(/wait_for_selector/.test(fn) && !/FAIL\b/.test(fn),
+      'the retry matches boot timeouts only, not failed assertions');
+  }
   /* non-zero exit on failure */
   ok(/process\.exit\(1\)/.test(g.slice(g.lastIndexOf('if (bad.length)'), g.length)), 'a failed suite fails the gate');
 }
