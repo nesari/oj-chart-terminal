@@ -177,11 +177,14 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
         maxV = Math.max(maxV, bins[bi]);
       }
       if (!maxV) return;
-      // POC + Value Area (70%)
+      // POC + Value Area (percentage is configurable — TV exposes it)
       let poc = 0;
       for (let i = 1; i < NB; i++) if (bins[i] > bins[poc]) poc = i;
+      /* ROUND285 (TV parity): the Value Area percentage is a real setting in
+         TV (default 70). It used to be hard-coded here. */
+      const vaPct = U.clamp(d.opts.vaPct == null ? 70 : Number(d.opts.vaPct), 1, 100) / 100;
       let acc = bins[poc], a = poc, b2 = poc;
-      while (acc < totV * 0.7 && (a > 0 || b2 < NB - 1)) {
+      while (acc < totV * vaPct && (a > 0 || b2 < NB - 1)) {
         const va = a > 0 ? bins[a - 1] : -1;
         const vb = b2 < NB - 1 ? bins[b2 + 1] : -1;
         if (vb >= va) { b2++; acc += Math.max(0, vb); } else { a--; acc += Math.max(0, va); }
@@ -190,18 +193,41 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       const x0 = v.xOf(d.points[0].t), x1 = v.xOf(d.points[1].t);
       const baseX = Math.min(x0, x1);
       const maxW = Math.max(30, Math.abs(x1 - x0) * 0.5);
+      /* ROUND285: colour + width are settings now (the histogram used to be
+         hard-coded blue/yellow and one pixel wide). */
+      const profCol = d.opts.color || '#2962ff';
+      const pocCol = d.opts.pocColor || '#f7c948';
+      const showPoc = d.opts.showPoc !== false;
+      const showVa = d.opts.showVa !== false;
       ctx.save();
       for (let i = 0; i < NB; i++) {
         if (!bins[i]) continue;
         const y1 = yOf(lo + i * step), y2 = yOf(lo + (i + 1) * step);
         const w = (bins[i] / maxV) * maxW;
-        ctx.globalAlpha = i >= a && i <= b2 ? 0.55 : 0.3;
-        ctx.fillStyle = bins[i] === bins[poc] ? '#f7c948' : '#2962ff';
+        const inVa = i >= a && i <= b2;
+        ctx.globalAlpha = showVa && inVa ? 0.55 : 0.28;
+        ctx.fillStyle = (showPoc && bins[i] === bins[poc]) ? pocCol : profCol;
         ctx.fillRect(baseX, Math.min(y1, y2), w, Math.max(1, Math.abs(y2 - y1) - 1));
       }
       ctx.globalAlpha = 1;
+      /* Value Area edges: two dashed guides with their prices (TV look) */
+      if (showVa) {
+        ctx.strokeStyle = profCol;
+        ctx.globalAlpha = 0.75;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        for (const edge of [lo + a * step, lo + (b2 + 1) * step]) {
+          const yv = yOf(edge);
+          if (yv == null) continue;
+          ctx.beginPath(); ctx.moveTo(baseX, yv); ctx.lineTo(baseX + maxW, yv); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+      }
       ctx.restore();
-      chipLabel(ctx, baseX + 24, yOf(lo + (poc + 0.5) * step), `POC ${U.fmtPrice(lo + (poc + 0.5) * step, v.digits)}`, 'rgba(24,28,39,.92)');
+      if (showPoc) {
+        chipLabel(ctx, baseX + 24, yOf(lo + (poc + 0.5) * step), `POC ${U.fmtPrice(lo + (poc + 0.5) * step, v.digits)}`, 'rgba(24,28,39,.92)');
+      }
     },
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {
@@ -259,12 +285,15 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       const x0 = v.xOf(a.t), x1 = v.xOf(b.t);
       const xa = Math.min(x0, x1), xb = Math.max(x0, x1);
       const yA = v.yOf(a.p), yB = v.yOf(b.p), yS = v.yOf(stop);
-      const win = dp >= 0 ? '#089981' : '#f23645';
-      const loss = dp >= 0 ? '#f23645' : '#089981';
+      /* ROUND285 (TV parity): TV's position forecast exposes a colour per zone
+         (profit / loss) and an entry line. They were hard-coded greens/reds.
+         `color` still tints the entry line so the existing Line row matters. */
+      const win = d.opts.profitColor || (dp >= 0 ? '#089981' : '#f23645');
+      const loss = d.opts.lossColor || (dp >= 0 ? '#f23645' : '#089981');
       const box = (ya, yb, col) => {
         ctx.save();
         ctx.globalAlpha = fillAlphaOf(d);
-        ctx.fillStyle = fillColorOf(d) === d.opts.color ? col : fillColorOf(d);
+        ctx.fillStyle = col;
         ctx.fillRect(xa, Math.min(ya, yb), Math.max(1, xb - xa), Math.abs(yb - ya));
         ctx.globalAlpha = 1;
         ctx.strokeStyle = col;
@@ -274,6 +303,14 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       };
       box(yA, yB, win);
       box(yA, yS, loss);
+      /* entry line (TV draws it solid in the tool colour) */
+      if (d.opts.showEntry !== false) {
+        ctx.save();
+        ctx.strokeStyle = d.opts.color || '#2962ff';
+        ctx.lineWidth = Math.max(1, d.opts.width || 1);
+        ctx.beginPath(); ctx.moveTo(xa, yA); ctx.lineTo(xb, yA); ctx.stroke();
+        ctx.restore();
+      }
       const pct = (dp / a.p) * 100, pctS = ((stop - a.p) / a.p) * 100;
       chipLabel(ctx, (xa + xb) / 2, (yA + yB) / 2, `Target ${dp >= 0 ? '+' : ''}${pct.toFixed(2)}%`, 'rgba(8,153,129,.92)');
       chipLabel(ctx, (xa + xb) / 2, (yA + yS) / 2, `Stop ${pctS.toFixed(2)}%`, 'rgba(242,54,69,.92)');
@@ -326,7 +363,9 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       for (let k = 1; k < P.length; k++) ctx.lineTo(P[k][0], P[k][1]);
       ctx.stroke();
       ctx.restore();
-      chipLabel(ctx, P[0][0], P[0][1] - 14, `${src.length} bars${d.opts.mirror ? ' · mirrored' : ''}`, 'rgba(24,28,39,.92)');
+      if (d.opts.showLabel !== false) {
+        chipLabel(ctx, P[0][0], P[0][1] - 14, `${src.length} bars${d.opts.mirror ? ' - mirrored' : ''}`, 'rgba(24,28,39,.92)');
+      }
     },
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {
@@ -374,15 +413,21 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       const sp = (v.spacing > 0 ? v.spacing : 8);
       const w = Math.max(1.5, sp * 0.62);
       let open = d.points[0].p;
+      /* ROUND285 (TV parity): the ghost candles used to be hard-coded 0.5 alpha
+         with fixed green/red. TV exposes an opacity plus the two colours. */
+      const ghostAlpha = U.clamp(
+        d.opts.fillOpacity != null ? Number(d.opts.fillOpacity) : 0.5, 0.05, 1);
+      const upCol = d.opts.color || '#089981';
+      const downCol = d.opts.color2 || '#f23645';
       ctx.save();
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = ghostAlpha;
       for (let k = 0; k < N; k++) {
         const close = open + slope;
         const hi = Math.max(open, close) + avgR * 0.35;
         const lo = Math.min(open, close) - avgR * 0.35;
         const x = x0 + k * sp;
         const yO = v.yOf(open), yC = v.yOf(close), yH = v.yOf(hi), yL = v.yOf(lo);
-        ctx.strokeStyle = ctx.fillStyle = close >= open ? '#089981' : '#f23645';
+        ctx.strokeStyle = ctx.fillStyle = close >= open ? upCol : downCol;
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, yH); ctx.lineTo(x, yL); ctx.stroke();
         ctx.fillRect(x - w / 2, Math.min(yO, yC), w, Math.max(1, Math.abs(yC - yO)));
@@ -454,6 +499,15 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       applyStroke(ctx, d);
       ctx.stroke();
       ctx.restore();
+      /* ROUND285 (TV parity): the sector shows its sweep angle inside the
+         wedge, and the radius can carry the price/time labels TV draws. */
+      if (d.opts.showLabel !== false) {
+        const deg = Math.abs(sweep) * 180 / Math.PI;
+        const midA = a0 + sweep / 2;
+        const lx = A[0] + Math.cos(midA) * (r * 0.62);
+        const ly = A[1] + Math.sin(midA) * (r * 0.62);
+        chipLabel(ctx, lx, ly, `${deg.toFixed(1)}°`, 'rgba(24,28,39,.92)');
+      }
     },
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {
@@ -574,26 +628,47 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       if (!maxV) return;
       let poc = 0;
       for (let i = 1; i < NB; i++) if (bins[i] > bins[poc]) poc = i;
+      /* ROUND285: same configurable Value Area percentage as the fixed-range
+         profile (TV exposes it on both). */
+      const vaPctA = U.clamp(d.opts.vaPct == null ? 70 : Number(d.opts.vaPct), 1, 100) / 100;
       let acc = bins[poc], a = poc, b2 = poc;
-      while (acc < totV * 0.7 && (a > 0 || b2 < NB - 1)) {
+      while (acc < totV * vaPctA && (a > 0 || b2 < NB - 1)) {
         const va = a > 0 ? bins[a - 1] : -1;
         const vb = b2 < NB - 1 ? bins[b2 + 1] : -1;
         if (vb >= va) { b2++; acc += Math.max(0, vb); } else { a--; acc += Math.max(0, va); }
       }
       const baseX = v.xOf(d.points[0].t);
       const maxW = Math.max(30, Math.min(240, (v.pw - baseX) * 0.5));
+      const profColA = d.opts.color || '#2962ff';
+      const pocColA = d.opts.pocColor || '#f7c948';
+      const showPocA = d.opts.showPoc !== false;
+      const showVaA = d.opts.showVa !== false;
       ctx.save();
       for (let i = 0; i < NB; i++) {
         if (!bins[i]) continue;
         const y1 = v.yOf(lo + i * step), y2 = v.yOf(lo + (i + 1) * step);
         const w = (bins[i] / maxV) * maxW;
-        ctx.globalAlpha = i >= a && i <= b2 ? 0.55 : 0.3;
-        ctx.fillStyle = bins[i] === bins[poc] ? '#f7c948' : '#2962ff';
+        const inVa = i >= a && i <= b2;
+        ctx.globalAlpha = showVaA && inVa ? 0.55 : 0.28;
+        ctx.fillStyle = (showPocA && bins[i] === bins[poc]) ? pocColA : profColA;
         ctx.fillRect(baseX, Math.min(y1, y2), w, Math.max(1, Math.abs(y2 - y1) - 1));
       }
       ctx.globalAlpha = 1;
+      if (showVaA) {
+        ctx.strokeStyle = profColA;
+        ctx.globalAlpha = 0.75;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        for (const edge of [lo + a * step, lo + (b2 + 1) * step]) {
+          const yv = v.yOf(edge);
+          if (yv == null) continue;
+          ctx.beginPath(); ctx.moveTo(baseX, yv); ctx.lineTo(baseX + maxW, yv); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+      }
       ctx.restore();
-      chipLabel(ctx, baseX + 24, v.yOf(lo + (poc + 0.5) * step), `POC ${U.fmtPrice(lo + (poc + 0.5) * step, v.digits)}`, 'rgba(24,28,39,.92)');
+      if (showPocA) chipLabel(ctx, baseX + 24, v.yOf(lo + (poc + 0.5) * step), `POC ${U.fmtPrice(lo + (poc + 0.5) * step, v.digits)}`, 'rgba(24,28,39,.92)');
     },
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {

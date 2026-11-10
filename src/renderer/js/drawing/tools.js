@@ -158,6 +158,24 @@ const HIT = 7;
   }
 
   /* small on-plot price chip (TV "Price labels" on line endpoints) */
+  /* ROUND285: local chip helper for tools defined in this module (tools2 has
+     its own in common.js; this one keeps tools.js self-contained). */
+  function chipLabel(ctx, x, y, text, bg, fg) {
+    ctx.save();
+    ctx.setLineDash([]);
+    ctx.font = '600 10px "Segoe UI", Arial, sans-serif';
+    const w = ctx.measureText(text).width + 10;
+    ctx.fillStyle = bg || 'rgba(24,28,39,.92)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x - w / 2, y - 8, w, 15, 3); else ctx.rect(x - w / 2, y - 8, w, 15);
+    ctx.fill();
+    ctx.fillStyle = fg || '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y - 0.5);
+    ctx.restore();
+  }
+
   function priceChip(view, x, y, price, color) {
     const ctx = view.ctx;
     const txt = U.fmtPrice(price, view.digits);
@@ -643,6 +661,22 @@ const HIT = 7;
       ctx.setLineDash(U.dashFor(d.opts.style2 || d.opts.style, d.opts.width2 || d.opts.width));
       ctx.beginPath(); ctx.moveTo(s2[0], s2[1]); ctx.lineTo(s2[2], s2[3]); ctx.stroke();
       ctx.restore();
+      /* ROUND285 (TV parity): TV labels the gap between the two parallel
+         lines with its distance in price and %. Optional via Show distance. */
+      if (d.opts.showDistance !== false) {
+        const mx = (g.A[0] + g.B[0]) / 2;
+        const my = (g.A[1] + g.B[1]) / 2;
+        const p1 = g.A, p2 = [g.A[0] + g.nx * g.off, g.A[1] + g.ny * g.off];
+        const distPx = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+        if (distPx > 6) {
+          const pA = d.points[0].p, pB = d.points[1].p;
+          const perPx = Math.abs((pB - pA) / Math.max(1, Math.hypot(g.B[0] - g.A[0], g.B[1] - g.A[1])));
+          const dpv = distPx * perPx;
+          const pct = pA ? (dpv / Math.abs(pA)) * 100 : 0;
+          chipLabel(ctx, mx + g.nx * (g.off / 2), my + g.ny * (g.off / 2),
+            `${U.fmtPrice(dpv, v.digits)} (${pct.toFixed(2)}%)`, 'rgba(24,28,39,.92)');
+        }
+      }
     },
     handles(v, d) { return d.points.map((p) => ptXY(v, p)); },
     hitBody(v, d) {
@@ -1244,34 +1278,50 @@ const HIT = 7;
         arrowHead(ctx, x2 > x1 ? x3 : x0, ym, x1, ym, 7.5);
       }
       ctx.restore();
-      /* info chip — TV: centred on the range, sitting on its top edge */
+      /* Info chip — ROUND285 (TV parity): TV's measure card is a small dark
+         panel with THREE stacked lines (price move + %, bar count, duration)
+         and a subtle separator, anchored to the top edge of the range. The
+         old version crammed two lines into a colour-filled box that matched
+         the range colour, which made it hard to read over a filled area. */
       if (d.opts.showLabel !== false) {
         const dp = d.points[1].p - d.points[0].p;
         const pct = (dp / d.points[0].p) * 100;
         const bars = Math.round(Math.abs(U.timeToLogical(v.times, d.points[1].t) - U.timeToLogical(v.times, d.points[0].t)));
         const dur = U.durHuman(Math.abs(d.points[1].t - d.points[0].t));
-        const l1 = `${dp >= 0 ? '+' : ''}${U.fmtPrice(dp, v.digits)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%) ${U.fmtPrice(d.points[1].p, v.digits)}`;
-        const l2 = `${bars} bars; ${dur}`;
+        const sgn = dp >= 0 ? '+' : '';
+        const rows = [
+          `${sgn}${U.fmtPrice(dp, v.digits)} (${sgn}${pct.toFixed(2)}%)`,
+          `${bars} ${bars === 1 ? 'bar' : 'bars'}`,
+          dur,
+        ];
+        const fs = 11, lh = 15, padX = 10, padY = 7;
         ctx.save();
-        ctx.font = '600 11px "Segoe UI", Arial, sans-serif';
-        const bw = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width) + 18;
+        ctx.font = `600 ${fs}px "Segoe UI", Arial, sans-serif`;
+        const bw = Math.max(...rows.map((r) => ctx.measureText(r).width)) + padX * 2;
+        const bh = rows.length * lh + padY * 2;
         const bx = U.clamp((x0 + x3) / 2 - bw / 2, 2, Math.max(2, v.pw - bw - 2));
-        let by = yT - 40;
-        if (by < 2) by = yT + 4; // no room above — drop it just inside the range
+        let by = yT - bh - 6;
+        if (by < 2) by = yB + 6;                 // no room above — go below
+        if (by + bh > v.ph - 2) by = Math.max(2, yT + 4);
         ctx.setLineDash([]);
-        ctx.fillStyle = col;
-        /* beginPath is REQUIRED here: the render's clip leaves the plot rect as
-           the current path - without beginPath, fill() paints THAT path solid
-           over the whole chart (the "one click = full green" bug, round 20) */
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = 'rgba(19,23,34,0.92)';
         ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(bx, by, bw, 34, 4); else ctx.rect(bx, by, bw, 34);
+        if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 4); else ctx.rect(bx, by, bw, bh);
         ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center';
+        /* hairline border in the range colour ties the card to the measurement */
+        ctx.strokeStyle = col;
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(l1, bx + bw / 2, by + 10.5);
-        ctx.font = '10.5px "Segoe UI", Arial, sans-serif';
-        ctx.fillText(l2, bx + bw / 2, by + 24.5);
+        rows.forEach((r, i) => {
+          /* the first row carries the direction colour, the rest stay muted */
+          ctx.fillStyle = i === 0 ? (dp >= 0 ? '#089981' : '#f23645') : '#b2b5be';
+          ctx.fillText(r, bx + padX, by + padY + lh / 2 + i * lh);
+        });
         ctx.restore();
       }
     },

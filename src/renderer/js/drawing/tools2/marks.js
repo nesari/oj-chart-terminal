@@ -11,7 +11,7 @@ import { icon } from '../../ui/icons.js';
 import { Theme } from '../../core/theme.js';
 import { App } from '../../../../core/state.js';
 import { TOOLS, segWithExtend } from '../tools.js';
-import { applyStroke, arrowHead, chipLabel, drawAnnotation, normRect, polyPts, ptXY } from './common.js';
+import { applyStroke, arrowHead, chipLabel, drawAnnotation, normRect, polyPts, ptXY, insidePoly } from './common.js';
 import { levelsOfF } from './fib-gann.js';
 import { TH } from './analysis.js';
 
@@ -77,60 +77,119 @@ import { TH } from './analysis.js';
   };
 
   /* ---------------- Callout ---------------- */
+  /* ROUND285 (TV parity): the bubble is a ROUNDED RECT with a TRIANGULAR
+     TAIL that points at the leader target — one closed outline, not a
+     rectangle plus a separate leader line. The tail placement follows the
+     `pointer` option (auto / up / down / left / right); auto picks the side
+     facing the target, which is what TV's default look does.
+     Returns the outline in screen space so draw/hit share one geometry. */
+  function calloutGeo(v, d) {
+    const [A, B] = polyPts(v, d);
+    const ctx = v.ctx;
+    const fs = d.opts.fontSize || 12;
+    const savedFont = ctx.font;
+    ctx.save();
+    ctx.font = `${d.opts.italic ? 'italic ' : ''}${d.opts.bold ? '700 ' : ''}${fs}px "Segoe UI", Arial, sans-serif`;
+    const text = String(d.opts.text || 'Callout');
+    const lines = text.split('\n');
+    const lw = Math.max(...lines.map((l) => ctx.measureText(l).width), 24);
+    ctx.restore();
+    ctx.font = savedFont;
+    const lh = fs + 4;
+    const padX = 9, padY = 6;
+    const bw = lw + padX * 2;
+    const bh = lines.length * lh + padY * 2;
+    /* bubble centre sits on the anchor; the tail reaches the target */
+    const cx = A[0], cy = A[1];
+    const dx = B[0] - cx, dy = B[1] - cy;
+    let side = d.opts.pointer || 'auto';
+    if (side === 'auto') {
+      side = Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'down' : 'up');
+    }
+    /* keep the bubble inside the pane so the text stays readable */
+    const left = U.clamp(cx - bw / 2, 2, Math.max(2, v.pw - bw - 2));
+    const top = U.clamp(cy - bh / 2, 2, Math.max(2, v.ph - bh - 2));
+    const right = left + bw, bottom = top + bh;
+    /* tail: a triangle from a base on the chosen edge out to the target */
+    const TW = Math.max(8, Math.min(16, fs));   // half base width
+    const TH = 12;                               // tail length (clamped to the gap)
+    const gap = { right: B[0] - right, left: left - B[0], down: B[1] - bottom, up: top - B[1] }[side];
+    const tl = U.clamp(Math.abs(gap), 4, TH);
+    let tail = null;
+    if (side === 'right') {
+      const my = U.clamp(B[1], top + 6, bottom - 6);
+      tail = [[right, my - TW], [right + tl, U.clamp(B[1], top, bottom)], [right, my + TW]];
+    } else if (side === 'left') {
+      const my = U.clamp(B[1], top + 6, bottom - 6);
+      tail = [[left, my - TW], [left - tl, U.clamp(B[1], top, bottom)], [left, my + TW]];
+    } else if (side === 'down') {
+      const mx = U.clamp(B[0], left + 6, right - 6);
+      tail = [[mx - TW, bottom], [U.clamp(B[0], left, right), bottom + tl], [mx + TW, bottom]];
+    } else {
+      const mx = U.clamp(B[0], left + 6, right - 6);
+      tail = [[mx - TW, top], [U.clamp(B[0], left, right), top - tl], [mx + TW, top]];
+    }
+    return { left, top, right, bottom, bw, bh, lines, lh, padX, padY, side, tail, A, B };
+  }
+
   TOOLS.callout = {
     name: 'Callout', icon: 'callout', pts: 2,
     draw(v, d) {
       const ctx = v.ctx;
-      const [A, B] = polyPts(v, d); // A = bubble anchor, B = leader target
-      const text = String(d.opts.text || 'Callout');
-      ctx.save();
-      ctx.font = `${d.opts.italic ? 'italic ' : ''}${d.opts.bold ? '700 ' : ''}${d.opts.fontSize || 12}px "Segoe UI", Arial, sans-serif`;
-      const lines = text.split('\n');
-      const lw = Math.max(...lines.map((l) => ctx.measureText(l).width), 30);
-      const lh = (d.opts.fontSize || 12) + 4;
-      const bh = lines.length * lh + 10;
-      const bw = lw + 16;
-      const bx = A[0], by = A[1] - bh / 2;
+      const g = calloutGeo(v, d);
+      const radius = 6;
+      /* ONE closed path: rounded rect + tail, so fill and stroke agree and
+         the tail is part of the bubble (TV) instead of a separate line. */
+      const path = () => {
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(g.left, g.top, g.bw, g.bh, radius);
+        } else {
+          ctx.rect(g.left, g.top, g.bw, g.bh);
+        }
+        if (g.tail) {
+          ctx.moveTo(g.tail[0][0], g.tail[0][1]);
+          ctx.lineTo(g.tail[1][0], g.tail[1][1]);
+          ctx.lineTo(g.tail[2][0], g.tail[2][1]);
+          ctx.closePath();
+        }
+      };
       applyStroke(ctx, d);
       if (d.opts.fill !== false) {
         ctx.save();
+        ctx.globalAlpha = typeof d.opts.fillOpacity === 'number' ? U.clamp(d.opts.fillOpacity, 0.02, 1) : 0.9;
         ctx.fillStyle = d.opts.fillColor || d.opts.color || '#2962ff';
-        ctx.globalAlpha = typeof d.opts.fillOpacity === 'number' ? d.opts.fillOpacity : 0.9;
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 6); else ctx.rect(bx, by, bw, bh);
+        path();
         ctx.fill();
         ctx.restore();
       }
+      /* the outline is drawn twice: the rounded rect, then the tail, so the
+         shared edge between them is not stroked through the bubble */
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 6); else ctx.rect(bx, by, bw, bh);
+      if (ctx.roundRect) ctx.roundRect(g.left, g.top, g.bw, g.bh, radius);
+      else ctx.rect(g.left, g.top, g.bw, g.bh);
       ctx.stroke();
-      // leader line + arrow to B
-      ctx.beginPath(); ctx.moveTo(bx + bw / 2, by + bh / 2); ctx.lineTo(B[0], B[1]); ctx.stroke();
-      arrowHead(ctx, B[0], B[1], bx + bw / 2, by + bh / 2, 7);
-      ctx.fillStyle = '#fff';
+      if (g.tail) {
+        ctx.beginPath();
+        ctx.moveTo(g.tail[0][0], g.tail[0][1]);
+        ctx.lineTo(g.tail[1][0], g.tail[1][1]);
+        ctx.lineTo(g.tail[2][0], g.tail[2][1]);
+        ctx.closePath();
+        ctx.stroke();
+      }
+      ctx.fillStyle = d.opts.textColor || '#ffffff';
       ctx.textBaseline = 'top';
       ctx.textAlign = 'left';
-      lines.forEach((l, i) => ctx.fillText(l, bx + 8, by + 5 + i * lh));
-      ctx.restore();
+      g.lines.forEach((l, i) => ctx.fillText(l, g.left + g.padX, g.top + g.padY + i * g.lh));
     },
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {
       return (x, y) => {
-        const [A, B] = polyPts(v, d);
-        const text = String(d.opts.text || 'Callout');
-        const ctx = v.ctx;
-        ctx.save();
-        ctx.font = `${d.opts.italic ? 'italic ' : ''}${d.opts.bold ? '700 ' : ''}${d.opts.fontSize || 12}px "Segoe UI", Arial, sans-serif`;
-        const lines = text.split('\n');
-        const lw = Math.max(...lines.map((l) => ctx.measureText(l).width), 30);
-        const bh = lines.length * ((d.opts.fontSize || 12) + 4) + 10;
-        const bw = lw + 16;
-        ctx.restore();
-        /* ROUND258: the bubble's real painted box (it grows with the text and
-           font size) instead of the old fixed 180x48 halo around the anchor. */
-        const inBubble = x >= A[0] - 4 && x <= A[0] + bw + 4 &&
-          y >= A[1] - bh / 2 - 4 && y <= A[1] + bh / 2 + 4;
-        return inBubble || U.distSeg(x, y, A[0], A[1], B[0], B[1]) < 6;
+        const g = calloutGeo(v, d);
+        if (x >= g.left - 4 && x <= g.right + 4 && y >= g.top - 4 && y <= g.bottom + 4) return true;
+        if (g.tail && insidePoly(x, y, g.tail)) return true;
+        /* still grabbable on the tail tip / leader gap */
+        return U.distSeg(x, y, g.A[0], g.A[1], g.B[0], g.B[1]) < 8;
       };
     },
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },

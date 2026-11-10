@@ -140,6 +140,8 @@ import { Log } from '../../../core/logger.js';
       { kind: 'fill', label: 'Background' },
       { kind: 'check', key: 'extendLeft', label: 'Extend left' },
       { kind: 'check', key: 'extendRight', label: 'Extend right' },
+      /* ROUND285 (TV parity): TV shows the channel width as a price/% chip. */
+      { kind: 'check', key: 'showDistance', label: 'Show distance' },
     ],
     regression: [
       { kind: 'line', label: 'Base' },
@@ -427,19 +429,31 @@ import { Log } from '../../../core/logger.js';
       { kind: 'line' },
       { kind: 'select', key: 'coeff', label: 'Risk/reward ratio', options: [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5']] },
       { kind: 'slider', key: 'fillOpacity', label: 'Box opacity', min: 0.05, max: 1, step: 0.05 },
+      /* ROUND285 (TV parity): one colour per zone + the entry line. */
+      { kind: 'color', key: 'profitColor', label: 'Profit color', fallback: '#089981' },
+      { kind: 'color', key: 'lossColor', label: 'Loss color', fallback: '#f23645' },
+      { kind: 'check', key: 'showEntry', label: 'Entry line' },
     ],
     barspattern: [
       { kind: 'line' },
       { kind: 'check', key: 'mirror', label: 'Mirror' },
       { kind: 'fill', label: 'Background' },
+      /* ROUND285 (TV parity): the bar-count chip can be hidden. */
+      { kind: 'check', key: 'showLabel', label: 'Labels' },
     ],
     ghostfeed: [
       { kind: 'line' },
       { kind: 'number', key: 'bars', label: 'Bars', min: 1, max: 200 },
+      /* ROUND285 (TV parity): opacity + the two candle colours were fixed. */
+      { kind: 'slider', key: 'fillOpacity', label: 'Opacity', min: 0.05, max: 1, step: 0.05 },
+      { kind: 'color', key: 'color', label: 'Up color', fallback: '#089981' },
+      { kind: 'color', key: 'color2', label: 'Down color', fallback: '#f23645' },
     ],
     sector: [
       { kind: 'line' },
       { kind: 'fill', label: 'Background' },
+      /* ROUND285 (TV parity): the sweep-angle chip. */
+      { kind: 'check', key: 'showLabel', label: 'Angle label' },
     ],
     avwap: [
       { kind: 'line' },
@@ -488,6 +502,24 @@ import { Log } from '../../../core/logger.js';
       { kind: 'line' },
       { kind: 'slider', key: 'borderOpacity', label: 'Border opacity', min: 0.05, max: 1, step: 0.05 },
       { kind: 'fill', label: 'Background' },
+    ],
+    /* ROUND285 (TV parity): both volume profiles expose what TV exposes —
+       row count, Value Area %, POC colour/visibility and VA guides. */
+    volprofile: [
+      { kind: 'line' },
+      { kind: 'number', key: 'bins', label: 'Row size', min: 6, max: 120 },
+      { kind: 'number', key: 'vaPct', label: 'Value area %', min: 1, max: 100 },
+      { kind: 'check', key: 'showVa', label: 'Value area' },
+      { kind: 'check', key: 'showPoc', label: 'POC' },
+      { kind: 'color', key: 'pocColor', label: 'POC color', fallback: '#f7c948' },
+    ],
+    avolprofile: [
+      { kind: 'line' },
+      { kind: 'number', key: 'bins', label: 'Row size', min: 6, max: 120 },
+      { kind: 'number', key: 'vaPct', label: 'Value area %', min: 1, max: 100 },
+      { kind: 'check', key: 'showVa', label: 'Value area' },
+      { kind: 'check', key: 'showPoc', label: 'POC' },
+      { kind: 'color', key: 'pocColor', label: 'POC color', fallback: '#f7c948' },
     ],
     text: [
       { kind: 'color', key: 'color', label: 'Text color' },
@@ -555,6 +587,9 @@ import { Log } from '../../../core/logger.js';
     { kind: 'line' },
     { kind: 'fill', label: 'Background' },
     { kind: 'number', key: 'fontSize', label: 'Font size', min: 8, max: 48 },
+    /* ROUND285 (TV parity): which side the tail points from. "Auto" picks the
+       side facing the leader target, which is TV's default behaviour. */
+    { kind: 'select', key: 'pointer', label: 'Pointer', options: [['auto', 'Auto'], ['up', 'Up'], ['down', 'Down'], ['left', 'Left'], ['right', 'Right']] },
   ];
   /* ROUND248 (TV parity): Icons category — the glyph grid + size. */
   SCHEMAS.emoji = [
