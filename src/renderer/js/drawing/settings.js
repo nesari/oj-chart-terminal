@@ -191,7 +191,11 @@ import { Log } from '../../../core/logger.js';
       /* TV Box structure: Extend select, then collapsible groups — Border
          (color/opacity/thickness/style), Middle line (checkbox + color/
          opacity/thickness/style), Background (color/opacity) */
-      { kind: 'select', key: 'extend', label: 'Extend', options: [['none', "Don't extend"], ['left', 'Extend left'], ['right', 'Extend right']] },
+      /* ROUND284 (TV parity): TV's Box Extend has FOUR states. The engine has
+         always honoured extendLeft and extendRight independently (draw paints
+         both edges to the pane sides), so the old three-state menu was a UI
+         limit, not an engine one. */
+      { kind: 'select', key: 'extend', label: 'Extend', options: [['none', "Don't extend"], ['left', 'Extend left'], ['right', 'Extend right'], ['both', 'Extend left and right']] },
       { kind: 'group', label: 'Border', open: true, items: [
         { kind: 'line' },
         { kind: 'slider', key: 'borderOpacity', label: 'Opacity', min: 0.05, max: 1, step: 0.05 },
@@ -477,6 +481,14 @@ import { Log } from '../../../core/logger.js';
       { kind: 'slider', key: 'fillOpacity', label: 'Box opacity', min: 0.02, max: 1, step: 0.02 },
       { kind: 'check', key: 'showLabel', label: 'Label' },
     ],
+    /* ROUND284: Zoom In had NO schema at all AND its painter hard-coded the
+       blue fill / dashed stroke, so the Style tab could change nothing. Both
+       sides are fixed: a real schema here plus opts reads in TOOLS.zoomin. */
+    zoomin: [
+      { kind: 'line' },
+      { kind: 'slider', key: 'borderOpacity', label: 'Border opacity', min: 0.05, max: 1, step: 0.05 },
+      { kind: 'fill', label: 'Background' },
+    ],
     text: [
       { kind: 'color', key: 'color', label: 'Text color' },
       { kind: 'number', key: 'fontSize', label: 'Font size', min: 8, max: 72 },
@@ -532,7 +544,10 @@ import { Log } from '../../../core/logger.js';
   SCHEMAS.arrowmarkl = SCHEMAS.arrowmarku;
   SCHEMAS.arrowmarkr = SCHEMAS.arrowmarku;
   SCHEMAS.flagmark = [
-    { kind: 'color', key: 'color', label: 'Color' },
+    /* ROUND284: the painter strokes the pole with opts.width, but this schema
+       only offered a colour swatch — so the pole thickness was stuck at the
+       factory value. `line` supplies colour + width + style together. */
+    { kind: 'line' },
     { kind: 'select', key: 'markSize', label: 'Size', options: [['18', 'Small'], ['26', 'Medium'], ['34', 'Large'], ['44', 'X-Large']] },
     { kind: 'fill', label: 'Background' },
   ];
@@ -649,9 +664,9 @@ import { Log } from '../../../core/logger.js';
       DS_ACTIVE.close(true);
     }
     const type = d.type;
-    /* rect legacy migration: the old UI had two independent extend checkboxes
-       and could store "both" — the TV Box select has three states, keep Left */
-    if (type === 'rect' && d.opts.extendLeft && d.opts.extendRight) d.opts.extendRight = false;
+    /* ROUND284: the three-state Box menu is gone (it has four states now, like
+       TV), so the legacy migration that forced extendRight=false is removed —
+       otherwise choosing "Both" was reverted the moment the dialog re-opened. */
     const schema = SCHEMAS[type] || [{ kind: 'line' }];
     const factory = App.drawings.factoryOpts(type);
     const snap = JSON.parse(JSON.stringify({ opts: d.opts, points: d.points }));

@@ -683,13 +683,19 @@ import { FIBC_LEVELS, FIB_TZ_LEVELS, vLineFib } from './fib-gann.js';
     hs: Object.assign({ color: '#2962ff', width: 2, style: 'solid', showRatio: false }, ANN),
     /* round 69: TV shapes-flyout additions (defaults = TV look) */
     arrowmarker: { color: '#f23645', width: 2, markSize: 18 },
-    rotrect: { color: '#2962ff', width: 1, style: 'solid' },
+    /* ROUND284 (TV parity): these shapes paint a Background, so their factory
+       defaults must carry the fill keys — without them the new "Background"
+       toggle in the Style tab started from `undefined` and the shape looked
+       different from TV until the user touched it. TV's default is off for
+       the closed curves and the rotated box, on for nothing here; opacity is
+       the same 0.12–0.15 family the other filled shapes use. */
+    rotrect: { color: '#2962ff', width: 1, style: 'solid', fill: false, fillColor: '#2962ff', fillOpacity: 0.12 },
     path: { color: '#2962ff', width: 2, style: 'solid', ctrls: [] },
-    circle: { color: '#2962ff', width: 1, style: 'solid' },
-    polyline: { color: '#2962ff', width: 2, style: 'solid' },
+    circle: { color: '#2962ff', width: 1, style: 'solid', fill: false, fillColor: '#2962ff', fillOpacity: 0.12 },
+    polyline: { color: '#2962ff', width: 2, style: 'solid', fill: false, fillColor: '#2962ff', fillOpacity: 0.12 },
     arc: { color: '#2962ff', width: 1, style: 'solid' },
-    curve: { color: '#2962ff', width: 2, style: 'solid' },
-    dblcurve: { color: '#2962ff', width: 2, style: 'solid' },
+    curve: { color: '#2962ff', width: 2, style: 'solid', fill: false, fillColor: '#2962ff', fillOpacity: 0.12 },
+    dblcurve: { color: '#2962ff', width: 2, style: 'solid', fill: false, fillColor: '#2962ff', fillOpacity: 0.12 },
     /* round 61: TV Cycles additions (defaults = TV look) */
     cycliclines: Object.assign({ color: '#2962ff', width: 1, style: 'solid', coeff: 1, cycles: 12, extendLeft: false, extendRight: true, showRatio: false }, ANN),
     timecycles: Object.assign({ color: '#2962ff', width: 1, style: 'solid', cycles: 5, showRatio: false }, ANN),

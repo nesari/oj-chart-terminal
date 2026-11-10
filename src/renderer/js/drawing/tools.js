@@ -956,7 +956,10 @@ const HIT = 7;
       if (d.opts.extendLeft) xa = 0;
       const levels = levelsOf(d, FIB_LEVELS);
       // background bands between consecutive levels (TV Background)
-      if (d.opts.fill || d.opts.bgFill) {
+      /* ROUND284: only `fill` exists in the dialog; the old `bgFill` alias was
+         never writable by any UI, so keeping it hid the fact that the toggle
+         is the single source of truth. */
+      if (d.opts.fill) {
         ctx.save();
         ctx.globalAlpha = fillAlphaOf(d);
         for (let i = 0; i < levels.length - 1; i++) {
@@ -1313,12 +1316,23 @@ const HIT = 7;
       const ctx = v.ctx;
       const x1 = v.xOf(d.points[0].t), y1 = v.yOf(d.points[0].p);
       const x2 = v.xOf(d.points[1].t), y2 = v.yOf(d.points[1].p);
+      /* ROUND284 (TV parity): the zoom box used to hard-code its blue fill and
+         stroke, so the Style tab could not change anything. It now honours the
+         same line/background options as every other region drawing. */
+      const col = d.opts.color || '#2962ff';
       ctx.save();
-      ctx.fillStyle = 'rgba(41,98,255,.14)';
-      ctx.strokeStyle = '#2962ff';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 3]);
-      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+      if (d.opts.fill !== false) {
+        ctx.save();
+        ctx.globalAlpha = fillAlphaOf(d);
+        ctx.fillStyle = fillColorOf(d);
+        ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+        ctx.restore();
+      }
+      ctx.strokeStyle = col;
+      ctx.lineWidth = Math.max(1, d.opts.width || 1);
+      ctx.globalAlpha = typeof d.opts.borderOpacity === 'number' && isFinite(d.opts.borderOpacity)
+        ? U.clamp(d.opts.borderOpacity, 0.02, 1) : 1;
+      ctx.setLineDash(U.dashFor(d.opts.style || 'dashed', ctx.lineWidth));
       ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
       ctx.restore();
     },

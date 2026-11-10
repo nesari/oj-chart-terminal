@@ -18,6 +18,7 @@
  *   round205  deleted drawing objects + forming-bar rollback
  *   round252  Style-tab rendering controls
  *   round283  Pine -> Alerts bridge + ROUND282 pivot rendering  (new)
+ *   round284  drawing-tool settings parity (dialog controls + fills)  (new)
  *
  * History: until ROUND283 every archived suite was silently broken — the move
  * into `tests/archive/e2e/` added a directory level, so `ROOT` (three
@@ -45,6 +46,7 @@ const CURATED = [
   'e2e_round205_deleted.py',
   'e2e_round252_style1.py',
   'e2e_round283_alerts_pivots.py',
+  'e2e_round284_drawing_settings.py',
 ];
 
 /* Per attempt. A cold Windows runner needs ~30s for a heavy suite; the retry
