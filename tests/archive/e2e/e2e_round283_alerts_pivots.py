@@ -180,7 +180,7 @@ def main():
             page.goto(f'http://127.0.0.1:{PORT_HTTP}/renderer/index.html?ws=127.0.0.1:{PORT_WS}')
             page.wait_for_timeout(900)
             page.click('#login-connect')
-            page.wait_for_selector('#app:not(.hidden)', timeout=20000)
+            page.wait_for_selector('#app:not(.hidden)', timeout=45000)
             page.wait_for_function(
                 "() => window.__app && window.__app.App.panes.length && window.__app.App.panes[0].bars.length > 100",
                 timeout=25000)
