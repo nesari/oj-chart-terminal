@@ -12,3 +12,6 @@ docs/_smoke.png
 *.cer
 *.key
 *.pem
+
+# E2E runs write screenshots here (generated, never committed)
+docs/shots-*/

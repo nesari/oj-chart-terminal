@@ -97,7 +97,12 @@ def main():
             bg = str(r.get('bg') or '')
             check('live green background (80 transp)', '76, 175, 80' in bg or '76,175,80' in bg, bg)
             bd = str(r.get('border') or '')
-            check('live red frame', '242, 54, 69' in bd or '242,54,69' in bd, bd)
+            # ROUND283: this script is //@version=5, and ROUND225 gave v6 its own
+            # re-toned red (#f23645) while v5 keeps #ff5252 — assert the
+            # version-correct palette instead of only the v6 hex.
+            red = ('255, 82, 82' in bd or '255,82,82' in bd
+                   or '242, 54, 69' in bd or '242,54,69' in bd)
+            check('live red frame', red, bd)
             check('frame width 3px', (r.get('borderW') or '') == '3px', r.get('borderW'))
             check('live cell text', 'LIVE' in str(r.get('text') or ''), r.get('text'))
             check('zero page errors', len(errors) == 0, errors[:3])

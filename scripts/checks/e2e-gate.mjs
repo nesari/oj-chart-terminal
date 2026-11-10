@@ -13,6 +13,9 @@
  *
  *   round205  deleted drawing objects + forming-bar rollback
  *   round196  matrix/map engine surface through the live runtime
+ *   round201  session.* on the live chart (both states, not degenerate)
+ *   round203  table styling (version-correct palette)
+ *   round205  deleted drawing objects + forming-bar rollback
  *   round252  Style-tab rendering controls
  *   round283  Pine -> Alerts bridge + ROUND282 pivot rendering  (new)
  *
@@ -37,6 +40,8 @@ const DIR = path.join(ROOT, 'tests', 'archive', 'e2e');
 
 const CURATED = [
   'e2e_round196_matrix_map.py',
+  'e2e_round201_session.py',
+  'e2e_round203_table_style.py',
   'e2e_round205_deleted.py',
   'e2e_round252_style1.py',
   'e2e_round283_alerts_pivots.py',

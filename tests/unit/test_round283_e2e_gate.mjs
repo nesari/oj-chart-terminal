@@ -86,6 +86,13 @@ const ok = (cond, label, extra) => {
   const g = readSource('scripts/checks/e2e-gate.mjs');
   ok(/const CURATED = \[/.test(g), 'the gate keeps an explicit curated list');
   ok(/e2e_round283_alerts_pivots\.py/.test(g), 'the ROUND283 suite is in the curated list');
+  ok(/e2e_round201_session\.py/.test(g) && /e2e_round203_table_style\.py/.test(g),
+    'the session/table suites repaired in ROUND283 are curated too');
+  /* every curated entry must exist, or the gate silently runs fewer suites */
+  const curated = (g.match(/const CURATED = \[([\s\S]*?)\];/) || [, ''])[1];
+  const names = [...curated.matchAll(/'(e2e_[^']+\.py)'/g)].map((m) => m[1]);
+  const missing = names.filter((n) => !fs.existsSync(path.join(E2E, n)));
+  ok(names.length >= 6 && missing.length === 0, 'every curated suite exists on disk', missing.join(', '));
   /* Playwright missing must SKIP, not fail: a plain checkout has no browser. */
   ok(/import playwright/.test(g) && /skipping the browser gate/.test(g),
     'a missing Playwright skips instead of failing');
