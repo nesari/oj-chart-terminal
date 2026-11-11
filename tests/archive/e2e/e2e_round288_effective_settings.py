@@ -13,6 +13,8 @@ Verifies in the real dialog + chart:
 Run: python tests/archive/e2e/e2e_round288_effective_settings.py
 """
 import http.server, functools, json, os, socket, subprocess, sys, threading, time
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from e2e_teardown import kill_proc  # ROUND288: whole-tree cleanup on Windows
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT_HTTP, PORT_WS = 8999, 8888
@@ -117,7 +119,7 @@ def main():
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     if not (wait_port(PORT_HTTP) and wait_port(PORT_WS)):
         print('http/provider did not come up')
-        prov.terminate()
+        kill_proc(prov)
         return 1
     try:
         from playwright.sync_api import sync_playwright
@@ -174,7 +176,7 @@ def main():
             check('zero page errors', len(errors) == 0, errors[:3])
             browser.close()
     finally:
-        prov.terminate()
+        kill_proc(prov)
     print('ROUND288: %d failed' % len(FAILS) if FAILS else 'ROUND288: all green')
     return 1 if FAILS else 0
 

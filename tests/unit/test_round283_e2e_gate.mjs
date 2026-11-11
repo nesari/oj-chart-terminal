@@ -109,13 +109,16 @@ const ok = (cond, label, extra) => {
     'a boot timeout is retried');
   ok(/attempt < 4/.test(g), 'it retries up to three times');
   ok(g.includes('retry ${attempt}/3'), 'the retry counter is visible in the log');
-  ok(/reachedApp/.test(g), 'only a real boot failure is retried (never an assertion failure)');
+  ok(/bootTimeout/.test(g), 'it classifies a boot timeout explicitly');
   ok(/boot timeout, retrying/.test(g) || /boot timeout, retry/.test(g), 'the retry is visible in the log');
   ok(/last\.retried = true/.test(g) && /\(retried\)/.test(g), 'a retried suite is labelled');
   /* retry only for the boot-timeout signature, never for an assertion failure */
   {
     const fn = (g.match(/function looksLikeBootTimeout[\s\S]*?\n\}/) || [''])[0];
-    ok(/wait_for_selector/.test(fn) && !/FAIL\b/.test(fn),
+    ok(/wait_for_selector/.test(fn), 'the retry matches the selector boot timeout');
+    /* the guard against retrying a real failure: a suite that printed its own
+       FAIL lines reached the app and must not be retried */
+    ok(/FAIL/.test(fn) && /return !/.test(fn),
       'the retry matches boot timeouts only, not failed assertions');
   }
   /* non-zero exit on failure */

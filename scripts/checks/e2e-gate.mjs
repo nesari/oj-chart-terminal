@@ -107,11 +107,17 @@ function runSuite(py, file) {
        still fails every attempt. */
 function looksLikeBootTimeout(r) {
   /* Only a failure to REACH the app counts. A suite that booted and then
-     failed an assertion must never be retried (that would hide a real bug). */
-  const out = r.out + '\n' + r.err;
-  const reachedApp = /#app:not\(\.hidden\)/.test(out) === false || /Login|login-connect/.test(out);
-  return /Page\.wait_for_selector: Timeout|wait_for_selector.*Timeout \d+ms exceeded|ERR_CONNECTION_REFUSED|ECONNREFUSED|Target page, context or browser has been closed/i.test(out)
-    && reachedApp;
+     failed an assertion must never be retried (that would hide a real bug).
+
+     The signature is the app never becoming visible: Playwright's
+     "Page.wait_for_selector: Timeout" on '#app:not(.hidden)'. A suite that
+     DID reach the app and then failed prints its own "FAIL <name>" lines,
+     which is the signal that it must not be retried. */
+  const out = (r.out || '') + '\n' + (r.err || '');
+  const bootTimeout = /Page\.wait_for_selector: Timeout|wait_for_selector.*Timeout \d+ms exceeded|ERR_CONNECTION_REFUSED|ECONNREFUSED|Target page, context or browser has been closed/i.test(out);
+  if (!bootTimeout) return false;
+  /* the suite got far enough to run its own assertions -> real failure */
+  return !/^\s+(FAIL|  FAIL)/m.test(r.out || '');
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

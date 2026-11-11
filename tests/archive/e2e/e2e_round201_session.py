@@ -6,6 +6,8 @@
   Zero page errors.
 """
 import http.server, functools, os, socket, subprocess, sys, threading, time
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from e2e_teardown import kill_proc  # ROUND288: whole-tree cleanup on Windows
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT_HTTP, PORT_WS = 8994, 8822
@@ -81,7 +83,7 @@ def main():
     prov = subprocess.Popen([sys.executable, os.path.join(ROOT, 'provider', 'demo.py')],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     if not (wait_port(PORT_HTTP) and wait_port(PORT_WS)):
-        print('http/provider did not come up'); prov.terminate(); return 1
+        print('http/provider did not come up'); kill_proc(prov); return 1
     try:
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
@@ -119,7 +121,7 @@ def main():
             check('zero page errors', len(errors) == 0, errors[:3])
             browser.close()
     finally:
-        prov.terminate()
+        kill_proc(prov)
     print('ROUND201: %d failed' % len(FAILS) if FAILS else 'ROUND201: all green')
     return 1 if FAILS else 0
 
