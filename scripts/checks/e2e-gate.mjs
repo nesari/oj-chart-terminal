@@ -20,6 +20,8 @@
  *   round283  Pine -> Alerts bridge + ROUND282 pivot rendering  (new)
  *   round284  drawing-tool settings parity (dialog controls + fills)  (new)
  *   round285  drawing parity wave 2 (callout/measure/profiles/labels)  (new)
+ *   round286  stale-interval crash hardening                          (new)
+ *   round287  settings that had no control now work                     (new)
  *
  * History: until ROUND283 every archived suite was silently broken — the move
  * into `tests/archive/e2e/` added a directory level, so `ROOT` (three
@@ -49,6 +51,8 @@ const CURATED = [
   'e2e_round283_alerts_pivots.py',
   'e2e_round284_drawing_settings.py',
   'e2e_round285_drawing_parity2.py',
+  'e2e_round286_chart_hardening.py',
+  'e2e_round287_settings_controls.py',
 ];
 
 /* Per attempt. A cold Windows runner needs ~30s for a heavy suite; the retry

@@ -220,7 +220,13 @@ UI.closeActiveSettings = function (commit) {
       b.addEventListener('mousedown', (e) => e.stopPropagation());
       b.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (flyout) { closeFlyout(); return; }
+        /* ROUND287 (TV parity): clicking a DIFFERENT group while any flyout is
+           open used to only close the old flyout — the user had to click the
+           new group a SECOND time. TV switches straight to the new group's
+           flyout. Only a click on the SAME group toggles it closed. */
+        const sameGroupOpen = flyout && flyout._group === g.id;
+        if (flyout) closeFlyout();
+        if (sameGroupOpen) return;
         if (toolsOf(g).length === 1) { activateTool(toolsOf(g)[0]); return; }
         openFlyout(b, g);
       });
@@ -379,6 +385,9 @@ UI.closeActiveSettings = function (commit) {
     closeFlyout();
     const fl = U.el('div', 'lt-flyout', document.body);
     flyout = fl; // assign FIRST so the flyout can always be closed, even if a tile fails
+    /* ROUND287: remember which group owns this flyout so the toolbar can tell
+       "same group -> toggle closed" from "other group -> switch to it". */
+    fl._group = group.id;
     const r = btn.getBoundingClientRect();
     fl.style.left = r.right + 6 + 'px';
     fl.style.top = r.top + 'px';

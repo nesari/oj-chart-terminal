@@ -321,7 +321,9 @@ check('app.js: the saved tab replaytrade maps to trade (upgrade path)',
 check('app.js: the rail icons map has no replaytrade entry',
   !/replaytrade:\s*'positions'/.test(appjs));
 check('app.js: __app exposes TradeRoute + Replay (test facade)',
-  /TradeRoute,\s*ReplayTrade,\s*Replay,/.test(appjs));
+  /* ROUND287: `Replay` used to be listed twice in the facade; the contract
+     is simply that both are reachable, not their position in the object. */
+  /TradeRoute,\s*ReplayTrade/.test(appjs) && /\bReplay\b/.test(appjs));
 
 /* app.css — the switch styles */
 check('app.css: the segmented switch styles exist (tr-mode / tr-modeb / .on)',

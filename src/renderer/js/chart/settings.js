@@ -35,11 +35,13 @@ const DEFAULTS = {
     stVolume: false,             // volume in the legend
     stSpread: true,              // ROUND98 (user request): live spread chip in the legend (points)
     stLastDayChange: false,      // change vs previous day close
-    stIndTitles: true, stIndInputs: true, stIndValues: true, stIndBg: true, stIndBgOp: 0.8,
+    stIndTitles: true, stIndInputs: true, stIndValues: true, stIndBgOp: 0.8,
     /* --- Scales and lines --- */
     currUnit: 'always',          // reserved (no currency/unit feed)
     scaleModes: 'hover',         // A/L buttons -> bottom-bar log/% visibility
-    lockRatio: false, lockRatioVal: '',
+    /* ROUND287: `lockRatioVal` was a dead key (nothing read it); the boolean
+       `lockRatio` is the one the render path uses. */
+    lockRatio: false,
     scalesPlacement: 'auto',     // 'auto' | 'left' | 'right'
     noOverlap: true,             // reserved (lib auto-handles)
     plusButton: true,            // reserved (TV quick menu)
@@ -69,8 +71,11 @@ const DEFAULTS = {
     /* --- Alerts --- */
     alertLines: true, alertColor: '#f7c948', alertOnlyActive: true,
     toastAutoHide: true,
-    /* legacy aliases (kept for saved settings of older versions) */
-    grid: true, priceLine: true, priceLabel: true,
+    /* legacy aliases (kept for saved settings of older versions).
+       ROUND287: `grid` was a dead key — it is never read anywhere; the two
+       real toggles are vGrid/hGrid. Keeping it only misled the settings audit
+       into reporting a missing control. */
+    priceLine: true, priceLabel: true,
   };
 
   /* merge saved over defaults; migrate legacy keys */
@@ -474,7 +479,17 @@ const DEFAULTS = {
         rowSelectColor2('Background', 'bgMode', [['solid', 'Solid'], ['gradient', 'Gradient']], 'bg1', 'bg2');
         rowCheckboxColor('Vertical grid lines', 'vGrid', 'gridColor');
         rowCheckboxColor('Horizontal grid lines', 'hGrid', 'gridColor');
+        /* ROUND287 (TV parity): the crosshair, the watermark and the whole
+           grid each need a master ON/OFF in TV. `crosshair` was only a style
+           picker (its on/off lived in the config with no control), and the
+           watermark had a content select but no way to hide it outright. */
+        rowCheckbox('Crosshair', 'crosshair');
         rowSelectColor('Crosshair', 'crossStyle', [['solid', 'Solid'], ['dashed', 'Dashed'], ['largedashed', 'Large dashed'], ['dotted', 'Dotted']], 'crossColor');
+        rowCheckbox('Watermark', 'watermark');
+        /* ROUND287 (TV parity): the watermark's ticker/interval parts were
+           read by the painter (wmSymbol/wmTf) but had no control at all. */
+        rowCheckbox('Watermark symbol', 'wmSymbol');
+        rowCheckbox('Watermark interval', 'wmTf');
         rowSelectColor('Watermark', 'wmContent', [
           ['ticker_interval_desc', 'Ticker, Interval, Description'],
           ['ticker_interval', 'Ticker, Interval'], ['ticker', 'Ticker'], ['hidden', 'Hidden'],

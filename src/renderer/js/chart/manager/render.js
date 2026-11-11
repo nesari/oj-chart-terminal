@@ -439,6 +439,18 @@ import { createPane } from './pane.js';
   }
 
   function applyTf(pane, tfId) {
+    /* ROUND286 (hardening): a pane's interval can arrive from a SAVED layout
+       (mt5_boot_panes) or an external caller, and a custom interval may have
+       been deleted since it was saved. The whole render path dereferences
+       App.tfById[pane.tf].label unguarded, so an unknown id used to throw
+       inside updateLegendTitle and leave the chart half-switched. Reject an
+       unknown interval up front (a loud no-op beats a broken chart). */
+    if (tfId != null && !App.tfById[tfId]) {
+      try {
+        Log.warn('chart', 'ignoring unknown timeframe id "' + tfId + '" (not in App.tfById)');
+      } catch (e) {}
+      return;
+    }
     if (pane.tf === tfId) return;
     pane.tf = tfId;
     pane.bars = []; pane.barTimes = [];

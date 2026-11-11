@@ -417,9 +417,15 @@ function boot() {
       App, Manager, Toolbar, Snapshot, Tabs, UI, Watchlist, Alerts, TimeSales, Replay,
       Settings, ObjectTree, DataWindow, Diagnostics, Compare, IndicatorsUI,
       Indicators, DrawSettings, DrawTools, Log, AppErr, TZ, Theme, Undo, Feed, U, icon, RightPanel,
-      News, Alerts, PineUI, PineEditor, PineScriptsStore,
+      /* ROUND287: `Alerts` and `Replay` used to be listed twice (harmless at
+         runtime, but it hid which entries are actually intended). */
+      News, PineUI, PineEditor, PineScriptsStore,
       Trade, TradeAlerts, TradeTicket, TradeDock, TradeOverlay, OneClick,
-      TradeRoute, ReplayTrade, Replay, GoToDate, SessionRange,
+      TradeRoute, ReplayTrade, GoToDate, SessionRange,
+      /* ROUND287: the Strategy Tester + its bottom dock were initialized in
+         boot() but never exposed on the app facade, so no caller (tests,
+         diagnostics, plugins) could reach them. */
+      Tester, StratDock,
     };
   }
 

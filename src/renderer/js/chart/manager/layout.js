@@ -40,7 +40,12 @@ import { marketChipState } from '../../../../core/market-chip.js';
     if (!show) return;
     const partsW = [];
     if (mode.indexOf('ticker') >= 0) partsW.push(pane.symbol);
-    if (mode.indexOf('interval') >= 0) partsW.push(App.tfById[pane.tf].label);
+    if (mode.indexOf('interval') >= 0) {
+      /* ROUND286: never dereference a missing interval definition — a stale
+         saved layout must degrade to the raw id, not throw. */
+      const tfDef = App.tfById[pane.tf];
+      partsW.push(tfDef ? tfDef.label : String(pane.tf || ''));
+    }
     if (mode.indexOf('desc') >= 0 && App.symbolDescs[pane.symbol]) partsW.push(App.symbolDescs[pane.symbol]);
     const hasSym = S.wmSymbol !== false && mode.indexOf('ticker') >= 0;
     const hasTf = S.wmTf !== false && mode.indexOf('interval') >= 0;
@@ -104,7 +109,8 @@ import { marketChipState } from '../../../../core/market-chip.js';
       els.lgMkt.style.display = S.stMarket !== false ? '' : 'none';
       updateMarketChip(pane);
     }
-    els.lgTf.textContent = App.tfById[pane.tf].label;
+    /* ROUND286: same guard as the title above (see updateLegendTitle). */
+    els.lgTf.textContent = App.tfById[pane.tf] ? App.tfById[pane.tf].label : String(pane.tf || '');
     els.lgChg.textContent = styleName(pane.style);
     els.lgChg.className = 'lg-chg';
   }
