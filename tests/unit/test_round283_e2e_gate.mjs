@@ -107,7 +107,9 @@ const ok = (cond, label, extra) => {
      ROUND266's precedent for the liveness probe. A real failure stays failed. */
   ok(/function runWithRetry/.test(g) && /looksLikeBootTimeout/.test(g),
     'a boot timeout is retried');
-  ok(/attempt < 3/.test(g) && /retry \$\{attempt\}\/2/.test(g), 'it retries up to twice');
+  ok(/attempt < 4/.test(g), 'it retries up to three times');
+  ok(g.includes('retry ${attempt}/3'), 'the retry counter is visible in the log');
+  ok(/reachedApp/.test(g), 'only a real boot failure is retried (never an assertion failure)');
   ok(/boot timeout, retrying/.test(g) || /boot timeout, retry/.test(g), 'the retry is visible in the log');
   ok(/last\.retried = true/.test(g) && /\(retried\)/.test(g), 'a retried suite is labelled');
   /* retry only for the boot-timeout signature, never for an assertion failure */

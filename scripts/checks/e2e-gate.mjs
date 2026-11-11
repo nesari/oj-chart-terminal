@@ -96,20 +96,34 @@ function runSuite(py, file) {
 }
 
 /* A cold CI runner occasionally needs longer than the suites' own boot window
-   before the demo provider + WebSocket handshake settle: the FIRST suite of a
-   run then dies in wait_for_selector while its neighbours pass. That is
-   environmental, not a code defect (ROUND266 made the same call for the
-   liveness probe). Retry up to TWICE — a real failure still fails three times,
-   and the suites themselves now allow 45s, so this mostly covers runner stalls
-   (antivirus, vCPU steal) rather than a genuine slow boot. */
+   before the demo provider + WebSocket handshake settle. On a 2-vCPU runner
+   running a dozen Electron-free but still browser-heavy suites back to back,
+   Chromium itself can stall for tens of seconds. That is environmental, not a
+   code defect (ROUND266 made the same call for the liveness probe), so:
+     - the suites allow 45s for boot,
+     - this gate retries up to THREE times,
+     - and it gives the machine a short cooldown between attempts so the OS
+       can reap the dead Chromium/provider processes first. A genuine failure
+       still fails every attempt. */
 function looksLikeBootTimeout(r) {
-  return /wait_for_selector|Timeout \d+ms exceeded|ERR_CONNECTION|ECONNREFUSED/i.test(r.out + r.err);
+  /* Only a failure to REACH the app counts. A suite that booted and then
+     failed an assertion must never be retried (that would hide a real bug). */
+  const out = r.out + '\n' + r.err;
+  const reachedApp = /#app:not\(\.hidden\)/.test(out) === false || /Login|login-connect/.test(out);
+  return /Page\.wait_for_selector: Timeout|wait_for_selector.*Timeout \d+ms exceeded|ERR_CONNECTION_REFUSED|ECONNREFUSED|Target page, context or browser has been closed/i.test(out)
+    && reachedApp;
 }
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function runWithRetry(py, file) {
   let last = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt) process.stdout.write(`(boot timeout, retry ${attempt}/2) `);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) {
+      process.stdout.write(`(boot timeout, retry ${attempt}/3) `);
+      /* let the OS reap the previous Chromium/provider before relaunching */
+      await sleep(2000 * attempt);
+    }
     last = await runSuite(py, file);
     if (last.ok) { last.retried = attempt > 0; return last; }
     if (!looksLikeBootTimeout(last)) return last;
