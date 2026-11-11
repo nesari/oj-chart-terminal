@@ -22,6 +22,7 @@
  *   round285  drawing parity wave 2 (callout/measure/profiles/labels)  (new)
  *   round286  stale-interval crash hardening                          (new)
  *   round287  settings that had no control now work                     (new)
+ *   round288  no setting may be a placebo (removed + wired)             (new)
  *
  * History: until ROUND283 every archived suite was silently broken — the move
  * into `tests/archive/e2e/` added a directory level, so `ROOT` (three
@@ -53,6 +54,7 @@ const CURATED = [
   'e2e_round285_drawing_parity2.py',
   'e2e_round286_chart_hardening.py',
   'e2e_round287_settings_controls.py',
+  'e2e_round288_effective_settings.py',
 ];
 
 /* Per attempt. A cold Windows runner needs ~30s for a heavy suite; the retry

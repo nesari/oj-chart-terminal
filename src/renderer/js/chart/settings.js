@@ -35,22 +35,22 @@ const DEFAULTS = {
     stVolume: false,             // volume in the legend
     stSpread: true,              // ROUND98 (user request): live spread chip in the legend (points)
     stLastDayChange: false,      // change vs previous day close
-    stIndTitles: true, stIndInputs: true, stIndValues: true, stIndBgOp: 0.8,
+    stIndTitles: true, stIndInputs: true, stIndValues: true,
     /* --- Scales and lines --- */
-    currUnit: 'always',          // reserved (no currency/unit feed)
+
     scaleModes: 'hover',         // A/L buttons -> bottom-bar log/% visibility
     /* ROUND287: `lockRatioVal` was a dead key (nothing read it); the boolean
        `lockRatio` is the one the render path uses. */
     lockRatio: false,
     scalesPlacement: 'auto',     // 'auto' | 'left' | 'right'
-    noOverlap: true,             // reserved (lib auto-handles)
-    plusButton: true,            // reserved (TV quick menu)
+
+
     countdown: true,
     symLabel: 'name_value_line', // 'hidden'|'name'|'value'|'name_value'|'name_value_line'
     symLabelColor: '#d1d4dc',
     prevDayClose: 'hidden',      // 'hidden'|'value'|'line'|'value_line'
     prevDayCloseColor: '#f7c948',
-    indFin: 'value',             // reserved (no indicators)
+    indFin: 'value',             // 'value' | 'hidden' — indicator values in the legend (ROUND288)
     highLow: 'hidden',           // 'hidden'|'value'|'line'|'value_line'
     highLowColor: '#787b86',
     bidAsk: 'hidden',            // 'hidden'|'line'|'value_line'
@@ -65,7 +65,6 @@ const DEFAULTS = {
     scaleText: '#d1d4dc', scaleFont: 11,
     scaleLines: '#2a2e39',
     navButtons: 'hover',         // 'always' | 'hover' | 'hidden'
-    paneButtons: 'hover',        // reserved
     marginTop: 8, marginBottom: 8, marginRight: 10,
     renkoBrick: 0,
     /* --- Alerts --- */
@@ -75,7 +74,9 @@ const DEFAULTS = {
        ROUND287: `grid` was a dead key — it is never read anywhere; the two
        real toggles are vGrid/hGrid. Keeping it only misled the settings audit
        into reporting a missing control. */
-    priceLine: true, priceLabel: true,
+    /* ROUND288: `priceLine` / `priceLabel` were dead legacy aliases (nothing
+       read them; the real toggles are scaleLines / scaleText, and the
+       price-line painter is `Manager.applyPriceLines`). */
   };
 
   /* merge saved over defaults; migrate legacy keys */
@@ -447,19 +448,24 @@ const DEFAULTS = {
         rowCheckbox('Titles', 'stIndTitles');
         rowCheckbox('Inputs', 'stIndInputs');
         rowCheckbox('Values', 'stIndValues');
-        rowSlider('Background', 'stIndBgOp', 0, 1, 0.05);
+        /* ROUND288: `stIndBgOp` was a dead slider — the legend row background
+           opacity is not painted from it anywhere. The row styling lives in
+           CSS; a control that changes nothing is removed. */
         note('Indicator legend options are stored and apply once indicators are supported.');
       } },
 
       scales: { title: 'Scales and lines', ic: 'measure', build() {
         sec('PRICE SCALE');
-        rowSelect('Currency and Unit', 'currUnit', [['always', 'Always visible'], ['hover', 'Visible on mouse over'], ['hidden', 'Hidden']]);
+        /* ROUND288: "Currency and Unit" was a dead control — this app has no
+           currency/unit metadata in the feed, so every choice did nothing.
+           Removed rather than left as a setting that lies. */
         rowSelect('Scale modes (A and L)', 'scaleModes', [['hover', 'Visible on mouse over'], ['always', 'Always visible'], ['hidden', 'Hidden']]);
         rowCheckbox('Lock price to bar ratio', 'lockRatio');
         rowSelect('Scales placement', 'scalesPlacement', [['auto', 'Auto'], ['left', 'Left'], ['right', 'Right']]);
         sec('PRICE LABELS & LINES');
-        rowCheckbox('No overlapping labels', 'noOverlap');
-        rowCheckbox('Plus button', 'plusButton', { hint: 'Shows the quick-add plus button near the crosshair' });
+        /* ROUND288: "No overlapping labels" and "Plus button" were reserved
+           placeholders with no implementation (the drawing library lays out
+           labels itself and there is no crosshair quick-add button). Removed. */
         rowCheckbox('Countdown to bar close', 'countdown');
         rowSelectColor('Symbol', 'symLabel', [
           ['hidden', 'Hidden'], ['name', 'Name'], ['value', 'Value'],
@@ -467,7 +473,10 @@ const DEFAULTS = {
           ['name_value', 'Name, value'], ['name_value_line', 'Name, value, line'],
         ], 'symLabelColor');
         rowSelectColor('Previous day close', 'prevDayClose', [['hidden', 'Hidden'], ['value', 'Value'], ['line', 'Line'], ['value_line', 'Value and line']], 'prevDayCloseColor');
-        rowSelect('Indicators and financials', 'indFin', [['value', 'Value'], ['hidden', 'Hidden']]);
+        /* ROUND288: "Indicators and financials" was reserved ("no indicators
+           — Value/Hidden did nothing"). It now hides the indicator VALUES in
+           the legend, which is exactly what TV's option controls. */
+        rowSelect('Indicator values', 'indFin', [['value', 'Value'], ['hidden', 'Hidden']]);
         rowSelectColor('High and low', 'highLow', [['hidden', 'Hidden'], ['value', 'Value'], ['line', 'Line'], ['value_line', 'Value and line']], 'highLowColor');
         rowSelectColor2('Bid and ask', 'bidAsk', [['hidden', 'Hidden'], ['line', 'Line'], ['value_line', 'Value and line']], 'bidColor', 'askColor');
         sec('TIME SCALE');
@@ -500,8 +509,10 @@ const DEFAULTS = {
         rowSelectNum('Text', 'scaleFont', [[10, '10'], [11, '11'], [12, '12'], [13, '13'], [14, '14'], [16, '16'], [18, '18'], [20, '20']], 'scaleText');
         rowColorOnly('Lines', 'scaleLines');
         sec('BUTTONS');
+        /* ROUND288: "Navigation" IS implemented (it toggles the chart's nav
+           button visibility through nav-always/nav-hidden). "Pane" was a
+           reserved placeholder with no buttons behind it — removed. */
         rowSelect('Navigation', 'navButtons', [['hover', 'Visible on mouse over'], ['always', 'Always visible'], ['hidden', 'Hidden']]);
-        rowSelect('Pane', 'paneButtons', [['hover', 'Visible on mouse over'], ['always', 'Always visible'], ['hidden', 'Hidden']]);
         sec('MARGINS');
         rowNumber('Top', 'marginTop', '%', 0, 40);
         rowNumber('Bottom', 'marginBottom', '%', 0, 40);

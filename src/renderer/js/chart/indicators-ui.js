@@ -294,13 +294,23 @@ const LWC = window.LightweightCharts;
     const bars = pane.bars;
     let idx = bars.length - 1;
     if (hoverTime != null && pane.barTimes.length) idx = U.nearestIndex(pane.barTimes, hoverTime);
+    /* ROUND288: the legend switches in Settings never reached this painter —
+       "Chart values" / indicator values were always written. They are honest
+       now: stIndValues hides the values, stIndTitles hides the whole row.
+       The settings object is reached lazily through the app facade (no new
+       import edge from this hot path). */
+    const S = (window.__app && window.__app.Settings && window.__app.Settings.conf) || {};
+    const showVals = S.stIndValues !== false && S.indFin !== 'hidden';
     for (const inst of pane.indicators || []) {
       /* round 32: rows live in the main legend OR inside the sub-pane header */
       const row = pane.root.querySelector(`.ind-row[data-iid="${inst.id}"]`);
       if (!row) continue;
+      if (S.stIndTitles === false) { row.style.display = 'none'; continue; }
+      row.style.display = '';
       const valsEl = row.querySelector('.ind-vals');
+      if (!valsEl) continue;
       const state = rt(pane).get(inst.id);
-      if (!state || !bars.length || inst.visible === false) { valsEl.textContent = ''; continue; }
+      if (!showVals || !state || !bars.length || inst.visible === false) { valsEl.textContent = ''; continue; }
       const parts = [];
       const colorsForVals = [];
       for (const { ln, hist, s } of state.series) {
@@ -678,4 +688,8 @@ const LWC = window.LightweightCharts;
      (layout switches) — dead pane objects no longer accumulate in RT */
   function dropPane(pane) { RT.delete(pane); }
   UI.dropPane = dropPane;
+  /* ROUND288: the legend repaint is a public entry point too (Settings and
+     tests both call it). It was exported as a bare named export, so the
+     `IndicatorsUI` facade reachable from `window.__app` did not have it. */
+  UI.updateIndicatorRows = updateIndicatorRows;
 export { UI as IndicatorsUI, recompute, tickRecompute, updateIndicatorRows, dropPane };

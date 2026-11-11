@@ -57,10 +57,9 @@ for (const h of HELPERS) {
 
 /* documented keys with no control by design */
 const RESERVED = new Set([
-  'currUnit',   // no currency/unit feed
-  'noOverlap',  // the library auto-handles it
-  'plusButton', // TV quick-menu placeholder
-  'indFin',     // no indicator fundamentals
+  /* ROUND288: currUnit / noOverlap / plusButton / paneButtons were REMOVED
+     (dead settings), and indFin is now a real, wired control — so the
+     allow-list only carries genuine legacy aliases. */
   'priceLine', 'priceLabel', // legacy aliases of scaleLines/scaleText
 ]);
 
