@@ -58,6 +58,8 @@ const DEFAULTS = {
     dayOfWeek: true,             // day-of-week on time-scale labels
     /* --- Canvas --- */
     bgMode: 'solid', bg1: '#0f0f0f', bg2: '#0a0a0a', /* round 44: TV dark */
+    /* ROUND288 (TV parity): draw a small gap between trading days */
+    sessionBreaks: true,
     vGrid: true, hGrid: true, gridColor: 'rgba(42,46,57,.55)',
     crosshair: true, crossColor: '#758696', crossStyle: 'largedashed',
     watermark: true, wmSymbol: true, wmTf: true, wmSize: 44, wmOpacity: 0.12,
@@ -187,6 +189,16 @@ const DEFAULTS = {
     }
     if (key === 'dayOfWeek') { Manager.applyTimezone(); return; }
     if (key === 'scaleModes' || key === 'navButtons') { Settings.applyAll(); return; }
+    /* ROUND288: toggling session breaks must rebuild the series rows (the gap
+       slots live in the data, not in a chart option). */
+    if (key === 'sessionBreaks') {
+      try {
+        const hook = App.sessionHook;
+        if (hook && hook.refreshBreaks) hook.refreshBreaks();
+        else for (const p of App.panes) { try { Manager.setPaneData(p, p.bars); } catch (e) {} }
+      } catch (e) { Log.debug('chart', 'session breaks refresh failed', e); }
+      return;
+    }
     Settings.applyAll();
   };
 
@@ -493,6 +505,8 @@ const DEFAULTS = {
            picker (its on/off lived in the config with no control), and the
            watermark had a content select but no way to hide it outright. */
         rowCheckbox('Crosshair', 'crosshair');
+        /* ROUND288 (TV parity): the day-separator gap on the time axis. */
+        rowCheckbox('Session breaks', 'sessionBreaks', { hint: 'Show a gap between trading days' });
         rowSelectColor('Crosshair', 'crossStyle', [['solid', 'Solid'], ['dashed', 'Dashed'], ['largedashed', 'Large dashed'], ['dotted', 'Dotted']], 'crossColor');
         rowCheckbox('Watermark', 'watermark');
         /* ROUND287 (TV parity): the watermark's ticker/interval parts were

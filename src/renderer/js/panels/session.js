@@ -328,6 +328,61 @@ function applySeries(pane) {
   try { setSeriesWithGaps(pane, pane.bars); } catch (e) { Log.warn('session', 'session series apply failed', e) }
 }
 
+/* ================= ROUND288: Session breaks (TV parity) =================
+   TV's Settings → Canvas → "Session breaks" draws a small visual gap
+   between trading days. The machinery already existed for the Replay/Custom
+   Session mode (insertDayGaps + _sessWithGapTimes + _sessGapIdx, consumed by
+   the drawing engine, the Pine adapter and trade history); it was simply not
+   reachable for a normal chart.
+
+   These two entry points apply the SAME pipeline to whatever `pane.bars`
+   already holds — no stitched history, no replay, no session-range overlay.
+   Order of preference in setPaneData: Custom Session > Session breaks >
+   plain data, so the two features never fight over the series. */
+
+/** how many whitespace slots TV uses between day regions */
+const BREAK_BARS = 3;
+
+function breaksOn(pane) {
+  const S_ = (window.__app && window.__app.Settings && window.__app.Settings.conf) || {};
+  if (S_.sessionBreaks === false) return false;
+  /* renko/price-based charts have no continuous time axis to break */
+  const st = (pane && pane.style) || 'candles';
+  return st !== 'renko';
+}
+
+/** apply the break rows to the pane's series (idempotent, cheap to re-call) */
+function applyBreaks(pane) {
+  if (!pane || !pane.series || !pane.bars || pane.bars.length < 2) return false;
+  if (!breaksOn(pane)) { clearBreaks(pane); return false; }
+  try { setSeriesWithGaps(pane, pane.bars); return true; } catch (e) {
+    Log.warn('session', 'session breaks apply failed', e);
+    return false;
+  }
+}
+
+/** drop the break rows and forget the gap-inclusive axis */
+function clearBreaks(pane) {
+  if (!pane) return;
+  pane._sessWithGapTimes = null;
+  pane._sessGapIdx = null;
+  pane._sessBreaksOnly = false;
+}
+
+/** re-apply after the user toggles the setting */
+function refreshBreaks() {
+  for (const pane of App.panes || []) {
+    if (!pane || !pane.series || !pane.bars || !pane.bars.length) continue;
+    /* Custom Session owns the series while it is on */
+    if (S.on) { try { applySeries(pane); } catch (e) {} continue; }
+    /* setPaneData now consults the sessionBreaks setting itself, so this one
+       call both adds and removes the gap rows. */
+    try { Manager.setPaneData(pane, pane.bars); } catch (e) {
+      Log.warn('session', 'session breaks refresh failed', e);
+    }
+  }
+}
+
 /* ---------- per-pane apply ---------- */
 
 function applyPane(pane, compact) {
@@ -455,6 +510,11 @@ SessionRange.clear = function () {
 };
 
 /* exposed for the demo-broker + tests + the merged Go-to-Date dialog */
+SessionRange.applyBreaks = applyBreaks;
+SessionRange.refreshBreaks = refreshBreaks;
+SessionRange.clearBreaks = clearBreaks;
+SessionRange.breaksOn = breaksOn;
+
 SessionRange.baseInfo = function (symbol) {
   const c = S.cache[symbol];
   return c && c.bars ? { base: c.base, bars: c.bars.length, dry: !!c.dry } : null;
@@ -499,6 +559,9 @@ SessionRange.init = function () {
     loadPane: (pane) => { loadPane(pane); },
     applySeries,
     blockTicks,
+    /* ROUND288: session breaks live on the same hook so Settings can refresh
+       every pane without importing this module. */
+    refreshBreaks,
     /* round 87 — indicator support inside Custom Session: */
     windowSec: () => SessionRange.windowSec(),
     m1Source: (symbol) => SessionRange.m1Source(symbol),

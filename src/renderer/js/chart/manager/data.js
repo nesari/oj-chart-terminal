@@ -26,6 +26,7 @@ import { DataWindow } from '../../panels/datawindow.js';
 import { ObjectTree } from '../../panels/objects.js';
 import { Replay } from '../../panels/replay.js';
 import { Manager, LWC } from './shared.js';
+import { insertDayGaps } from '../../../../core/session-math.js';
 
   function chartOptions(pane) {
     const tf = App.tfById[pane.tf];
@@ -356,6 +357,56 @@ import { Manager, LWC } from './shared.js';
   }
   Manager.applyPaneMarkers = applyPaneMarkers;
 
+  /* ROUND288: is the "Session breaks" setting on? Read from Settings.conf so
+     the value survives reloads and follows the dialog live. */
+  function breaksEnabled() {
+    try {
+      const c = (Settings && Settings.conf) || {};
+      return c.sessionBreaks !== false;
+    } catch (e) { return true; }
+  }
+
+  /* ROUND288: build the series rows for a chart WITH session breaks. Two
+     whitespace slots are inserted at each calendar-day boundary, exactly like
+     TV's "Session breaks". The gap-inclusive time axis is stored on the pane
+     (`_sessWithGapTimes` + `_sessGapIdx`) because the drawing engine, the Pine
+     adapter and trade history all map time→pixel through it. */
+  function sessionBreaksRows(pane, bars) {
+    const style = pane.style || 'candles';
+    const gapBars = 3;
+    const { bars: withGaps, gaps } = insertDayGaps(bars, gapBars, null);
+    if (!gaps) {
+      /* a single day segment: nothing to break, fall through to plain data */
+      pane._sessWithGapTimes = null;
+      pane._sessGapIdx = null;
+      return false;
+    }
+    const mapped = transformData(style, bars);
+    const rows = [];
+    let i = 0;
+    for (const r of withGaps) {
+      if (Object.keys(r).length === 1) rows.push({ time: r.time });
+      else rows.push(mapped[i++]);
+    }
+    seriesWriteOk(pane, 'breaks-setData', rows);
+    try { pane.series.setData(rows); } catch (e) {}
+    pane._sessWithGapTimes = withGaps.map((r) => r.time);
+    const gapIdx = new Uint8Array(withGaps.length);
+    for (let k = 0; k < withGaps.length; k++) if (Object.keys(withGaps[k]).length === 1) gapIdx[k] = 1;
+    pane._sessGapIdx = gapIdx;
+    pane._sessBreaksOnly = true;
+    pane.barTimes = bars.map((b) => b.time);
+    Manager.applyPaneMarkers(pane);
+    if (style === 'baseline') {
+      try { pane.series.applyOptions({ baseValue: pane.baseVal != null ? pane.baseVal : (bars.length ? bars[0].close : 0) }); } catch (e) {}
+    }
+    if (style === 'heikin') {
+      const hd = transformData('heikin', bars);
+      pane._haLast = hd.length ? { open: hd[hd.length - 1].open, close: hd[hd.length - 1].close } : null;
+    }
+    return true;
+  }
+
   function setPaneData(pane, bars) {
     const style = pane.style || 'candles';
     if (style === 'renko') {
@@ -365,8 +416,30 @@ import { Manager, LWC } from './shared.js';
       seriesWriteOk(pane, 'renko-setData', rows); // ROUND145: logs context on poison, never blocks
       try { pane.series.setData(rows); } catch (e) {}
       pane.barTimes = bricks.map((b) => b.time);
+      /* ROUND288: renko has no continuous time axis — no day breaks */
+      pane._sessWithGapTimes = null;
+      pane._sessGapIdx = null;
       return;
     }
+    /* ROUND288 (TV parity): Session breaks. When the setting is on, the same
+       whitespace-row pipeline the Replay/Custom-Session mode already used is
+       applied to the plain series, so bars after a day boundary get a small
+       visual gap. Custom Session keeps priority (it owns the series when
+       active), and a single-day loading window simply falls through. */
+    const hook = (typeof App !== 'undefined' && App.sessionHook) || null;
+    const customSessionOn = !!(hook && hook.active && hook.active());
+    if (!customSessionOn && breaksEnabled()) {
+      try {
+        if (sessionBreaksRows(pane, bars)) return;
+      } catch (e) { Log.debug('chart', 'session breaks skipped', e); }
+    }
+    /* ROUND288: the plain path must also CLEAR any gap axis a previous breaks
+       pass published — otherwise the drawing engine keeps mapping time→pixel
+       through a stale gap-inclusive axis after the user turns the setting off
+       (and `_sessBreaksOnly` would keep the pane marked as broken). */
+    pane._sessWithGapTimes = null;
+    pane._sessGapIdx = null;
+    pane._sessBreaksOnly = false;
     const rows = transformData(style, bars);
     seriesWriteOk(pane, 'setData', rows); // ROUND145: logs context on poison, never blocks
     try { pane.series.setData(rows); } catch (e) {}
