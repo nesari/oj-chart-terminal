@@ -97,9 +97,15 @@ function init(opts) {
     return snapshot();
   }
 
-  /* Never install without consent, and never restart the app on its own. */
+  /* Never install without consent, and never restart the app on its own.
+     `autoInstallOnAppQuit` stays FALSE: with it true, a user who downloaded an
+     update and then chose "Later" would get it installed silently the next
+     time they closed the app — which contradicts both the panel's
+     "Restart & install" button and the documented promise. Quitting after a
+     download simply loses it; the next launch re-checks and re-downloads
+     (blockmap makes that cheap). */
   autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.allowPrerelease = false;
 
   autoUpdater.on('checking-for-update', () => setState({ state: 'checking', error: null }));

@@ -119,6 +119,8 @@ const log = (lvl, msg, ctx) => logs.push({ lvl, msg, ctx });
   ok(s.state === 'checking' || s.state === 'idle' || s.state === 'available' || s.state === 'none',
     'check leaves a sane state', s.state);
   ok(fakeEmitter.autoDownload === false, 'autoDownload is off — no silent downloads');
+  ok(fakeEmitter.autoInstallOnAppQuit === false,
+    'autoInstallOnAppQuit is off — "Later" must not install on quit');
 
   /* the emitter's available event becomes a downloadable state */
   fakeEmitter.fire('update-available', { version: '1.9.218' });
