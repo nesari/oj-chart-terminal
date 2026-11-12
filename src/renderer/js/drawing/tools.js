@@ -1289,15 +1289,19 @@ const HIT = 7;
         const bars = Math.round(Math.abs(U.timeToLogical(v.times, d.points[1].t) - U.timeToLogical(v.times, d.points[0].t)));
         const dur = U.durHuman(Math.abs(d.points[1].t - d.points[0].t));
         const sgn = dp >= 0 ? '+' : '';
-        const rows = [
-          `${sgn}${U.fmtPrice(dp, v.digits)} (${sgn}${pct.toFixed(2)}%)`,
-          `${bars} ${bars === 1 ? 'bar' : 'bars'}`,
-          dur,
-        ];
+        /* ROUND289 (TV parity): TV lets each card row be switched off on its
+           own (price/percent, bar count, duration). The old single
+           `showLabel` toggle hid the entire card. `showLabel` still wins as
+           the master switch so existing drawings keep working. */
+        const rows = [];
+        if (d.opts.showPrice !== false) rows.push({ text: `${sgn}${U.fmtPrice(dp, v.digits)} (${sgn}${pct.toFixed(2)}%)`, dir: true });
+        if (d.opts.showBars !== false) rows.push({ text: `${bars} ${bars === 1 ? 'bar' : 'bars'}` });
+        if (d.opts.showDuration !== false) rows.push({ text: dur });
+        if (!rows.length) return;                 // every row hidden — no empty panel
         const fs = 11, lh = 15, padX = 10, padY = 7;
         ctx.save();
         ctx.font = `600 ${fs}px "Segoe UI", Arial, sans-serif`;
-        const bw = Math.max(...rows.map((r) => ctx.measureText(r).width)) + padX * 2;
+        const bw = Math.max(...rows.map((r) => ctx.measureText(r.text).width)) + padX * 2;
         const bh = rows.length * lh + padY * 2;
         const bx = U.clamp((x0 + x3) / 2 - bw / 2, 2, Math.max(2, v.pw - bw - 2));
         let by = yT - bh - 6;
@@ -1318,9 +1322,9 @@ const HIT = 7;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         rows.forEach((r, i) => {
-          /* the first row carries the direction colour, the rest stay muted */
-          ctx.fillStyle = i === 0 ? (dp >= 0 ? '#089981' : '#f23645') : '#b2b5be';
-          ctx.fillText(r, bx + padX, by + padY + lh / 2 + i * lh);
+          /* the price row carries the direction colour, the rest stay muted */
+          ctx.fillStyle = r.dir ? (dp >= 0 ? '#089981' : '#f23645') : '#b2b5be';
+          ctx.fillText(r.text, bx + padX, by + padY + lh / 2 + i * lh);
         });
         ctx.restore();
       }

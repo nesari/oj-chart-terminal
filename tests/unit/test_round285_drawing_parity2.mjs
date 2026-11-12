@@ -252,7 +252,26 @@ for (const id of ['volprofile', 'avolprofile']) {
   ok(off.texts.length === 0, 'disjoint: Show distance toggle works');
 }
 
-/* ---------- 7. every new option is reachable from the dialog ---------- */
+/* ---------- 7. sector radius guides (ROUND289) ---------- */
+{
+  const d = { points: [{ t: 1500, p: 15 }, { t: 1700, p: 15 }, { t: 1500, p: 25 }], opts: {} };
+  const priceChips = (ops) => (ops.texts || []).filter((t) => !/°/.test(t.s));
+  const ops = draw('sector', d, { pOf: (y) => 100 + (400 - y) / 8 });
+  /* two dashed radius lines + their price chips (the angle chip has a °) */
+  ok(priceChips(ops).length >= 2, 'sector labels the price at both radii',
+    ops.texts.map((t) => t.s).join(' | '));
+  ok(ops.strokes >= 3, 'sector strokes the arc plus both radius guides', ops.strokes);
+  const off = draw('sector', { points: d.points, opts: { showRadii: false } },
+    { pOf: (y) => 100 + (400 - y) / 8 });
+  ok(priceChips(off).length === 0, 'Radius guides toggle removes the price chips',
+    priceChips(off).map((t) => t.s).join(' | '));
+  ok(off.texts.some((t) => /°/.test(t.s)), 'the angle chip survives the toggle');
+  /* the guides must not crash a view without pOf (older harnesses) */
+  const noP = draw('sector', d);
+  ok((noP.texts || []).some((t) => /°/.test(t.s)), 'the angle chip survives a view without pOf');
+}
+
+/* ---------- 8. every new option is reachable from the dialog ---------- */
 {
   const st = readSource('src/renderer/js/drawing/settings.js');
   const need = [

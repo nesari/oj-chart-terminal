@@ -444,6 +444,12 @@ import { Log } from '../../../core/logger.js';
     ghostfeed: [
       { kind: 'line' },
       { kind: 'number', key: 'bars', label: 'Bars', min: 1, max: 200 },
+      /* ROUND289 (TV parity): the projection band around the regression. It is
+         a MULTIPLE of the residual standard error; 0 hides it. */
+      { kind: 'number', key: 'band', label: 'Projection band', min: 0, max: 3, step: 0.1 },
+      /* ROUND289: the band has its own colour so it reads as uncertainty, not
+         as a second drawing colour. */
+      { kind: 'color', key: 'bandColor', label: 'Band color', fallback: '#2962ff' },
       /* ROUND285 (TV parity): opacity + the two candle colours were fixed. */
       { kind: 'slider', key: 'fillOpacity', label: 'Opacity', min: 0.05, max: 1, step: 0.05 },
       { kind: 'color', key: 'color', label: 'Up color', fallback: '#089981' },
@@ -454,6 +460,8 @@ import { Log } from '../../../core/logger.js';
       { kind: 'fill', label: 'Background' },
       /* ROUND285 (TV parity): the sweep-angle chip. */
       { kind: 'check', key: 'showLabel', label: 'Angle label' },
+      /* ROUND289 (TV parity): the two radii as dashed guides + their prices. */
+      { kind: 'check', key: 'showRadii', label: 'Radius guides' },
     ],
     avwap: [
       { kind: 'line' },
@@ -471,15 +479,10 @@ import { Log } from '../../../core/logger.js';
       { kind: 'color', key: 'stopColor', label: 'Stop color', fallback: '#f23645' },
       { kind: 'color', key: 'targetColor', label: 'Target color', fallback: '#089981' },
     ],
-    avolprofile: [
-      { kind: 'number', key: 'bins', label: 'Rows', min: 6, max: 100 },
-    ],
-    /* ROUND254 (TV parity): the fixed-range profile had no schema (generic
-       fallback) — line + row count like its anchored sibling. */
-    volprofile: [
-      { kind: 'line' },
-      { kind: 'number', key: 'bins', label: 'Rows', min: 6, max: 120 },
-    ],
+    /* ROUND289: the duplicate `avolprofile` / `volprofile` definitions that used
+       to sit HERE silently overrode the full schemas declared later in the
+       table (the later assignment wins at runtime), so every option added to
+       the rich versions was dropped — Scope included. Removed. */
     pricerange: [
       { kind: 'line' },
       { kind: 'slider', key: 'fillOpacity', label: 'Box opacity', min: 0.02, max: 1, step: 0.02 },
@@ -507,6 +510,8 @@ import { Log } from '../../../core/logger.js';
        row count, Value Area %, POC colour/visibility and VA guides. */
     volprofile: [
       { kind: 'line' },
+      /* ROUND289 (TV parity): which bars the profile covers. */
+      { kind: 'select', key: 'scope', label: 'Scope', options: [['fixed', 'Fixed range'], ['session', 'Session'], ['visible', 'Visible bars']] },
       { kind: 'number', key: 'bins', label: 'Row size', min: 6, max: 120 },
       { kind: 'number', key: 'vaPct', label: 'Value area %', min: 1, max: 100 },
       { kind: 'check', key: 'showVa', label: 'Value area' },
@@ -515,6 +520,7 @@ import { Log } from '../../../core/logger.js';
     ],
     avolprofile: [
       { kind: 'line' },
+      { kind: 'select', key: 'scope', label: 'Scope', options: [['anchor', 'Anchor to now'], ['session', 'Session'], ['visible', 'Visible bars']] },
       { kind: 'number', key: 'bins', label: 'Row size', min: 6, max: 120 },
       { kind: 'number', key: 'vaPct', label: 'Value area %', min: 1, max: 100 },
       { kind: 'check', key: 'showVa', label: 'Value area' },
@@ -544,6 +550,10 @@ import { Log } from '../../../core/logger.js';
     { kind: 'line' },
     { kind: 'slider', key: 'fillOpacity', label: 'Box opacity', min: 0.02, max: 1, step: 0.02 },
     { kind: 'check', key: 'showLabel', label: 'Show info label' },
+    /* ROUND289 (TV parity): each card row is switchable on its own. */
+    { kind: 'check', key: 'showPrice', label: 'Price change', showIf: 'showLabel' },
+    { kind: 'check', key: 'showBars', label: 'Bar count', showIf: 'showLabel' },
+    { kind: 'check', key: 'showDuration', label: 'Duration', showIf: 'showLabel' },
     { kind: 'check', key: 'showArrows', label: 'Show arrows' },
   ];
 
@@ -994,7 +1004,13 @@ import { Log } from '../../../core/logger.js';
       sel.addEventListener('keydown', (e) => e.stopPropagation());
       sel.addEventListener('change', () => {
         if (fld.key === 'extend') applyExtend(sel.value);
-        else d.opts[fld.key] = sel.value;
+        else {
+          d.opts[fld.key] = sel.value;
+          /* ROUND289: posforecast can hold an explicitly DRAGGED stop. Picking a
+             Risk/Reward coefficient is a request to go back to the computed
+             level, so drop the manual override. */
+          if (fld.key === 'coeff' && d.type === 'posforecast') delete d.opts.stop;
+        }
       });
     }
 

@@ -97,8 +97,13 @@ import { TH } from './analysis.js';
     ctx.font = savedFont;
     const lh = fs + 4;
     const padX = 9, padY = 6;
+    /* ROUND289: TV's bubble is slightly taller than its text, which is what
+       gives the Text tab's vertical alignment (Top / Inside / Bottom) any room
+       to move. Without this slack the padded inner box was EXACTLY the text
+       block, so all three choices painted identically. */
+    const vSlack = 10;
     const bw = lw + padX * 2;
-    const bh = lines.length * lh + padY * 2;
+    const bh = lines.length * lh + padY * 2 + vSlack;
     /* bubble centre sits on the anchor; the tail reaches the target */
     const cx = A[0], cy = A[1];
     const dx = B[0] - cx, dy = B[1] - cy;
@@ -177,10 +182,28 @@ import { TH } from './analysis.js';
         ctx.closePath();
         ctx.stroke();
       }
+      /* ROUND289 (TV parity): the Text tab's horizontal + vertical alignment
+         now apply INSIDE the bubble (they used to be ignored here — every
+         callout was top-left). `textHAlign` moves the text block between the
+         padded edges; `textVAlign` moves it between the top and bottom
+         padding, so 'inside' centres it both ways. */
       ctx.fillStyle = d.opts.textColor || '#ffffff';
+      const ha = d.opts.textHAlign || 'left';
+      const va = d.opts.textVAlign || 'top';
       ctx.textBaseline = 'top';
-      ctx.textAlign = 'left';
-      g.lines.forEach((l, i) => ctx.fillText(l, g.left + g.padX, g.top + g.padY + i * g.lh));
+      ctx.textAlign = ha === 'center' ? 'center' : ha === 'right' ? 'right' : 'left';
+      const blockH = g.lines.length * g.lh;
+      const innerTop = g.top + g.padY;
+      const innerH = g.bh - g.padY * 2;
+      const y0 = va === 'inside'
+        ? innerTop + Math.max(0, (innerH - blockH) / 2)
+        : va === 'bottom'
+          ? g.bottom - g.padY - blockH
+          : innerTop;
+      const xOf = ha === 'center' ? (g.left + g.right) / 2
+        : ha === 'right' ? g.right - g.padX
+          : g.left + g.padX;
+      g.lines.forEach((l, i) => ctx.fillText(l, xOf, y0 + i * g.lh));
     },
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {

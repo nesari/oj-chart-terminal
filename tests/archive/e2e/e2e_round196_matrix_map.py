@@ -63,24 +63,34 @@ ADD_JS = """async ({name, src}) => {
   await new Promise((r) => setTimeout(r, 4000));
   const st = A.PineUI.debug(pane).find((s) => s.adapter && s.adapter.inst && s.adapter.inst.id === inst.id);
   const out = { instId: inst.id, status: st ? st.status : 'no-st',
-    errors: (st && st.errors) || [], vals: {}, idx: -1 };
+    errors: (st && st.errors) || [], vals: {}, idx: -1, k: null };
   if (st && st.rt && st.rt.out) {
     const bars = pane.bars;
-    /* ROUND283: the plots are computed against the runtime's OWN bar array.
-       A live tick can append a bar between the rebuild and this read, which
-       shifts one index and made this suite flaky under load. Read the
-       runtime's bars (the array the pass actually used), and pick a bar whose
-       values are settled (not the forming last bar). */
+    /* The plots are computed against the runtime's OWN bar array. A live tick
+       can append a bar between the rebuild and this read, which shifts one
+       index (ROUND283 tried to fix that but still indexed the PLOT arrays with
+       an offset taken from the BAR array — when the two arrays have different
+       lengths, `values[idx]` and `bars[idx]` describe DIFFERENT bars and the
+       price check fails by exactly one tick).
+
+       Align by DISTANCE FROM THE END instead: the last value of every series
+       and the last bar describe the same instant, so the same `k` selects the
+       same bar no matter how the lengths differ. */
     const rb = (st.rt.bars && st.rt.bars.length) ? st.rt.bars : bars;
     out.barsSeen = rb.length;
-    for (let i = Math.min(rb.length - 2, st.rt.totalBars - 2); i >= Math.max(0, rb.length - 12); i--) {
-      if (i < 0) continue;
-      if (rb[i].open !== rb[i].close) { out.idx = i; break; }
+    const series = st.rt.out.plotsOrder.map((key) => st.rt.out.plots.get(key));
+    out.plotLen = series.length ? (series[0].values || []).length : 0;
+    const kMax = Math.min(12, rb.length - 2, (out.plotLen || 0) - 2);
+    for (let k = 1; k <= kMax; k++) {
+      const bi = rb.length - 1 - k;
+      if (bi < 0) continue;
+      /* settled bars only (skip the forming one) */
+      if (rb[bi].open !== rb[bi].close) { out.k = k; out.idx = bi; break; }
     }
-    if (out.idx >= 0) {
-      for (const key of st.rt.out.plotsOrder) {
-        const p = st.rt.out.plots.get(key);
-        out.vals[p.title] = p.values[out.idx];
+    if (out.k != null) {
+      for (const p of series) {
+        const vals = p.values || [];
+        out.vals[p.title] = vals[vals.length - 1 - out.k];
       }
       out.close = rb[out.idx].close;
     }
@@ -125,6 +135,8 @@ def main():
             print('    engine:', r.get('status'), str(r.get('errors'))[:150])
             check('engine ok', r['status'] == 'ok', r.get('errors'))
             v, c = r.get('vals') or {}, r.get('close')
+            print('    bars:', r.get('barsSeen'), 'plots:', r.get('plotLen'), 'aligned at k =', r.get('k'))
+            check('a settled bar was found', r.get('k') is not None, r)
             try:
                 check('cell == close', abs(v['cell'] - c) < 1e-9, (v.get('cell'), c))
                 check('sum == 4x close', abs(v['msum'] - 4 * c) < 1e-6, (v.get('msum'), c))

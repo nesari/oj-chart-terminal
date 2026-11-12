@@ -112,7 +112,11 @@ function readSchemas() {
 const LINE = ['color', 'width', 'style'];
 const FILL = ['fill', 'fillColor', 'fillOpacity'];
 const TEXT_TAB = ['text', 'italic', 'bold', 'fontSize', 'textColor', 'textVAlign', 'textHAlign', 'textalign', 'align'];
-const IGNORE = new Set(['vis', 'ctrls']);
+/* options the ENGINE writes while the user drags, not dialog fields:
+   `ctrls` = bend controls for curves, `stop` = posforecast's dragged stop
+   level (ROUND289). Both are produced by gestures, so no dialog must expose
+   them — but the painter legitimately reads them back. */
+const IGNORE = new Set(['vis', 'ctrls', 'stop']);
 
 function covers(item) {
   const out = new Set();

@@ -12,6 +12,7 @@ import { Theme } from '../../core/theme.js';
 import { App } from '../../../../core/state.js';
 import { TOOLS, segWithExtend } from '../tools.js';
 import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillColorOf, insidePoly, normRect, polyPts, ptXY } from './common.js';
+import { dayStartOf } from '../../../../core/session-math.js';
 
   function TH(k, fallback) { return (Theme.c) ? Theme.c(k) : fallback; }
 
@@ -149,85 +150,163 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
     dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
   };
 
+  /* ================= ROUND289: shared volume-profile engine =================
+     Both volume profiles painted their own copy of the same histogram code, so
+     every new option had to be added twice (and twice as easily forgotten).
+     One engine now owns the range resolution, the row build, POC/Value Area
+     and the painting; the two tools only decide WHICH bars to feed it.
+
+     `mode` mirrors TV's profile scopes:
+       fixed    – the two anchor points (Fixed range profile)
+       session  – bars belonging to the anchor bar's trading day
+       visible  – the bars currently on screen
+       anchor   – from the anchor to the newest bar (Anchored profile)      */
+  function profileRange(v, d, mode) {
+    const bars = v.bars || [];
+    const n = bars.length;
+    if (n < 4) return null;
+    const idxOf = (t) => U.timeToLogical(v.times, t);
+    let i0 = 0, i1 = n - 1;
+    if (mode === 'fixed') {
+      const a = Math.floor(idxOf(Math.min(d.points[0].t, d.points[1].t)));
+      const b = Math.ceil(idxOf(Math.max(d.points[0].t, d.points[1].t)));
+      i0 = Math.max(0, a); i1 = Math.min(n - 1, b);
+    } else if (mode === 'anchor') {
+      i0 = Math.max(0, Math.round(idxOf(d.points[0].t)));
+      i1 = n - 1;
+    } else if (mode === 'session') {
+      /* the trading day that contains the anchor (or the newer anchor) */
+      const anchorT = mode === 'session' && d.points[1] ? Math.min(d.points[0].t, d.points[1].t) : d.points[0].t;
+      const aIdx = U.clamp(Math.round(idxOf(anchorT)), 0, n - 1);
+      const dayOf = (t) => dayStartOf(t + (v.serverOffSec || 0));
+      const day = dayOf(bars[aIdx].time);
+      i0 = aIdx; i1 = aIdx;
+      while (i0 > 0 && dayOf(bars[i0 - 1].time) === day) i0--;
+      while (i1 < n - 1 && dayOf(bars[i1 + 1].time) === day) i1++;
+    } else if (mode === 'visible') {
+      /* logical range -> bar indices; the manager exposes it through v */
+      let from = v.visibleFrom, to = v.visibleTo;
+      if (from == null || to == null) {
+        try {
+          const lr = v.chart && v.chart.timeScale().getVisibleLogicalRange();
+          if (lr) { from = lr.from; to = lr.to; }
+        } catch (e) { /* fall through to the whole range */ }
+      }
+      if (from == null || to == null) { i0 = 0; i1 = n - 1; }
+      else {
+        i0 = U.clamp(Math.floor(from), 0, n - 1);
+        i1 = U.clamp(Math.ceil(to), 0, n - 1);
+      }
+    }
+    if (i1 - i0 < 2) return null;
+    return { i0, i1, bars };
+  }
+
+  /* build the histogram rows for [i0..i1] */
+  function profileRows(v, d, range) {
+    const { i0, i1, bars } = range;
+    let lo = Infinity, hi = -Infinity;
+    for (let i = i0; i <= i1; i++) { lo = Math.min(lo, bars[i].low); hi = Math.max(hi, bars[i].high); }
+    if (!(hi > lo)) return null;
+    const NB = U.clamp(Math.round(d.opts.bins || 24), 6, 120);
+    const step = (hi - lo) / NB;
+    const bins = new Array(NB).fill(0);
+    let maxV = 0, totV = 0;
+    for (let i = i0; i <= i1; i++) {
+      const b = bars[i];
+      const vol = (b.volume != null && b.volume > 0) ? b.volume : 1; // fallback: bar count weight
+      const mid = (b.high + b.low) / 2;
+      const bi = U.clamp(Math.floor((mid - lo) / step), 0, NB - 1);
+      bins[bi] += vol; totV += vol;
+      maxV = Math.max(maxV, bins[bi]);
+    }
+    if (!maxV) return null;
+    return { NB, step, bins, maxV, totV, lo, hi };
+  }
+
+  /* POC + Value Area from the rows */
+  function profilePocVa(d, prof) {
+    const { NB, bins, totV } = prof;
+    let poc = 0;
+    for (let i = 1; i < NB; i++) if (bins[i] > bins[poc]) poc = i;
+    const vaPct = U.clamp(d.opts.vaPct == null ? 70 : Number(d.opts.vaPct), 1, 100) / 100;
+    let acc = bins[poc], a = poc, b2 = poc;
+    while (acc < totV * vaPct && (a > 0 || b2 < NB - 1)) {
+      const va = a > 0 ? bins[a - 1] : -1;
+      const vb = b2 < NB - 1 ? bins[b2 + 1] : -1;
+      if (vb >= va) { b2++; acc += Math.max(0, vb); } else { a--; acc += Math.max(0, va); }
+    }
+    return { poc, vaLo: a, vaHi: b2 };
+  }
+
+  /* paint one profile and return its POC price (for the chip) */
+  function paintProfile(v, d, prof, va, baseX, maxW, digits) {
+    const ctx = v.ctx;
+    const { NB, step, bins, maxV, lo } = prof;
+    const { poc, vaLo, vaHi } = va;
+    const profCol = d.opts.color || '#2962ff';
+    const pocCol = d.opts.pocColor || '#f7c948';
+    const showPoc = d.opts.showPoc !== false;
+    const showVa = d.opts.showVa !== false;
+    const width = U.clamp(Number(d.opts.width) || 1, 1, 8);
+    ctx.save();
+    for (let i = 0; i < NB; i++) {
+      if (!bins[i]) continue;
+      const y1 = v.yOf(lo + i * step), y2 = v.yOf(lo + (i + 1) * step);
+      const w = (bins[i] / maxV) * maxW;
+      const inVa = i >= vaLo && i <= vaHi;
+      ctx.globalAlpha = showVa && inVa ? 0.55 : 0.28;
+      ctx.fillStyle = (showPoc && bins[i] === bins[poc]) ? pocCol : profCol;
+      ctx.fillRect(baseX, Math.min(y1, y2), w, Math.max(width, Math.abs(y2 - y1) - 1));
+    }
+    ctx.globalAlpha = 1;
+    if (showVa) {
+      ctx.strokeStyle = profCol;
+      ctx.globalAlpha = 0.75;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      for (const edge of [lo + vaLo * step, lo + (vaHi + 1) * step]) {
+        const yv = v.yOf(edge);
+        if (yv == null) continue;
+        ctx.beginPath(); ctx.moveTo(baseX, yv); ctx.lineTo(baseX + maxW, yv); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    if (showPoc) {
+      chipLabel(ctx, baseX + 24, v.yOf(lo + (poc + 0.5) * step),
+        `POC ${U.fmtPrice(lo + (poc + 0.5) * step, digits)}`, 'rgba(24,28,39,.92)');
+    }
+    return lo + (poc + 0.5) * step;
+  }
+
+  /* one call for both tools */
+  function drawProfile(v, d, mode, baseX, maxW) {
+    const range = profileRange(v, d, mode);
+    if (!range) return null;
+    const prof = profileRows(v, d, range);
+    if (!prof) return null;
+    const va = profilePocVa(d, prof);
+    paintProfile(v, d, prof, va, baseX, maxW, v.digits);
+    return { range, prof, va };
+  }
+
   /* ---------------- Volume Profile (fixed range) — ROUND 62: TV name ---------------- */
   TOOLS.volprofile = {
     name: 'Fixed range volume profile', icon: 'fixedvp', pts: 2,
     draw(v, d) {
       const bars = v.bars;
       if (!bars || bars.length < 4) return;
-      const ctx = v.ctx;
-      const i0 = Math.max(0, Math.floor(U.timeToLogical(v.times, Math.min(d.points[0].t, d.points[1].t))));
-      const i1 = Math.min(bars.length - 1, Math.ceil(U.timeToLogical(v.times, Math.max(d.points[0].t, d.points[1].t))));
-      if (i1 - i0 < 2) return;
-      let lo = Infinity, hi = -Infinity;
-      for (let i = i0; i <= i1; i++) {
-        lo = Math.min(lo, bars[i].low); hi = Math.max(hi, bars[i].high);
-      }
-      if (!(hi > lo)) return;
-      const NB = d.opts.bins || 24;
-      const step = (hi - lo) / NB;
-      const bins = new Array(NB).fill(0);
-      let maxV = 0, totV = 0;
-      for (let i = i0; i <= i1; i++) {
-        const b = bars[i];
-        const vol = (b.volume != null && b.volume > 0) ? b.volume : 1; // fallback: bar count weight
-        const mid = (b.high + b.low) / 2;
-        const bi = U.clamp(Math.floor((mid - lo) / step), 0, NB - 1);
-        bins[bi] += vol; totV += vol;
-        maxV = Math.max(maxV, bins[bi]);
-      }
-      if (!maxV) return;
-      // POC + Value Area (percentage is configurable — TV exposes it)
-      let poc = 0;
-      for (let i = 1; i < NB; i++) if (bins[i] > bins[poc]) poc = i;
-      /* ROUND285 (TV parity): the Value Area percentage is a real setting in
-         TV (default 70). It used to be hard-coded here. */
-      const vaPct = U.clamp(d.opts.vaPct == null ? 70 : Number(d.opts.vaPct), 1, 100) / 100;
-      let acc = bins[poc], a = poc, b2 = poc;
-      while (acc < totV * vaPct && (a > 0 || b2 < NB - 1)) {
-        const va = a > 0 ? bins[a - 1] : -1;
-        const vb = b2 < NB - 1 ? bins[b2 + 1] : -1;
-        if (vb >= va) { b2++; acc += Math.max(0, vb); } else { a--; acc += Math.max(0, va); }
-      }
-      const yOf = (p) => v.yOf(p);
       const x0 = v.xOf(d.points[0].t), x1 = v.xOf(d.points[1].t);
       const baseX = Math.min(x0, x1);
       const maxW = Math.max(30, Math.abs(x1 - x0) * 0.5);
-      /* ROUND285: colour + width are settings now (the histogram used to be
-         hard-coded blue/yellow and one pixel wide). */
-      const profCol = d.opts.color || '#2962ff';
-      const pocCol = d.opts.pocColor || '#f7c948';
-      const showPoc = d.opts.showPoc !== false;
-      const showVa = d.opts.showVa !== false;
-      ctx.save();
-      for (let i = 0; i < NB; i++) {
-        if (!bins[i]) continue;
-        const y1 = yOf(lo + i * step), y2 = yOf(lo + (i + 1) * step);
-        const w = (bins[i] / maxV) * maxW;
-        const inVa = i >= a && i <= b2;
-        ctx.globalAlpha = showVa && inVa ? 0.55 : 0.28;
-        ctx.fillStyle = (showPoc && bins[i] === bins[poc]) ? pocCol : profCol;
-        ctx.fillRect(baseX, Math.min(y1, y2), w, Math.max(1, Math.abs(y2 - y1) - 1));
-      }
-      ctx.globalAlpha = 1;
-      /* Value Area edges: two dashed guides with their prices (TV look) */
-      if (showVa) {
-        ctx.strokeStyle = profCol;
-        ctx.globalAlpha = 0.75;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 3]);
-        for (const edge of [lo + a * step, lo + (b2 + 1) * step]) {
-          const yv = yOf(edge);
-          if (yv == null) continue;
-          ctx.beginPath(); ctx.moveTo(baseX, yv); ctx.lineTo(baseX + maxW, yv); ctx.stroke();
-        }
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-      }
-      ctx.restore();
-      if (showPoc) {
-        chipLabel(ctx, baseX + 24, yOf(lo + (poc + 0.5) * step), `POC ${U.fmtPrice(lo + (poc + 0.5) * step, v.digits)}`, 'rgba(24,28,39,.92)');
-      }
+      /* ROUND289 (TV parity): the profile SCOPE is a setting — fixed range
+         (the two anchors), the anchor's trading session, or the visible bars.
+         All three share one engine, so POC/Value Area behave identically. */
+      const mode = d.opts.scope === 'session' ? 'session'
+        : d.opts.scope === 'visible' ? 'visible' : 'fixed';
+      drawProfile(v, d, mode, baseX, maxW);
     },
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {
@@ -276,14 +355,27 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
   /* ---------------- Position forecast ---------------- */
   TOOLS.posforecast = {
     name: 'Position forecast', icon: 'posforecast', pts: 2,
+    /* ROUND289 (TV parity): TV gives the position forecast a separate grip for
+       each of its three levels, so the stop can be placed where the trade
+       ACTUALLY risks out instead of only at coeff-many R. A dragged stop is
+       stored absolutely in `opts.stop` and the Risk/Reward coefficient is
+       rewritten from the new geometry, so the two controls never disagree. */
+    _stop(v, d) {
+      const [a, b] = d.points;
+      if (d.opts.stop != null && isFinite(d.opts.stop)) return Number(d.opts.stop);
+      const rr = Number(d.opts.coeff) > 0 ? Number(d.opts.coeff) : 2;
+      return a.p - (b.p - a.p) / rr;
+    },
+    _xSpan(v, d) {
+      const x0 = v.xOf(d.points[0].t), x1 = v.xOf(d.points[1].t);
+      return { xa: Math.min(x0, x1), xb: Math.max(x0, x1) };
+    },
     draw(v, d) {
       const ctx = v.ctx;
       const [a, b] = d.points;
-      const rr = Number(d.opts.coeff) > 0 ? Number(d.opts.coeff) : 2;
       const dp = b.p - a.p;
-      const stop = a.p - dp / rr;
-      const x0 = v.xOf(a.t), x1 = v.xOf(b.t);
-      const xa = Math.min(x0, x1), xb = Math.max(x0, x1);
+      const stop = TOOLS.posforecast._stop(v, d);
+      const { xa, xb } = TOOLS.posforecast._xSpan(v, d);
       const yA = v.yOf(a.p), yB = v.yOf(b.p), yS = v.yOf(stop);
       /* ROUND285 (TV parity): TV's position forecast exposes a colour per zone
          (profit / loss) and an entry line. They were hard-coded greens/reds.
@@ -315,18 +407,52 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       chipLabel(ctx, (xa + xb) / 2, (yA + yB) / 2, `Target ${dp >= 0 ? '+' : ''}${pct.toFixed(2)}%`, 'rgba(8,153,129,.92)');
       chipLabel(ctx, (xa + xb) / 2, (yA + yS) / 2, `Stop ${pctS.toFixed(2)}%`, 'rgba(242,54,69,.92)');
     },
-    handles(v, d) { return polyPts(v, d); },
+    handles(v, d) {
+      /* three level grips, one at each end of every line: entry, target, stop */
+      const { xa, xb } = TOOLS.posforecast._xSpan(v, d);
+      const [a, b] = d.points;
+      const stop = TOOLS.posforecast._stop(v, d);
+      return [
+        [xa, v.yOf(a.p)], [xb, v.yOf(a.p)],
+        [xa, v.yOf(b.p)], [xb, v.yOf(b.p)],
+        [xa, v.yOf(stop)], [xb, v.yOf(stop)],
+      ];
+    },
+    dragHandle(v, d, i, pt) {
+      const [a, b] = d.points;
+      const grip = Math.floor(i / 2);           // 0 entry, 1 target, 2 stop
+      /* even index = the LEFT end of that level (moves the left time),
+         odd index = the RIGHT end (moves the right time) */
+      if (i % 2 === 0) d.points[0].t = pt.t;
+      else d.points[1].t = pt.t;
+      if (grip === 0) d.points[0].p = pt.p;
+      else if (grip === 1) d.points[1].p = pt.p;
+      else {
+        d.opts.stop = pt.p;
+        /* keep the coefficient honest: it now describes the dragged geometry */
+        const risk = a.p - pt.p, reward = b.p - a.p;
+        if (Math.abs(risk) > 1e-12) {
+          const rr = reward / risk;
+          if (rr > 0 && isFinite(rr)) d.opts.coeff = String(Math.round(rr * 100) / 100);
+        }
+      }
+    },
+    /* ROUND289: the dragged stop lives in opts (not points), so a body move
+       must carry it — otherwise dragging the box would silently re-derive the
+       stop from the coefficient and jump the level. */
+    bodyDragState(d) { return { stop: d.opts.stop }; },
+    onBodyDrag(d, dp, st) {
+      if (st && st.stop != null && isFinite(st.stop)) d.opts.stop = st.stop + dp;
+    },
     hitBody(v, d) {
       return (x, y) => {
+        const { xa, xb } = TOOLS.posforecast._xSpan(v, d);
         const [a, b] = d.points;
-        const rr = Number(d.opts.coeff) > 0 ? Number(d.opts.coeff) : 2;
-        const stop = a.p - (b.p - a.p) / rr;
-        const xa = Math.min(v.xOf(a.t), v.xOf(b.t)), xb = Math.max(v.xOf(a.t), v.xOf(b.t));
+        const stop = TOOLS.posforecast._stop(v, d);
         const ys = [v.yOf(a.p), v.yOf(b.p), v.yOf(stop)];
         return x >= xa - 5 && x <= xb + 5 && y >= Math.min(...ys) - 5 && y <= Math.max(...ys) + 5;
       };
     },
-    dragHandle(v, d, i, pt) { d.points[i] = { t: pt.t, p: pt.p }; },
   };
 
   /* ---------------- Bars pattern ---------------- */
@@ -409,10 +535,25 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       const den = look * sxx - sx * sx;
       const slope = den ? (look * sxy - sx * sy) / den : 0;
       const avgR = rng / look || 0;
+      /* ROUND289 (TV parity): a ghost feed is a REGRESSION projection, so it
+         should show the uncertainty around that line. TV draws a widening
+         band; the honest width is the regression's residual standard error,
+         which we compute from the same sample (no invented constant). */
+      const meanX = sx / look, meanY = sy / look;
+      const icept = meanY - slope * meanX;
+      let sse = 0;
+      for (let i = s0; i < bars.length; i++) {
+        const fit = icept + slope * i;
+        const d0 = bars[i].close - fit;
+        sse += d0 * d0;
+      }
+      const resid = look > 2 ? Math.sqrt(sse / (look - 2)) : 0;
+      /* `0` is a MEANINGFUL value here (hide the band), so it must not fall
+         through the `||` default the way a missing option does. */
+      const bandK = d.opts.band == null ? 1 : U.clamp(Number(d.opts.band), 0, 3);
       const x0 = v.xOf(d.points[0].t);
       const sp = (v.spacing > 0 ? v.spacing : 8);
       const w = Math.max(1.5, sp * 0.62);
-      let open = d.points[0].p;
       /* ROUND285 (TV parity): the ghost candles used to be hard-coded 0.5 alpha
          with fixed green/red. TV exposes an opacity plus the two colours. */
       const ghostAlpha = U.clamp(
@@ -420,7 +561,28 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       const upCol = d.opts.color || '#089981';
       const downCol = d.opts.color2 || '#f23645';
       ctx.save();
-      ctx.globalAlpha = ghostAlpha;
+      /* the widening projection band (drawn UNDER the candles) */
+      if (bandK > 0 && resid > 0) {
+        const ptsUp = [], ptsDn = [];
+        for (let k = 0; k < N; k++) {
+          /* uncertainty grows with the distance from the sample's centre */
+          const radius = resid * bandK * Math.sqrt(1 + (k / Math.max(1, N - 1)));
+          const proj = (d.points[0].p + slope * k);
+          const x = x0 + k * sp;
+          ptsUp.push([x, v.yOf(proj + radius)]);
+          ptsDn.push([x, v.yOf(proj - radius)]);
+        }
+        ctx.globalAlpha = ghostAlpha * 0.35;
+        ctx.fillStyle = d.opts.bandColor || '#2962ff';
+        ctx.beginPath();
+        ctx.moveTo(ptsUp[0][0], ptsUp[0][1]);
+        for (const p of ptsUp) ctx.lineTo(p[0], p[1]);
+        for (let k = ptsDn.length - 1; k >= 0; k--) ctx.lineTo(ptsDn[k][0], ptsDn[k][1]);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = ghostAlpha;
+      }
+      let open = d.points[0].p;
       for (let k = 0; k < N; k++) {
         const close = open + slope;
         const hi = Math.max(open, close) + avgR * 0.35;
@@ -499,6 +661,30 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
       applyStroke(ctx, d);
       ctx.stroke();
       ctx.restore();
+      /* ROUND289 (TV parity): TV's sector shows the two radii as guide lines
+         with the price they reach, so the wedge can be read off the scale. The
+         chips are placed at the B and C ends (outward from the centre) and stay
+         inside the pane. */
+      if (d.opts.showRadii !== false) {
+        const guide = (P, col) => {
+          ctx.save();
+          ctx.strokeStyle = col;
+          ctx.globalAlpha = 0.7;
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(P[0], P[1]); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 1;
+          ctx.restore();
+          const pAt = v.pOf ? v.pOf(P[1]) : null;
+          if (pAt == null || !isFinite(pAt)) return;
+          const lx = U.clamp(P[0] + (P[0] >= A[0] ? 6 : -6), 22, Math.max(22, v.pw - 22));
+          const ly = U.clamp(P[1] + (P[1] >= A[1] ? -10 : 10), 10, Math.max(10, v.ph - 10));
+          chipLabel(ctx, lx, ly, U.fmtPrice(pAt, v.digits), 'rgba(24,28,39,.92)');
+        };
+        guide(B, d.opts.color || '#2962ff');
+        guide(C, d.opts.color || '#2962ff');
+      }
       /* ROUND285 (TV parity): the sector shows its sweep angle inside the
          wedge, and the radius can carry the price/time labels TV draws. */
       if (d.opts.showLabel !== false) {
@@ -604,71 +790,13 @@ import { applyStroke, chipLabel, distToPath, drawAnnotation, fillAlphaOf, fillCo
     draw(v, d) {
       const bars = v.bars;
       if (!bars || bars.length < 4) return;
-      const ctx = v.ctx;
-      const i0 = Math.max(0, Math.round(U.timeToLogical(v.times, d.points[0].t)));
-      const i1 = bars.length - 1;
-      if (i1 - i0 < 2) return;
-      let lo = Infinity, hi = -Infinity;
-      for (let i = i0; i <= i1; i++) {
-        lo = Math.min(lo, bars[i].low); hi = Math.max(hi, bars[i].high);
-      }
-      if (!(hi > lo)) return;
-      const NB = U.clamp(Math.round(d.opts.bins || 24), 6, 120);
-      const step = (hi - lo) / NB;
-      const bins = new Array(NB).fill(0);
-      let maxV = 0, totV = 0;
-      for (let i = i0; i <= i1; i++) {
-        const b = bars[i];
-        const vol = (b.volume != null && b.volume > 0) ? b.volume : 1;
-        const mid = (b.high + b.low) / 2;
-        const bi = U.clamp(Math.floor((mid - lo) / step), 0, NB - 1);
-        bins[bi] += vol; totV += vol;
-        maxV = Math.max(maxV, bins[bi]);
-      }
-      if (!maxV) return;
-      let poc = 0;
-      for (let i = 1; i < NB; i++) if (bins[i] > bins[poc]) poc = i;
-      /* ROUND285: same configurable Value Area percentage as the fixed-range
-         profile (TV exposes it on both). */
-      const vaPctA = U.clamp(d.opts.vaPct == null ? 70 : Number(d.opts.vaPct), 1, 100) / 100;
-      let acc = bins[poc], a = poc, b2 = poc;
-      while (acc < totV * vaPctA && (a > 0 || b2 < NB - 1)) {
-        const va = a > 0 ? bins[a - 1] : -1;
-        const vb = b2 < NB - 1 ? bins[b2 + 1] : -1;
-        if (vb >= va) { b2++; acc += Math.max(0, vb); } else { a--; acc += Math.max(0, va); }
-      }
       const baseX = v.xOf(d.points[0].t);
       const maxW = Math.max(30, Math.min(240, (v.pw - baseX) * 0.5));
-      const profColA = d.opts.color || '#2962ff';
-      const pocColA = d.opts.pocColor || '#f7c948';
-      const showPocA = d.opts.showPoc !== false;
-      const showVaA = d.opts.showVa !== false;
-      ctx.save();
-      for (let i = 0; i < NB; i++) {
-        if (!bins[i]) continue;
-        const y1 = v.yOf(lo + i * step), y2 = v.yOf(lo + (i + 1) * step);
-        const w = (bins[i] / maxV) * maxW;
-        const inVa = i >= a && i <= b2;
-        ctx.globalAlpha = showVaA && inVa ? 0.55 : 0.28;
-        ctx.fillStyle = (showPocA && bins[i] === bins[poc]) ? pocColA : profColA;
-        ctx.fillRect(baseX, Math.min(y1, y2), w, Math.max(1, Math.abs(y2 - y1) - 1));
-      }
-      ctx.globalAlpha = 1;
-      if (showVaA) {
-        ctx.strokeStyle = profColA;
-        ctx.globalAlpha = 0.75;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 3]);
-        for (const edge of [lo + a * step, lo + (b2 + 1) * step]) {
-          const yv = v.yOf(edge);
-          if (yv == null) continue;
-          ctx.beginPath(); ctx.moveTo(baseX, yv); ctx.lineTo(baseX + maxW, yv); ctx.stroke();
-        }
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-      }
-      ctx.restore();
-      if (showPocA) chipLabel(ctx, baseX + 24, v.yOf(lo + (poc + 0.5) * step), `POC ${U.fmtPrice(lo + (poc + 0.5) * step, v.digits)}`, 'rgba(24,28,39,.92)');
+      /* ROUND289: the anchored tool grows to the newest bar by default, but TV
+         also offers "from the anchor's session" and "the visible bars". */
+      const mode = d.opts.scope === 'session' ? 'session'
+        : d.opts.scope === 'visible' ? 'visible' : 'anchor';
+      drawProfile(v, d, mode, baseX, maxW);
     },
     handles(v, d) { return polyPts(v, d); },
     hitBody(v, d) {
