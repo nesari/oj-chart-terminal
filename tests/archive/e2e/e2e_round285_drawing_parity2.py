@@ -102,7 +102,21 @@ PAINT_JS = """(arg) => {
   const P = (i) => ({ t: bars[i].time, p: bars[i].close });
   let points;
   if (id === 'avolprofile' || id === 'ghostfeed') points = [P(10)];
-  else if (id === 'sector' || id === 'disjoint' || id === 'barspattern') points = [P(10), P(30), P(50)];
+  else if (id === 'sector' || id === 'barspattern') points = [P(10), P(30), P(50)];
+  else if (id === 'disjoint') {
+    /* ROUND290: the width chip is (correctly) suppressed when the two lines
+       are closer than 6px — a zero-width channel has nothing to label. Picking
+       three arbitrary demo bars could land them nearly collinear, so the suite
+       failed for a drawing that was drawn right. Give the parallel a real
+       perpendicular offset by hand instead. */
+    const mid = (bars[10].high + bars[10].low) / 2;
+    const span = Math.abs(bars[50].high - bars[10].low) || 1;
+    points = [
+      { t: bars[10].time, p: mid },
+      { t: bars[50].time, p: mid + span * 0.1 },
+      { t: bars[10].time, p: mid + span * 0.6 },
+    ];
+  }
   else points = [P(10), P(60)];
   try { tool.draw(v, { points, opts: Object.assign({}, extra) }, false); }
   catch (e) { return { error: String(e && e.message) }; }
