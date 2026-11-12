@@ -78,7 +78,7 @@ Builds are **unsigned** by default — Windows SmartScreen / macOS Gatekeeper wi
 
 The Python provider ships **outside** the asar archive (`build.asarUnpack`): Python cannot read `app.asar`, so keep that entry when editing the bundler config — otherwise the installed app boots but the provider never starts.
 
-The `.github/workflows/package.yml` workflow builds all three installers on a `v*` tag (or manually via **Actions → Package → Run workflow**) and uploads them as artifacts with `SHA256SUMS.txt`. It is separate from the fast `ci.yml` quality gate.
+The `.github/workflows/package.yml` workflow builds all three installers on a `v*` tag (or manually via **Actions → Package → Run workflow**), uploads them as artifacts with `SHA256SUMS.txt`, and from ROUND290 also publishes them to a **GitHub Release** together with the auto-update feed — see [Updates](#️-updates). It is separate from the fast `ci.yml` quality gate.
 
 ### 🧭 Architecture
 
@@ -173,6 +173,18 @@ node scripts/release.mjs --message "Fix login retry"
 ```
 
 The script refuses a dirty tree (override: `--allow-dirty`) or an existing tag, runs `npm run verify` (skip: `--no-verify`), then bumps `package.json` + `src/core/logger.js`, updates the split changelog and index, commits `Release x.y.z`, tags `vx.y.z` and builds the platform installer (`--no-build` stops after the tag). Alias: `npm run release -- --bump minor`.
+
+### ⬆️ Updates
+
+From ROUND290 the `Package` workflow publishes a real **GitHub Release** on every `v*` tag — the three installers plus the update feed (`latest.yml`, `latest-mac.yml`, `latest-linux.yml`) and their blockmaps. Before that the installers only existed as 14-day workflow artifacts, so a shipped copy had no way to learn a newer build existed.
+
+The app checks the feed from the **Diagnostics** panel (version chip + `Check`), and downloading/installing always needs an explicit click — `autoDownload` is permanently `false`. A dev build (`npm start`) reports "auto-update is off in this build" instead of failing.
+
+> **⚠️ Private-repository limitation.** `electron-updater` reads the release feed **unauthenticated**. This repository is private, so the feed URL returns `404` to a client with no session and a shipped app cannot self-update. Turning on auto-delivery therefore requires one of:
+> - making the repository public (the installers are already public artifacts of a release), or
+> - pointing `build.publish` at a public feed (an S3/R2 bucket or a public "releases" mirror) and shipping the token-free URL.
+>
+> Until one of those is chosen, the release page is the download path and updating is a manual reinstall. Everything else (build, sign, publish, feed generation) is already wired and verified.
 
 ### 📚 Documentation
 
