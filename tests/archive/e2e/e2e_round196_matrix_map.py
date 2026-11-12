@@ -68,31 +68,29 @@ ADD_JS = """async ({name, src}) => {
     const bars = pane.bars;
     /* The plots are computed against the runtime's OWN bar array. A live tick
        can append a bar between the rebuild and this read, which shifts one
-       index (ROUND283 tried to fix that but still indexed the PLOT arrays with
-       an offset taken from the BAR array — when the two arrays have different
-       lengths, `values[idx]` and `bars[idx]` describe DIFFERENT bars and the
-       price check fails by exactly one tick).
+       index (ROUND283 fixed the length mismatch by aligning from the END).
 
-       Align by DISTANCE FROM THE END instead: the last value of every series
-       and the last bar describe the same instant, so the same `k` selects the
-       same bar no matter how the lengths differ. */
+       ROUND290: that is still not enough. The LAST bar of the runtime's array
+       is the FORMING bar and the feed keeps rewriting it in place, so its
+       stored plot values belong to a tick that has already moved on — the
+       comparison then fails by exactly one tick (1.08417 vs 1.08416), which
+       is what kept this suite flaky on CI.
+
+       Read only SETTLED bars (open !== close is not a liveness proof; a bar is
+       settled when it is not the last index) and compare the plot values of
+       that same index. `close` is then stable for both sides. */
     const rb = (st.rt.bars && st.rt.bars.length) ? st.rt.bars : bars;
     out.barsSeen = rb.length;
     const series = st.rt.out.plotsOrder.map((key) => st.rt.out.plots.get(key));
-    out.plotLen = series.length ? (series[0].values || []).length : 0;
-    const kMax = Math.min(12, rb.length - 2, (out.plotLen || 0) - 2);
-    for (let k = 1; k <= kMax; k++) {
-      const bi = rb.length - 1 - k;
-      if (bi < 0) continue;
-      /* settled bars only (skip the forming one) */
-      if (rb[bi].open !== rb[bi].close) { out.k = k; out.idx = bi; break; }
-    }
-    if (out.k != null) {
-      for (const p of series) {
-        const vals = p.values || [];
-        out.vals[p.title] = vals[vals.length - 1 - out.k];
-      }
-      out.close = rb[out.idx].close;
+    const plotLen = series.length ? (series[0].values || []).length : 0;
+    out.plotLen = plotLen;
+    /* index of the last CLOSED bar in the array the pass used */
+    const settled = Math.min(rb.length, plotLen) - 2;
+    if (settled >= 0) {
+      out.idx = settled;
+      out.k = rb.length - 1 - settled;
+      for (const p of series) out.vals[p.title] = (p.values || [])[settled];
+      out.close = rb[settled].close;
     }
   }
   return out;
