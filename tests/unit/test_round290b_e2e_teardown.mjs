@@ -59,12 +59,19 @@ const ok = (cond, label, extra) => {
     'time.sleep(600)',
   ].join('\n'), 'utf8');
 
-  /* Reproduce the gate's timeout path against it. */
+  /* Reproduce the gate's timeout path against it — including the POSIX
+     `detached: true` that makes the process-group signal possible. Without
+     that flag `process.kill(-pid)` has no group to reach and the grandchild
+     survives, which is exactly the failure CI reported for this test on
+     macOS and Linux. */
   const driver = path.join(tmp, 'driver.mjs');
   fs.writeFileSync(driver, `
 import { spawn, spawnSync } from 'node:child_process';
 const file = ${JSON.stringify(fake)};
-const child = spawn('python', [file], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+const child = spawn('python', [file], {
+  stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+  detached: process.platform !== 'win32',
+});
 let out = '';
 child.stdout.on('data', (d) => { out += d; });
 const timer = setTimeout(() => {

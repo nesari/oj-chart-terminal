@@ -94,10 +94,16 @@ function killTree(child) {
     if (process.platform === 'win32') {
       spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
     } else {
-      /* the suite is its own process-group leader only if we made it one, so
-         fall back to a plain kill on POSIX (the suite's own `finally` cleans
-         its children there). */
-      try { process.kill(-pid, 'SIGKILL'); } catch (e) { child.kill('SIGKILL'); }
+      /* Signal the whole group first (the child is spawned detached, so it is
+         its own leader). If that throws — older Node, a platform without
+         groups, or a child that already left the group — fall back to killing
+         the direct child AND its descendants discovered via `pkill -P`. */
+      let done = false;
+      try { process.kill(-pid, 'SIGKILL'); done = true; } catch (e) { done = false; }
+      if (!done) {
+        try { spawnSync('pkill', ['-P', String(pid)], { stdio: 'ignore' }); } catch (e) {}
+        try { child.kill('SIGKILL'); } catch (e) {}
+      }
     }
   } catch (e) {
     try { child.kill('SIGKILL'); } catch (e2) {}
