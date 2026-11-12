@@ -72,7 +72,14 @@ const ok = (cond, label, extra) => {
 {
   const gate = readSource('scripts/checks/e2e-gate.mjs');
   ok(/attempt < 4/.test(gate), 'it retries up to three times');
-  ok(/await sleep\(2000 \* attempt\)/.test(gate), 'it cools down between attempts');
+  /* ROUND290: the cooldown grew from 2s to 3s per attempt (killed Chromium and
+     the provider need longer to release their ports on Windows), so the pin
+     checks the POLICY — a growing wait between attempts — instead of one
+     literal number that has to be edited whenever it is tuned. */
+  const cool = /await sleep\((\d+) \* attempt\)/.exec(gate);
+  ok(!!cool && Number(cool[1]) >= 2000, 'it cools down between attempts', cool && cool[1]);
+  ok(/\/T/.test(gate) && /taskkill/.test(gate),
+    'the timeout path kills the whole process tree, not just Python');
   const fn = (gate.match(/function looksLikeBootTimeout[\s\S]*?\n\}/) || [''])[0];
   ok(/Page\\.wait_for_selector: Timeout/.test(fn), 'the retry matches a boot timeout');
   ok(/if \(!bootTimeout\) return false;/.test(fn), 'anything else is never retried');

@@ -76,6 +76,34 @@ function findPython() {
   return null;
 }
 
+/* Kill a suite AND everything it spawned.
+
+   ROUND290: this used `child.kill('SIGKILL')`, which on Windows terminates only
+   the Python process. Every suite starts a static HTTP server, the demo
+   provider and Chromium as children; those survived the timeout and kept
+   holding their ports and CPU, so the NEXT suite fought a machine that was
+   already saturated and it too timed out. That is exactly the chain seen on CI
+   (round287 timed out, then round288 timed out right behind it).
+
+   `kill_proc` in tests/archive/e2e/e2e_teardown.py solves the same problem with
+   `taskkill /T /F`; the gate needs its own copy because it owns the process. */
+function killTree(child) {
+  if (!child || child.killed) return;
+  const pid = child.pid;
+  try {
+    if (process.platform === 'win32') {
+      spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+    } else {
+      /* the suite is its own process-group leader only if we made it one, so
+         fall back to a plain kill on POSIX (the suite's own `finally` cleans
+         its children there). */
+      try { process.kill(-pid, 'SIGKILL'); } catch (e) { child.kill('SIGKILL'); }
+    }
+  } catch (e) {
+    try { child.kill('SIGKILL'); } catch (e2) {}
+  }
+}
+
 function runSuite(py, file) {
   return new Promise((resolve) => {
     const started = Date.now();
@@ -83,11 +111,13 @@ function runSuite(py, file) {
       cwd: ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
+      /* POSIX: a new process group so a timeout can signal the whole tree */
+      detached: process.platform !== 'win32',
     });
     let out = '';
     let err = '';
     const timer = setTimeout(() => {
-      try { child.kill('SIGKILL'); } catch (e) {}
+      killTree(child);
       resolve({ file, ok: false, ms: Date.now() - started, out, err: err + '\n(timed out)' });
     }, TIME_LIMIT_MS);
     child.stdout.on('data', (d) => { out += d; });
@@ -131,8 +161,10 @@ async function runWithRetry(py, file) {
   for (let attempt = 0; attempt < 4; attempt++) {
     if (attempt) {
       process.stdout.write(`(boot timeout, retry ${attempt}/3) `);
-      /* let the OS reap the previous Chromium/provider before relaunching */
-      await sleep(2000 * attempt);
+      /* let the OS reap the previous Chromium/provider before relaunching —
+         ROUND290: killTree() above already signalled the tree, this grace
+         period is the time those processes need to release their ports. */
+      await sleep(3000 * attempt);
     }
     last = await runSuite(py, file);
     if (last.ok) { last.retried = attempt > 0; return last; }
