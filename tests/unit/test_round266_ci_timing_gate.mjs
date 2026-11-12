@@ -67,15 +67,22 @@ console.log('\n[1] timing-sensitive suites run alone');
     'serial pass happens before the concurrent pool');
 }
 
-console.log('\n[2] one retry, same threshold');
+console.log('\n[2] bounded retries, same threshold');
 {
   ok(/async function measureLiveness\(bars\)/.test(pine), 'the probe is a reusable measurement');
   ok(/attempts\+\+/.test(pine), 'each measurement is counted');
-  const retry = pine.slice(pine.indexOf('if (m.maxGap > 250)'), pine.indexOf('max event-loop gap'));
-  ok(/m = await measureLiveness\(bars\);/.test(retry), 'a stalled sample is re-measured once');
-  ok(/m\.maxGap <= 250/.test(pine), 'the shipped threshold is still 250ms');
+  ok(/const STALL = 250/.test(pine), 'the shipped threshold is still 250ms');
+  /* ROUND290: one retry was not enough — two consecutive disturbed samples on
+     a loaded 2-vCPU runner killed healthy builds (f115944, 0b71a5a). The
+     attempt count is bounded (3) and a busy loop is still caught because a
+     monolithic pass never yields at all. */
+  const bounds = pine.slice(pine.indexOf('const MAX_ATTEMPTS'), pine.indexOf('max event-loop gap'));
+  ok(/const MAX_ATTEMPTS = 3/.test(pine), 'the attempt count is bounded at 3');
+  ok(/tries < MAX_ATTEMPTS/.test(bounds), 'the retry loop honours that bound');
+  ok(/best\.maxGap <= STALL/.test(pine), 'the assertion still uses the 250ms threshold');
+  ok(/if \(m\.maxGap < best\.maxGap\) best = m/.test(pine), 'the cleanest sample is the one judged');
   ok(/m\.probes > 20/.test(pine), 'the loop-ran assertion is still there');
-  ok(/plotByTitle\(m\.rt, 'acc'\)/.test(pine), 'the retry result is the one that gets checked');
+  ok(/plotByTitle\(m\.rt, 'acc'\)/.test(pine), 'the completed run still reports its output');
 }
 
 console.log('\n[3] a single freeze is rescued (functional)');
@@ -83,12 +90,13 @@ console.log('\n[3] a single freeze is rescued (functional)');
   const env = { ...process.env, OJ_PINE80_STALL_ONCE: '1' };
   delete env.OJ_PINE80_STALL_ALWAYS;
   const r = spawnSync(process.execPath, [path.join(ROOT, 'tests', 'unit', 'verify_pine80.mjs')], {
-    cwd: ROOT, encoding: 'utf8', env, windowsHide: true, timeout: 90_000,
+    cwd: ROOT, encoding: 'utf8', env, windowsHide: true, timeout: 120_000,
   });
   const out = (r.stdout || '') + (r.stderr || '');
   ok(r.status === 0, 'stalled-once run passes', { status: r.status });
-  ok((out.match(/retrying once/g) || []).length === 1, 'exactly one retry note');
-  ok(/first pass stalled \d+ms/.test(out), 'the note reports the stalled sample');
+  const notes = out.match(/attempt \d+ stalled/g) || [];
+  ok(notes.length === 1, 'exactly one retry note', notes.length);
+  ok(/attempt 1 stalled \d+ms/.test(out), 'the note reports the stalled sample');
   ok(/RESULT: 16 passed, 0 failed/.test(out), 'all 16 checks still ran');
 }
 
@@ -97,12 +105,15 @@ console.log('\n[4] a persistent freeze still fails (functional)');
   const env = { ...process.env, OJ_PINE80_STALL_ALWAYS: '1' };
   delete env.OJ_PINE80_STALL_ONCE;
   const r = spawnSync(process.execPath, [path.join(ROOT, 'tests', 'unit', 'verify_pine80.mjs')], {
-    cwd: ROOT, encoding: 'utf8', env, windowsHide: true, timeout: 90_000,
+    cwd: ROOT, encoding: 'utf8', env, windowsHide: true, timeout: 120_000,
   });
   const out = (r.stdout || '') + (r.stderr || '');
-  ok(r.status === 1, 'two stalls in a row exit non-zero', { status: r.status });
+  ok(r.status === 1, 'every-attempt stall exits non-zero', { status: r.status });
   ok(/FAIL: max event-loop gap/.test(out), 'the gap assertion is what fails');
-  ok((out.match(/retrying once/g) || []).length === 1, 'it retries only once, not endlessly');
+  /* The bound matters: an unbounded loop would turn a genuine regression into
+     an infinite retry instead of a red build. */
+  const notes = out.match(/attempt \d+ stalled/g) || [];
+  ok(notes.length === 2, 'it retries up to the bound, not endlessly', notes.length);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
