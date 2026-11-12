@@ -11,7 +11,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # ROUND290: `contents: write` is required to create the GitHub Release the
+  # in-app updater reads (latest.yml + the installers). Before this the job
+  # only uploaded a 14-day artifact, so there was nothing to update FROM.
+  contents: write
 
 env:
   # Never look for a local signing identity on the runner. Set CSC_LINK /
@@ -85,6 +88,8 @@ jobs:
           name: ${{ matrix.artifact }}
           path: |
             ${{ matrix.files }}
+            dist/*.yml
+            dist/*.blockmap
             dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
@@ -97,3 +102,50 @@ jobs:
           cat dist/SHA256SUMS.txt >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           ls -lh dist/*.exe dist/*.dmg dist/*.AppImage 2>/dev/null >> "$GITHUB_STEP_SUMMARY" || true
+
+  # ROUND290 — publish a real GitHub Release.
+  #
+  # Why a separate job: the three platform builds run in parallel and each can
+  # only see its OWN output. An update feed (`latest.yml` on Windows,
+  # `latest-mac.yml`, `latest-linux.yml`) plus three installer assets must land
+  # on ONE release, so a job that `needs: package` downloads all three
+  # artifacts and creates the release once.
+  #
+  # Until ROUND290 the installers only existed as workflow artifacts, which
+  # expire after 14 days and are invisible to users and to electron-updater —
+  # so a released app had no way to learn a newer build existed.
+  release:
+    name: GitHub Release
+    needs: package
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download installers
+        uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Collect release files
+        shell: bash
+        run: |
+          cd assets
+          ls -lh
+          # Only the installer + update-feed files belong on the release page.
+          mkdir -p ../out
+          for f in *.exe *.dmg *.AppImage *.yml *.blockmap; do
+            [ -e "$f" ] && cp "$f" ../out/ || true
+          done
+          cd ../out && ls -lh
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: OJchart ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          # A missing note is fine — an empty body beats a failed release.
+          generate_release_notes: true
+          files: out/*
+          fail_on_unmatched_files: false

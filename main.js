@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const { spawn, spawnSync } = require('node:child_process');
 const net = require('node:net'); // Node TCP client — Electron's net module has no connect()
 const { providerScript } = require('./src/platform/electron/provider-path.js');
+const updater = require('./src/platform/electron/updater.js'); // ROUND290
 
 const PORT = 8777;
 let mainWindow = null;
@@ -788,6 +789,29 @@ ipcMain.on('log-batch', (e, entries) => {
   for (const en of v) mlog(en);
 });
 ipcMain.handle('diag-ping', () => { mlogEvent('debug', 'diagnostics', 'diag-ping'); return { ok: true, t: Date.now() }; });
+
+/* ===== ROUND290: auto-update bridge =====
+ * The renderer may ASK about updates and may approve a download/install, but
+ * it never chooses a URL or a file — the feed comes from the packaged
+ * app-update.yml. Every call returns the same small status object; the
+ * progress push goes back to the window that asked (and to every window, so
+ * a detached tab shows the same "update ready" state). */
+const updaterLog = (lvl, msg, ctx) => { try { mlogEvent(lvl, 'update', msg, ctx); } catch (e) {} };
+ipcMain.handle('update-status', () => updater.init({ log: updaterLog }));
+ipcMain.handle('update-check', async () => {
+  const s = await updater.check({ log: updaterLog });
+  return s;
+});
+ipcMain.handle('update-download', async () => {
+  const s = await updater.download({ log: updaterLog });
+  return s;
+});
+ipcMain.handle('update-install', () => ({ ok: updater.install() }));
+updater.subscribe((s) => {
+  for (const w of BrowserWindow.getAllWindows()) {
+    try { if (!w.isDestroyed()) w.webContents.send('update-state', s); } catch (e) {}
+  }
+});
 ipcMain.handle('logs-export', async (e, text, json, fileName) => {
   try {
     if (typeof text !== 'string' || text.length > 20 * 1024 * 1024) return { ok: false, error: 'invalid log payload' };

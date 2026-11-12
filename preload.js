@@ -19,7 +19,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /* round 28: logging & diagnostics bridge (batched, validated in main) */
   logBatch: (entries) => ipcRenderer.send('log-batch', entries),
   logsExport: (text, json, fileName) => ipcRenderer.invoke('logs-export', text, json, fileName),
-  diagPing: () => ipcRenderer.invoke('diag-ping')
+  diagPing: () => ipcRenderer.invoke('diag-ping'),
+  /* ROUND290: auto-update. The renderer can read the status, ask for a check,
+     approve a download and approve the restart — nothing else. No URL, path or
+     token crosses the bridge. */
+  updateStatus: () => ipcRenderer.invoke('update-status'),
+  updateCheck: () => ipcRenderer.invoke('update-check'),
+  updateDownload: () => ipcRenderer.invoke('update-download'),
+  updateInstall: () => ipcRenderer.invoke('update-install'),
+  onUpdateState: (cb) => ipcRenderer.on('update-state', (e, s) => cb(s)),
 });
 
 /* ROUND122: chart-tab undock / dock-back (Chrome-style detachable tabs).

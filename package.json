@@ -50,19 +50,33 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "assets/app.ico"
+      "icon": "assets/app.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "mac": {
       "target": "dmg",
-      "icon": "assets/icon-1024.png"
+      "icon": "assets/icon-1024.png",
+      "artifactName": "${productName}-${version}.${ext}"
     },
     "linux": {
       "target": "AppImage",
-      "icon": "assets/icon-1024.png"
+      "icon": "assets/icon-1024.png",
+      "artifactName": "${productName}-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "nesari",
+        "repo": "oj-chart-terminal",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
   }
 }

@@ -240,6 +240,18 @@
               </span>
             </div>
             <div id="dg-stats"></div>
+            <!-- ROUND290: version + auto-update row. Lives here because this is
+                 the panel a user opens when they want to know "what am I
+                 running, and is it current?". -->
+            <div id="dg-update">
+              <span class="dg-up-ver" id="dg-up-ver">—</span>
+              <span class="dg-up-state" id="dg-up-state"></span>
+              <span class="dg-up-btns">
+                <button class="mini-btn dg-up-btn" id="dg-up-check" title="Check for a newer release">Check</button>
+                <button class="mini-btn dg-up-btn hidden" id="dg-up-get" title="Download the new version">Download</button>
+                <button class="mini-btn dg-up-btn hidden" id="dg-up-install" title="Restart and install">Restart &amp; install</button>
+              </span>
+            </div>
             <div id="dg-data"></div>
             <div id="dg-filters">
               <div id="dg-levels">
