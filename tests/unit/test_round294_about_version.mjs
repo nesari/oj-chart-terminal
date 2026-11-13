@@ -100,5 +100,19 @@ const app = readSource('src/renderer/js/app.js');
     'and still has its own download/install buttons');
 }
 
+/* ---------- G. no test may pin a literal version ----------
+   The live e2e shipped with `ver == 'v1.9.225'` hard-coded, so the very next
+   release turned CI red for a correct product. A version assertion must read
+   package.json (or the running build), never a constant. */
+{
+  const e2e = readSource('tests/archive/e2e/e2e_round294_about_version.py');
+  ok(/package\.json/.test(e2e), 'the e2e reads the expected version from the build');
+  const literal = /ver\s*==\s*['"]v\d+\.\d+\.\d+['"]/.exec(e2e);
+  ok(!literal, 'it does not compare against a hard-coded version', literal && literal[0]);
+  /* and it still actually asserts the version somewhere */
+  ok(/ver\s*==\s*'v'\s*\+\s*pkg|ver\s*==\s*['"]v['"]\s*\+/.test(e2e),
+    'the version is still compared to a real value');
+}
+
 console.log('\nROUND294: ' + pass + ' passed, ' + fail + ' failed.');
 process.exit(fail ? 1 : 0);

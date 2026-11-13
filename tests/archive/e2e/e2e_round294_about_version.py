@@ -17,7 +17,7 @@ no answer in the UI. This suite drives the real app and asserts:
 
 Run: python tests/archive/e2e/e2e_round294_about_version.py
 """
-import http.server, functools, os, socket, subprocess, sys, threading, time
+import http.server, functools, json, os, socket, subprocess, sys, threading, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from e2e_teardown import kill_proc
 
@@ -120,7 +120,11 @@ def main():
             check('the popup opens', pop.get('open') is True, pop)
             ver = pop.get('ver') or ''
             check('it shows a real version', ver.startswith('v') and ver != 'v?', ver)
-            check('the version matches the build', ver == 'v1.9.225', ver)
+            # compare against the ACTUAL build, read from package.json: pinning a
+            # literal version here would turn every release into a red CI run for
+            # no reason (it did exactly that on v1.9.226).
+            pkg = json.load(open(os.path.join(ROOT, 'package.json'), encoding='utf-8'))['version']
+            check('the version matches the build', ver == 'v' + pkg, ver + ' vs v' + pkg)
             check('it explains the state in words', bool(pop.get('state')), pop.get('state'))
             check('there is exactly one action button',
                   (pop.get('action') or '') in ('Check for updates', 'Download update', 'Restart & install'),
