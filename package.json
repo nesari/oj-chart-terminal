@@ -22,7 +22,9 @@
     "smoke": "node scripts/checks/smoke-boot.mjs",
     "test": "npm run verify",
     "release": "node scripts/release.mjs",
-    "check:release": "node scripts/checks/check-release.mjs"
+    "check:release": "node scripts/checks/check-release.mjs",
+    "check:channel": "node scripts/checks/check-channel.mjs",
+    "go-public": "node scripts/go-public.mjs"
   },
   "author": "AHNesari",
   "license": "MIT",

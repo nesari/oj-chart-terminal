@@ -192,7 +192,17 @@ The app checks the feed from the **Diagnostics** panel (version chip + `Check`),
 
 This exists because of a real escape: `latest.yml` advertised `OJchart-Setup-1.9.217.exe` while the NSIS artifact was `OJchart Setup 1.9.217.exe` (spaces). The release page looked fine and **every update would have 404'd**. Nothing caught it; it was found by reading the generated YAML by hand. `artifactName` is now pinned per platform so the two agree by construction, and the gate fails the build if they ever drift again.
 
-> **⚠️ Before the first public release.** `electron-updater` reads the release feed **unauthenticated**. This repository is currently private, so a shipped app gets `404` and the panel shows the neutral *"Update channel unavailable — download from the release page"* (deliberately not an error: it is a configuration fact, and it stops the app looking broken on every boot). Auto-delivery starts working as soon as the feed is publicly readable — either make the repository public, or point `build.publish` at a public feed (S3/R2/ mirror). No code change is needed for the first option.
+> **⚠️ Before the first public release.** `electron-updater` reads the release feed **unauthenticated**. This repository is currently private, so a shipped app gets `404` and the panel shows the neutral *"Update channel unavailable — download from the release page"* (deliberately not an error: it is a configuration fact, and it stops the app looking broken on every boot).
+>
+> **Going public later is a one-command operation** — no code change:
+>
+> ```bash
+> npm run go-public -- --dry-run   # audit only: secrets, .env, unredacted fixtures, tokens in build config
+> npm run go-public                # audit → flip visibility → prove the channel anonymously
+> npm run check:channel            # re-check at any time (exit 0 = a shipped app WILL update)
+> ```
+>
+> The audit **refuses** to publish on any hit, because a leak in public history cannot be undone by deleting the file. After the flip it verifies the real delivery path as an anonymous client — the same probe a shipped app performs — instead of trusting a config file. An alternative to publishing the repo is pointing `build.publish` at a public feed (S3/R2/mirror); nothing else in the chain changes.
 
 ### 📚 Documentation
 
