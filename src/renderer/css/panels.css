@@ -213,6 +213,27 @@
 .dg-up-btns { display: flex; gap: 4px; }
 .dg-up-btn { font-size: 10px; height: 18px; padding: 0 8px; }
 .dg-up-btn:disabled { opacity: .5; cursor: default; }
+
+/* ROUND294 — About popup (version + manual update check on the toolbar) */
+.ab-popup { width: 288px; padding: 10px 12px 12px; }
+.ab-popup .pu-title { display: flex; align-items: center; gap: 6px; }
+.ab-popup .pu-title svg { width: 14px; height: 14px; opacity: .8; }
+.ab-row { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
+.ab-row-wide { display: block; }
+.ab-lab { font-size: 11px; color: var(--text-dim); }
+.ab-ver { font-size: 13px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.ab-state { font-size: 11px; line-height: 1.45; color: var(--text-dim); }
+.ab-state.ab-bad { color: var(--red); }
+.ab-state.ab-dim { opacity: .75; }
+.ab-bar { height: 4px; margin-top: 8px; border-radius: 3px; background: var(--panel2); overflow: hidden; }
+.ab-bar i { display: block; height: 100%; width: 0; background: var(--accent, #2962ff); transition: width .2s linear; }
+.ab-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.ab-action { flex: 1 1 auto; height: 26px; font-size: 11px; border-radius: 4px; border: 1px solid var(--border2); background: var(--panel2); color: var(--text); cursor: pointer; }
+.ab-action:hover:not(:disabled) { border-color: var(--accent, #2962ff); }
+.ab-action:disabled { opacity: .55; cursor: default; }
+.ab-action.ab-primary { background: var(--accent, #2962ff); border-color: var(--accent, #2962ff); color: #fff; font-weight: 600; }
+.ab-notes { flex: 0 0 auto; height: 26px; font-size: 11px; padding: 0 8px; border-radius: 4px; border: 1px solid transparent; background: transparent; color: var(--text-dim); cursor: pointer; }
+.ab-notes:hover { color: var(--text); text-decoration: underline; }
 .dg-dhead {
   font-size: 10px; letter-spacing: .4px; text-transform: uppercase;
   color: var(--text-dim); padding: 6px 10px 2px;

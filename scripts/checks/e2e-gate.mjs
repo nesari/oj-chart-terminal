@@ -26,6 +26,7 @@
  *   round288b session breaks (day-gap whitespace on the time axis)     (new)
  *   round289  drawing leftovers (profile scopes / band / dragged levels) (new)
  *   round290  version row + auto-update degraded mode in a browser build  (new)
+ *   round294  About/version popup on the toolbar: version + manual check  (new)
  *
  * History: until ROUND283 every archived suite was silently broken — the move
  * into `tests/archive/e2e/` added a directory level, so `ROOT` (three
@@ -61,6 +62,7 @@ const CURATED = [
   'e2e_round288b_session_breaks.py',
   'e2e_round289_drawing_leftovers.py',
   'e2e_round290_autoupdate.py',
+  'e2e_round294_about_version.py',
 ];
 
 /* Per attempt. A cold Windows runner needs ~30s for a heavy suite; the retry

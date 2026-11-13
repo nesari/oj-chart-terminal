@@ -27,6 +27,8 @@ let wired = false;
 /* the single toast that lives for the whole download (null when idle) */
 let progressToast = null;
 let progressEl = null;
+/* ROUND294: subscribers (the About popup) so every surface shows one truth */
+const statusHooks = [];
 
 /* ROUND291: how often a long-running window re-checks for a release. Six
    hours is frequent enough that a daily user sees the offer on the same day,
@@ -98,16 +100,19 @@ function paint() {
      must not be told to "retry" something that cannot work until the release
      feed is public. The polling loop skips it for the same reason. */
   if (stateEl) stateEl.classList.toggle('dg-up-dim', st === 'channel');
+  /* ROUND294: one source of truth for everyone who shows update state. The
+     About popup renders from this instead of keeping its own copy. */
+  for (const fn of statusHooks) { try { fn(status); } catch (e) { /* a dead popup */ } }
 }
 
 async function run(kind) {
   const b = bridge();
-  if (!b) return;
+  if (!b) return status;
   try {
     let s = null;
     if (kind === 'check') s = await b.updateCheck();
     else if (kind === 'download') s = await b.updateDownload();
-    else if (kind === 'install') { await b.updateInstall(); return; }
+    else if (kind === 'install') { await b.updateInstall(); return status; }
     if (s && s.state) { status = s; paint(); }
     if (kind === 'check' && s && s.state === 'none' && UI && UI.toast) UI.toast('You are on the latest version');
     if (kind === 'check' && s && s.state === 'error' && UI && UI.toast) {
@@ -117,6 +122,7 @@ async function run(kind) {
     Log.warn('update', 'update action failed', { error: String(e && e.message || e) });
     if (UI && UI.toast) UI.toast('Update action failed', 'err');
   }
+  return status;
 }
 
 function init() {
@@ -188,4 +194,22 @@ function init() {
   }, UPDATE_POLL_MS);
 }
 
-export const UpdateUI = { init, refresh: paint, get status() { return status; } };
+export const UpdateUI = {
+  init,
+  refresh: paint,
+  get status() { return status; },
+  /* ROUND294: the About popup drives the same state machine through these
+     verbs, so there is exactly one implementation of check/download/install. */
+  checkNow: () => run('check'),
+  download: () => run('download'),
+  install: () => run('install'),
+  onStatus: (fn) => {
+    if (typeof fn !== 'function') return () => {};
+    statusHooks.push(fn);
+    try { fn(status); } catch (e) { /* ignore */ }
+    return () => {
+      const i = statusHooks.indexOf(fn);
+      if (i >= 0) statusHooks.splice(i, 1);
+    };
+  },
+};

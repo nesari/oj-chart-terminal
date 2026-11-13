@@ -50,6 +50,7 @@ import { Tester } from './panels/tester.js';
 import { StratDock } from './panels/stratdock.js';
 import { Diagnostics } from './panels/diagnostics.js';
 import { UpdateUI } from './panels/update-ui.js'; // ROUND290
+import { AboutUI } from './panels/about-ui.js'; // ROUND294: version + check on the toolbar
 import { Replay } from './panels/replay.js';
 import { LoginUI } from './ui/login.js';
 import { RightPanel } from './ui/rightpanel.js';
@@ -125,6 +126,7 @@ function boot() {
     if (StratDock) StratDock.init(); // ROUND179: strategy bottom dock (tabs + sticky toolbar)
     if (Diagnostics) Diagnostics.init(); // round 28: logging/monitoring panel
     if (UpdateUI) UpdateUI.init(); // ROUND290: version row + auto-update check
+    if (AboutUI) AboutUI.init(); // ROUND294: toolbar button — version + manual check
     if (TimeSales) TimeSales.init();
     if (Compare) Compare.init();
     Manager.init();
@@ -431,6 +433,9 @@ function boot() {
       /* ROUND290: the auto-update status row is inspectable from the facade so
          a test can assert "no update without a click". */
       UpdateUI,
+      /* ROUND294: the About popup — the user-facing entry point for
+         "what version is this?" and "check now". */
+      AboutUI,
     };
   }
 
