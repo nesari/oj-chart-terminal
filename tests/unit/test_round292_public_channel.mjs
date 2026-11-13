@@ -107,8 +107,31 @@ const ok = (cond, label, extra) => {
   ok(/The app is not broken/.test(c), 'and explains that the app degrades honestly');
 }
 
-/* ---------- C. the current state is reported, not assumed ---------- */
+/* ---------- C. CI must not burn a private repo's minutes on every push ----------
+   Private repositories bill Actions minutes; public ones do not. The monthly
+   budget was exhausted during one day of iteration, after which every job
+   failed with "The job was not started because recent account payments have
+   failed or your spending limit needs to be increased" — which reads like a
+   code failure but never starts a runner. These pins keep the guard in place
+   for as long as the repo is private; they are harmless once it is public. */
 {
+  const ci = readSource('.github/workflows/ci.yml');
+  ok(/paths-ignore:/.test(ci), 'CI skips pushes that cannot break the build');
+  ok(/'\\\*\\\*\.md'|"\*\*\.md"|'\*\*\.md'/.test(ci) || /\.md/.test(ci), 'markdown changes are ignored');
+  ok(/docs\/\*\*/.test(ci), 'docs-only changes are ignored');
+  ok(/pull_request:/.test(ci), 'a pull request still runs the full gate');
+  ok(/workflow_dispatch:/.test(ci), 'a deliberate full run is still possible');
+  /* the trigger must stay a mapping now: a bare `push:` (no filters) would
+     silently re-enable the every-push behaviour this exists to prevent */
+  ok(/on:\s*\n\s+push:\s*\n\s+paths-ignore:/.test(ci),
+    'push is filtered, not a bare trigger');
+
+  /* the human-readable reason lives next to the guard so the next person does
+     not "clean up" the filter without knowing what it costs */
+  ok(/billed minutes|spending limit/i.test(ci), 'the cost reason is documented in the workflow');
+}
+
+/* ---------- D. the current state is reported, not assumed ---------- */{
   /* The real check runs against the network. It MUST agree with the repo's
      actual visibility: while private it reports failure; that is the honest
      answer and it must not be "fixed" by weakening the probe. */

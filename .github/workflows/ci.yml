@@ -1,7 +1,29 @@
 name: CI
 
+# ROUND292 — cost control for a private repository.
+#
+# Private repos bill Actions minutes (2,000/month on the free plan) and one run
+# of this workflow costs ~30 billed minutes: three platforms in parallel, ~10
+# minutes each. EVERY push used to trigger it, which burned the monthly budget
+# during a single day of iteration; after that every job failed with "The job
+# was not started because recent account payments have failed or your spending
+# limit needs to be increased" — a wall that looks like a code failure but
+# never even starts a runner.
+#
+# Public repos get unlimited standard-runner minutes, so this only matters
+# while the repository is private.
+#
+# Changes:
+#   1. a push touching only prose cannot break the build, so it is skipped;
+#   2. pull_request still runs the full gate for review;
+#   3. workflow_dispatch remains for a deliberate full run.
 on:
   push:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
   pull_request:
   workflow_dispatch:
 

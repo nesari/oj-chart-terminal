@@ -194,6 +194,8 @@ This exists because of a real escape: `latest.yml` advertised `OJchart-Setup-1.9
 
 > **⚠️ Before the first public release.** `electron-updater` reads the release feed **unauthenticated**. This repository is currently private, so a shipped app gets `404` and the panel shows the neutral *"Update channel unavailable — download from the release page"* (deliberately not an error: it is a configuration fact, and it stops the app looking broken on every boot).
 >
+> The same privacy setting also decides whether CI runs at all: **private repos bill Actions minutes** (2,000/month on the free plan), and this workflow costs ~30 billed minutes per run. Exhausting that quota makes every job fail in ~2 seconds with *"The job was not started because recent account payments have failed or your spending limit needs to be increased"* — which reads like a code failure but never starts a runner. Public repos get unlimited standard-runner minutes, so **going public fixes the update channel and the CI budget together**. `ci.yml` also skips doc-only pushes so iteration does not spend minutes on prose.
+>
 > **Going public later is a one-command operation** — no code change:
 >
 > ```bash
