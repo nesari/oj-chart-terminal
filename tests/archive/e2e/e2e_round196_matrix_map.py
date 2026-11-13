@@ -43,6 +43,13 @@ SRC = ('//@version=5\nindicator("TST196", overlay=false)\n'
        't = m.transpose()\n'
        'plot(m.get(1, 1), title="cell")\n'
        'plot(m.sum(), title="msum")\n'
+       # ROUND293: plot `close` ITSELF so the expected value comes from the same
+       # pass as the computed ones. Reading it from pane.bars afterwards can never
+       # be race-free: that array is live and the feed rewrites the forming bar in
+       # place, so `close` and the stored plot value can come from two different
+       # ticks (1.08501 vs 1.0851). Comparing two series produced by ONE pass
+       # removes the race instead of narrowing it.
+       'plot(close, title="ref")\n'
        'plot(matrix.rows(m) * 10 + matrix.columns(m), title="shape")\n'
        'plot(t.get(0, 1), title="tc")\n'
        'mp = map.new<string, float>()\n'
@@ -90,7 +97,9 @@ ADD_JS = """async ({name, src}) => {
       out.idx = settled;
       out.k = rb.length - 1 - settled;
       for (const p of series) out.vals[p.title] = (p.values || [])[settled];
-      out.close = rb[settled].close;
+      /* `ref` is `close` plotted BY THE SCRIPT, so it comes from the same pass
+         as `cell`/`msum`/`tc`/`mget`. No live array is read here at all. */
+      out.close = out.vals.ref;
     }
   }
   return out;
