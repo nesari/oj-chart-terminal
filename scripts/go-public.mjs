@@ -119,7 +119,20 @@ console.log('[go-public] auditing for anything that must not become public\n');
   ok(!hasToken, 'build.publish contains no credentials');
 }
 
-/* 1f. docs/README must not promise something the code does not do. Cheap
+/* 1f. HISTORY. A public repository exposes every commit, so a secret that was
+   committed and later deleted is still readable forever. The checks above only
+   look at the current tree; this walks every blob that ever existed. */
+{
+  console.log('\n  -- scanning the full git history (a deleted secret is still public) --');
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'checks', 'scan-history.mjs')],
+    { encoding: 'utf8', timeout: 600_000 });
+  const out = (r.stdout || '') + (r.stderr || '');
+  const clean = r.status === 0;
+  ok(clean, 'no credential shapes in any commit', clean ? '' : out.slice(-500));
+  if (!clean) console.log(out);
+}
+
+/* 1g. docs/README must not promise something the code does not do. Cheap
    check: the documented update limitation should still be present while the
    repo is private. Once public, this line becomes wrong and should be removed
    in the same commit — flagged, not failed, because it is prose. */

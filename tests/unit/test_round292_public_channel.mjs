@@ -55,8 +55,12 @@ const ok = (cond, label, extra) => {
 /* ---------- A2. functional: the audit catches a planted secret ---------- */
 {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oj-gp-'));
-  fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'scripts', 'checks'), { recursive: true });
   fs.copyFileSync(path.join(ROOT, 'scripts', 'go-public.mjs'), path.join(dir, 'scripts', 'go-public.mjs'));
+  /* ROUND293: go-public also runs the history scanner, so the throwaway repo
+     needs that script too — otherwise the audit crashes instead of judging. */
+  fs.copyFileSync(path.join(ROOT, 'scripts', 'checks', 'scan-history.mjs'),
+    path.join(dir, 'scripts', 'checks', 'scan-history.mjs'));
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'x', version: '1.0.0', build: {} }), 'utf8');
   fs.writeFileSync(path.join(dir, 'README.md'), '# x\n', 'utf8');
 
