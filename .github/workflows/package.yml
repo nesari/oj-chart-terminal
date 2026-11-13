@@ -149,3 +149,19 @@ jobs:
           generate_release_notes: true
           files: out/*
           fail_on_unmatched_files: false
+
+      # ROUND291 — prove the release is actually deliverable.
+      #
+      # The updater reads a FEED (latest*.yml), not the installer: it takes
+      # `files[].url` + `sha512` from the feed and fetches that file. When the
+      # feed named a slugified file and the NSIS artifact kept its spaces, the
+      # release looked fine on the page and every update would have 404'd —
+      # found by reading the generated YAML by hand, because nothing checked.
+      #
+      # This runs AFTER publication, against the real release over the API, so
+      # a mismatch fails the build instead of reaching users. It needs the
+      # token because a private repo's asset URLs are not anonymously readable.
+      - name: Verify the published release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/checks/check-release.mjs --tag ${{ github.ref_name }}

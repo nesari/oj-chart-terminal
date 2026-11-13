@@ -76,6 +76,22 @@ function shortError(e) {
 }
 
 /**
+ * Is this failure "the update channel itself is not reachable" rather than
+ * "something went wrong"?
+ *
+ * The distinction matters for honesty. A shipped build whose repository is
+ * private cannot read the feed at all (GitHub answers 404 to an unauthenticated
+ * client), and telling the user "check failed — 404" every boot looks like the
+ * app is broken. The same is true for a feed that was never published.
+ * Those are configuration facts, not errors, so they get their own state and a
+ * neutral message; a network blip or a corrupt download stay `error`.
+ */
+function isNoChannel(e) {
+  const m = String((e && (e.message || e)) || '');
+  return /404|not found|cannot find|ENOENT|no published|HttpError:\s*404/i.test(m);
+}
+
+/**
  * Wire the updater's events once. Safe to call in dev — it returns early and
  * reports `disabled`, which is what the renderer shows in place of a version
  * check.
@@ -123,6 +139,13 @@ function init(opts) {
     setState({ state: 'downloaded', version: (info && info.version) || state.version, percent: 100, error: null });
   });
   autoUpdater.on('error', (e) => {
+    /* An unreachable channel is a configuration fact (see isNoChannel), not a
+       failure the user should see as an error on every boot. */
+    if (isNoChannel(e)) {
+      log('info', 'update channel not reachable', { error: shortError(e) });
+      setState({ state: 'channel', error: null });
+      return;
+    }
     /* Debug, not error: an offline machine is the common case. */
     log('debug', 'update check failed', { error: shortError(e) });
     setState({ state: 'error', error: shortError(e) });
@@ -141,6 +164,11 @@ async function check(opts) {
   try {
     await autoUpdater.checkForUpdates();
   } catch (e) {
+    if (isNoChannel(e)) {
+      log('info', 'update channel not reachable', { error: shortError(e) });
+      setState({ state: 'channel', error: null });
+      return snapshot();
+    }
     log('debug', 'update check threw', { error: shortError(e) });
     setState({ state: 'error', error: shortError(e) });
   }

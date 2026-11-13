@@ -209,6 +209,7 @@
 .dg-up-ver { font-size: 10px; font-weight: 600; color: var(--text); background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px; padding: 1px 7px; white-space: nowrap; }
 .dg-up-state { font-size: 10px; color: var(--text-dim); flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dg-up-state.dg-up-bad { color: var(--red); }
+.dg-up-state.dg-up-dim { opacity: .7; }
 .dg-up-btns { display: flex; gap: 4px; }
 .dg-up-btn { font-size: 10px; height: 18px; padding: 0 8px; }
 .dg-up-btn:disabled { opacity: .5; cursor: default; }

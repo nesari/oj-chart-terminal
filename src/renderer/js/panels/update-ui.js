@@ -41,6 +41,9 @@ const STATE_TEXT = {
   downloading: 'Downloading…',
   downloaded: 'Ready to install',
   error: 'Check failed',
+  /* the release feed is not reachable at all (private repo, or no release
+     published yet) — a configuration fact, not an app failure */
+  channel: 'Update channel unavailable — download from the release page',
   disabled: 'Auto-update is off in this build',
   unknown: '',
 };
@@ -91,6 +94,10 @@ function paint() {
   }
   if (get) get.classList.toggle('hidden', st !== 'available');
   if (inst) inst.classList.toggle('hidden', st !== 'downloaded');
+  /* `channel` is not an error: the panel must not paint it red, and the user
+     must not be told to "retry" something that cannot work until the release
+     feed is public. The polling loop skips it for the same reason. */
+  if (stateEl) stateEl.classList.toggle('dg-up-dim', st === 'channel');
 }
 
 async function run(kind) {
@@ -174,6 +181,9 @@ function init() {
      a release again. */
   setTimeout(() => { if (status.state === 'idle') run('check'); }, 12000);
   setInterval(() => {
+    /* `channel` is excluded: the feed cannot become reachable by waiting, and
+       re-hitting it every six hours would just refill the log. A manual Check
+       still works, so a fixed deployment is picked up without a restart. */
     if (status.state === 'idle' || status.state === 'none' || status.state === 'error') run('check');
   }, UPDATE_POLL_MS);
 }

@@ -178,13 +178,21 @@ The script refuses a dirty tree (override: `--allow-dirty`) or an existing tag, 
 
 From ROUND290 the `Package` workflow publishes a real **GitHub Release** on every `v*` tag — the three installers plus the update feed (`latest.yml`, `latest-mac.yml`, `latest-linux.yml`) and their blockmaps. Before that the installers only existed as 14-day workflow artifacts, so a shipped copy had no way to learn a newer build existed.
 
-The app checks the feed from the **Diagnostics** panel (version chip + `Check`), and downloading/installing always needs an explicit click — `autoDownload` is permanently `false`. A dev build (`npm start`) reports "auto-update is off in this build" instead of failing.
+The app checks the feed from the **Diagnostics** panel (version chip + `Check`), and downloading/installing always needs an explicit click — `autoDownload` and `autoInstallOnAppQuit` are both permanently `false`. The flow a user sees: *Update available → [Download] → live percentage → [Restart & install]*. A dev build (`npm start`) reports "auto-update is off in this build" instead of failing.
 
-> **⚠️ Private-repository limitation.** `electron-updater` reads the release feed **unauthenticated**. This repository is private, so the feed URL returns `404` to a client with no session and a shipped app cannot self-update. Turning on auto-delivery therefore requires one of:
-> - making the repository public (the installers are already public artifacts of a release), or
-> - pointing `build.publish` at a public feed (an S3/R2 bucket or a public "releases" mirror) and shipping the token-free URL.
->
-> Until one of those is chosen, the release page is the download path and updating is a manual reinstall. Everything else (build, sign, publish, feed generation) is already wired and verified.
+#### How the release process is protected
+
+`npm run check:release` verifies that a release is **deliverable**, and CI runs it automatically after publishing (`Verify the published release` step in `package.yml`). It checks, per platform:
+
+- the feed exists, parses, and its `version` equals `package.json`;
+- every `files[].url` in the feed is an **actual attached asset**;
+- the declared `size` matches the uploaded asset;
+- the installer and its `.blockmap` are attached;
+- the release is published, not a draft or prerelease.
+
+This exists because of a real escape: `latest.yml` advertised `OJchart-Setup-1.9.217.exe` while the NSIS artifact was `OJchart Setup 1.9.217.exe` (spaces). The release page looked fine and **every update would have 404'd**. Nothing caught it; it was found by reading the generated YAML by hand. `artifactName` is now pinned per platform so the two agree by construction, and the gate fails the build if they ever drift again.
+
+> **⚠️ Before the first public release.** `electron-updater` reads the release feed **unauthenticated**. This repository is currently private, so a shipped app gets `404` and the panel shows the neutral *"Update channel unavailable — download from the release page"* (deliberately not an error: it is a configuration fact, and it stops the app looking broken on every boot). Auto-delivery starts working as soon as the feed is publicly readable — either make the repository public, or point `build.publish` at a public feed (S3/R2/ mirror). No code change is needed for the first option.
 
 ### 📚 Documentation
 

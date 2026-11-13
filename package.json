@@ -21,7 +21,8 @@
     "check:e2e": "node scripts/checks/e2e-gate.mjs",
     "smoke": "node scripts/checks/smoke-boot.mjs",
     "test": "npm run verify",
-    "release": "node scripts/release.mjs"
+    "release": "node scripts/release.mjs",
+    "check:release": "node scripts/checks/check-release.mjs"
   },
   "author": "AHNesari",
   "license": "MIT",
