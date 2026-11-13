@@ -180,6 +180,33 @@ const log = (lvl, msg, ctx) => logs.push({ lvl, msg, ctx });
   ok(!/autoDownload\s*=\s*true/.test(ui), 'the renderer never enables autoDownload');
   ok(/setTimeout\([^)]*12000|12000\)/.test(ui), 'the boot check is deferred so it never races the first paint');
 
+  /* ---------- ROUND291: the app OFFERS, downloads in-app, then installs ----------
+     The user-facing promise is a chain, and each link has to exist:
+       1. on boot the app checks (deferred so it never races the first paint);
+       2. it keeps checking while the window stays open;
+       3. "available" offers a Download action (not a pointer to another panel);
+       4. the download shows live progress in one persistent toast;
+       5. when it finishes the same channel offers "Restart & install".
+     Every link is asserted; a broken one turns the feature into a dead end. */
+  ok(/setInterval\(/.test(ui) && /UPDATE_POLL_MS/.test(ui),
+    'a long-running window re-checks periodically');
+  ok(/UPDATE_POLL_MS\s*=\s*6\s*\*\s*60\s*\*\s*60\s*\*\s*1000/.test(ui),
+    'the re-check interval is six hours');
+  ok(/actionLabel:\s*'Download'/.test(ui), 'the available toast offers Download itself');
+  ok(/run\('download'\)/.test(ui), 'Download starts the in-app download');
+  ok(/Downloading update… /.test(ui) && /percent/.test(ui), 'download progress is shown live');
+  ok(/progressToast/.test(ui), 'one persistent toast covers the whole download');
+  ok(/actionLabel:\s*'Restart & install'/.test(ui),
+    'a finished download offers Restart & install');
+  ok(/run\('install'\)/.test(ui), 'that action asks main to restart and install');
+  ok(!/open Diagnostics to install/.test(ui),
+    'the toast no longer just points at the Diagnostics panel');
+
+  /* toast() must hand back its element so the progress line can be updated */
+  const toastSrc = readSource('src/renderer/js/drawing/ui.js');
+  const toastFn = toastSrc.slice(toastSrc.indexOf('function toast('), toastSrc.indexOf('UI.toast ='));
+  ok(/return t;/.test(toastFn), 'toast() returns its element for live updates');
+
   const html = readSource('src/renderer/index.html');
   ok(/id="dg-up-ver"/.test(html), 'the Diagnostics panel has a version chip');
   ok(/id="dg-up-check"/.test(html) && /id="dg-up-get"/.test(html) && /id="dg-up-install"/.test(html),

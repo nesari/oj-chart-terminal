@@ -1112,6 +1112,9 @@ UI.closeActiveSettings = function (commit) {
     }
     /* keep the toast box bounded */
     while (box.children.length > 6) box.firstChild.remove();
+    /* ROUND291: return the element so a caller can update or dismiss it — the
+       update flow needs a progress toast that lives for the whole download. */
+    return t;
   }
   UI.toast = toast;
 

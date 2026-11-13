@@ -24,6 +24,14 @@ const $ = (id) => document.getElementById(id);
 
 let status = { state: 'unknown', current: null, version: null, percent: 0, error: null };
 let wired = false;
+/* the single toast that lives for the whole download (null when idle) */
+let progressToast = null;
+let progressEl = null;
+
+/* ROUND291: how often a long-running window re-checks for a release. Six
+   hours is frequent enough that a daily user sees the offer on the same day,
+   and rare enough that it is invisible in logs and network use. */
+const UPDATE_POLL_MS = 6 * 60 * 60 * 1000;
 
 const STATE_TEXT = {
   idle: '',
@@ -125,21 +133,49 @@ function init() {
       const wasAvailable = status.state === 'available';
       status = s;
       paint();
-      /* Announce the transition once — a manifest re-broadcast must not spam
-         a toast on every render. */
-      if (s.state === 'available' && !wasAvailable && UI && UI.toast) {
-        UI.toast('Update available: v' + (s.version || '?') + ' — open Diagnostics to install', 'ok', {
-          actionLabel: 'Later',
+
+      /* ROUND291: the toast IS the offer. It carries the action, so the flow
+         is: "Update available" -> [Download] -> a live progress toast ->
+         "ready" -> [Restart & install]. The persistent progress toast is
+         reused for the whole download (no new toast per percent tick). */
+      if (!UI || !UI.toast) return;
+      if (s.state === 'available' && !wasAvailable) {
+        UI.toast('Update available: v' + (s.version || '?'), 'ok', {
+          actionLabel: 'Download',
+          onAction: () => { run('download'); },
         });
-      }
-      if (s.state === 'downloaded' && UI && UI.toast) {
-        UI.toast('Update downloaded — restart to install', 'ok', { actionLabel: 'Later' });
+      } else if (s.state === 'downloading') {
+        if (progressToast && progressEl) {
+          progressEl.textContent = 'Downloading update… ' + (s.percent || 0) + '%';
+        } else {
+          const t = UI.toast('Downloading update… ' + (s.percent || 0) + '%', 'ok', {
+            actionLabel: 'Hide',
+            onAction: () => { progressToast = null; progressEl = null; },
+          });
+          progressToast = t;
+          progressEl = t && t.querySelector ? t.querySelector('.t-body') : null;
+        }
+      } else if (s.state === 'downloaded') {
+        if (progressToast) { try { progressToast.remove(); } catch (e) {} }
+        progressToast = null; progressEl = null;
+        UI.toast('Update v' + (s.version || '') + ' is ready — restart to install', 'ok', {
+          actionLabel: 'Restart & install',
+          onAction: () => { run('install'); },
+        });
+      } else if (s.state === 'error' && progressToast) {
+        if (progressEl) progressEl.textContent = 'Update download failed';
+        progressToast = null; progressEl = null;
       }
     });
   }
-  /* Check once per boot, well after the chart is up so it never competes with
-     the first data paint. */
+  /* Check on boot, well after the chart is up so it never competes with the
+     first data paint. ROUND291: and keep checking while the app stays open —
+     a user who leaves the terminal running for a week used to never hear about
+     a release again. */
   setTimeout(() => { if (status.state === 'idle') run('check'); }, 12000);
+  setInterval(() => {
+    if (status.state === 'idle' || status.state === 'none' || status.state === 'error') run('check');
+  }, UPDATE_POLL_MS);
 }
 
 export const UpdateUI = { init, refresh: paint, get status() { return status; } };

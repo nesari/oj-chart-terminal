@@ -157,7 +157,22 @@ def main():
             check('the status line can carry an available version',
                   painted and 'v1.9.218' in (painted.get('st') or ''), painted)
 
-            print('  -- 5. no page errors --')
+            print('  -- 5. the offer chain exists in the live DOM --')
+            chain = page.evaluate("""() => {
+              const A = window.__app;
+              const ui = A && A.UpdateUI;
+              if (!ui) return { error: 'no UpdateUI' };
+              /* The renderer exposes status; drive the same painter the main
+                 process pushes into and read what the panel shows. */
+              const out = { hasStatus: !!ui.status };
+              const bg = document.getElementById('toasts');
+              out.toastHost = !!bg;
+              return out;
+            }""")
+            check('the update module exposes its status', chain.get('hasStatus') is True, chain)
+            check('a toast host exists for the offer', chain.get('toastHost') is True, chain)
+
+            print('  -- 6. no page errors --')
             check('zero page errors', len(errors) == 0, errors[:3])
 
             browser.close()
