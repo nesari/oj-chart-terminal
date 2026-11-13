@@ -123,6 +123,12 @@ function init(opts) {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.allowPrerelease = false;
+  /* ROUND291: a downgrade must never be offered. This is already the library
+     default, but the release feed is a single mutable file: if a bad build is
+     pulled back to the previous version, users on the newer build must NOT be
+     told to "update" down onto it. Pinned explicitly so an upstream default
+     change cannot silently start downgrading people. */
+  autoUpdater.allowDowngrade = false;
 
   autoUpdater.on('checking-for-update', () => setState({ state: 'checking', error: null }));
   autoUpdater.on('update-available', (info) => {

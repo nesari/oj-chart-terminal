@@ -121,6 +121,8 @@ const log = (lvl, msg, ctx) => logs.push({ lvl, msg, ctx });
   ok(fakeEmitter.autoDownload === false, 'autoDownload is off — no silent downloads');
   ok(fakeEmitter.autoInstallOnAppQuit === false,
     'autoInstallOnAppQuit is off — "Later" must not install on quit');
+  ok(fakeEmitter.allowDowngrade === false,
+    'allowDowngrade is off — a rolled-back feed must not downgrade users');
 
   /* the emitter's available event becomes a downloadable state */
   fakeEmitter.fire('update-available', { version: '1.9.218' });
