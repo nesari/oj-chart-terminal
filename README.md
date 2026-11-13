@@ -192,19 +192,21 @@ The app checks the feed from the **Diagnostics** panel (version chip + `Check`),
 
 This exists because of a real escape: `latest.yml` advertised `OJchart-Setup-1.9.217.exe` while the NSIS artifact was `OJchart Setup 1.9.217.exe` (spaces). The release page looked fine and **every update would have 404'd**. Nothing caught it; it was found by reading the generated YAML by hand. `artifactName` is now pinned per platform so the two agree by construction, and the gate fails the build if they ever drift again.
 
-> **⚠️ Before the first public release.** `electron-updater` reads the release feed **unauthenticated**. This repository is currently private, so a shipped app gets `404` and the panel shows the neutral *"Update channel unavailable — download from the release page"* (deliberately not an error: it is a configuration fact, and it stops the app looking broken on every boot).
+#### Delivery status
+
+The repository is **public**, so the update chain is live end to end: a shipped build reads the feed anonymously, offers the update, downloads it with progress, and installs on the user's confirmation. Verified with `npm run check:channel` (no credentials, exactly what a shipped app does).
+
+> **Posture change note.** Going public was a deliverability decision, not a code one: `electron-updater` cannot authenticate, and **private repositories also bill Actions minutes** (2,000/month on the free plan) — a single day of iteration used that up and every job started failing with *"The job was not started because recent account payments have failed or your spending limit needs to be increased"*, which reads like a code failure but never starts a runner. Public repositories get unlimited standard-runner minutes.
 >
-> The same privacy setting also decides whether CI runs at all: **private repos bill Actions minutes** (2,000/month on the free plan), and this workflow costs ~30 billed minutes per run. Exhausting that quota makes every job fail in ~2 seconds with *"The job was not started because recent account payments have failed or your spending limit needs to be increased"* — which reads like a code failure but never starts a runner. Public repos get unlimited standard-runner minutes, so **going public fixes the update channel and the CI budget together**. `ci.yml` also skips doc-only pushes so iteration does not spend minutes on prose.
+> If the repository is ever made private again, auto-update stops working (the panel then shows *"Update channel unavailable — download from the release page"*) and CI returns to per-minute billing. Nothing else changes — the feed URL lives in the packaged build, not here.
 >
-> **Going public later is a one-command operation** — no code change:
+> Before any visibility change, run the audit. It also scans the **entire git history**, because a secret committed and later deleted stays public forever:
 >
 > ```bash
-> npm run go-public -- --dry-run   # audit only: secrets, .env, unredacted fixtures, tokens in build config
+> npm run go-public -- --dry-run   # audit only: secrets (incl. history), .env, fixtures, tokens
 > npm run go-public                # audit → flip visibility → prove the channel anonymously
 > npm run check:channel            # re-check at any time (exit 0 = a shipped app WILL update)
 > ```
->
-> The audit **refuses** to publish on any hit, because a leak in public history cannot be undone by deleting the file. After the flip it verifies the real delivery path as an anonymous client — the same probe a shipped app performs — instead of trusting a config file. An alternative to publishing the repo is pointing `build.publish` at a public feed (S3/R2/mirror); nothing else in the chain changes.
 
 ### 📚 Documentation
 

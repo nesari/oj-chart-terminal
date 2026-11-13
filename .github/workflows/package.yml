@@ -120,6 +120,14 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
+      # ROUND293: this job needs the repository for TWO reasons — the release
+      # notes, and the verify step below which runs a script from the tree. It
+      # had no checkout at all, so `node scripts/checks/check-release.mjs`
+      # failed with MODULE_NOT_FOUND AFTER a successful publish, turning a good
+      # release red.
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download installers
         uses: actions/download-artifact@v4
         with:

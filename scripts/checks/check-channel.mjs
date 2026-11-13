@@ -29,24 +29,35 @@ import https from 'node:https';
 const OWNER = 'nesari';
 const REPO = 'oj-chart-terminal';
 
-function get(url, redirects = 0) {
+function get(url, opts = {}, redirects = 0) {
   return new Promise((resolve) => {
-    const req = https.get(url, {
+    const method = opts.method || 'GET';
+    const req = https.request(url, {
+      method,
       headers: { 'User-Agent': 'ojchart-channel-probe', Accept: '*/*' },
-      timeout: 20000,
+      timeout: opts.timeout || 20000,
     }, (r) => {
       /* follow a redirect: release downloads go through a CDN hop */
       if (r.statusCode >= 300 && r.statusCode < 400 && r.headers.location && redirects < 5) {
         r.resume();
-        resolve(get(new URL(r.headers.location, url).href, redirects + 1));
+        resolve(get(new URL(r.headers.location, url).href, opts, redirects + 1));
         return;
       }
+      /* A HEAD probe must not download the body. Even on GET we stop reading
+         after the first chunk: all we need is the status, and the installer is
+         80 MB. */
+      if (method === 'HEAD') { r.resume(); resolve({ status: r.statusCode, body: '' }); return; }
       let body = '';
-      r.on('data', (d) => { body += d; });
-      r.on('end', () => resolve({ status: r.statusCode, body }));
+      let got = false;
+      r.on('data', (d) => {
+        if (!got && opts.stopAfterFirstChunk) { got = true; body += d.slice(0, 512); r.destroy(); resolve({ status: r.statusCode, body }); return; }
+        body += d;
+      });
+      r.on('end', () => { if (!got) resolve({ status: r.statusCode, body }); });
     });
     req.on('timeout', () => { try { req.destroy(); } catch (e) {} resolve({ status: 0, body: '' }); });
     req.on('error', () => resolve({ status: 0, body: '' }));
+    req.end();
   });
 }
 
@@ -92,7 +103,15 @@ if (report.tag) {
     const url = (/url:\s*(\S+)/.exec(feed.body) || [])[1];
     if (url) {
       const assetUrl = `https://github.com/${OWNER}/${REPO}/releases/download/${report.tag}/${url}`;
-      const head = await get(assetUrl);
+      /* HEAD, not GET: the installer is ~80 MB and all we need is "does an
+         anonymous client get 200". Downloading it made this probe take 120s,
+         which is long enough to time out in CI and in the unit gate. */
+      let head = await get(assetUrl, { method: 'HEAD', timeout: 15000 });
+      if (head.status === 0 || head.status === 405) {
+        /* some CDNs reject HEAD; fall back to a GET that stops after the first
+           chunk (never the whole file) */
+        head = await get(assetUrl, { stopAfterFirstChunk: true, timeout: 15000 });
+      }
       add(head.status === 200, 'the installer named by the feed is anonymously downloadable',
         head.status === 200 ? url : `HTTP ${head.status || 'no response'} for ${url}`);
     }

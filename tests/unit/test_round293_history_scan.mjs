@@ -106,7 +106,23 @@ const ok = (cond, label, extra) => {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-/* ---------- D. go-public must consume this ---------- */
+/* ---------- D. the release job must be able to RUN its own verify step ----------
+   It once had no checkout, so `node scripts/checks/check-release.mjs` failed
+   with MODULE_NOT_FOUND *after* a successful publish — a good release turned
+   red for a missing tree. */
+{
+  const wf = readSource('.github/workflows/package.yml');
+  const releaseJob = wf.slice(wf.indexOf('  release:'));
+  ok(/actions\/checkout@v4/.test(releaseJob),
+    'the release job checks out the tree it runs scripts from');
+  const checkoutAt = releaseJob.indexOf('actions/checkout@v4');
+  /* find the actual RUN step, not the comment explaining why it exists */
+  const verifyAt = releaseJob.indexOf('run: node scripts/checks/check-release.mjs');
+  ok(checkoutAt >= 0 && verifyAt >= 0 && checkoutAt < verifyAt,
+    'the checkout happens before the verify step', `${checkoutAt} vs ${verifyAt}`);
+}
+
+/* ---------- E. go-public must consume this ---------- */
 {
   const g = readSource('scripts/go-public.mjs');
   ok(/scan-history\.mjs/.test(g), 'go-public runs the history scanner');
