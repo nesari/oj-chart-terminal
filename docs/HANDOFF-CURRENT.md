@@ -11,7 +11,7 @@
 
 ```bash
 npm run verify      # دروازهٔ کامل: 179/179 unit + mt5 + smoke
-npm run check:e2e   # 15 سوئیت Playwright زنده
+npm run check:e2e   # 19 سوئیت Playwright زنده
 npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با هم
 ```
 
@@ -35,6 +35,11 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 - **گیت کانال:** `npm run check:channel` — با کلاینت **ناشناس** تأیید می‌کند نسخهٔ نصب‌شده می‌تواند آپدیت کند
 - **زمانی که نصب خودکار ممکن نیست:** از GitHub Releases API می‌پرسد → «آخرین نسخه هستید» یا «vX موجود است»
 
+### پایداری تست و آدیت (راند ۲۹۷)
+- **فلیک `round283`:** race با حذف `setTimeout` حل شد — خواندن همگام بعد از `rebuild` و درین دستی بعد از `pushNewBar`؛ دیگر به تیک `onTick` وابسته نیست. اثبات شکستن: با خاموش‌کردن جلوگیری از replay، همان تست سه چک قرمز می‌دهد.
+- **`SCHEMAS` یک‌منبعی:** هر ۸۳ schema در یک جدول؛ `SCHEMAS.x = [...]` و `registerSchema` حذف شدند. پارسر مشترک `tests/unit/source-utils.mjs` aliasها (`ARROWMARK_U`) را resolve می‌کند و تکراری‌بودن کلید و تخصیص بیرون از جدول را می‌گیرد.
+- **هارنس‌های آدیت در CI:** چهار هارنس (`audit_left_toolbar`، `audit_core_chart_tv`، `audit_app_sweep`، `audit_app_deep`) به `check:e2e` اضافه شدند → **19/19**. قبلاً بدون گیت بودند.
+
 ### امنیت و زیرساخت
 - **اسکن کل تاریخچهٔ گیت:** `scripts/checks/scan-history.mjs` — ۲٬۶۵۴ blob. رمزی که commit و بعد حذف شده هم پیدا می‌شود.
 - **`npm run go-public`:** آدیت → flip → تأیید کانال. در صورت یافته **امتناع** می‌کند.
@@ -47,7 +52,7 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 | مورد | وضعیت |
 |---|---|
 | `npm run verify` | ✅ 179/179 + mt5 + smoke |
-| E2E gate | ✅ 15/15 |
+| E2E gate | ✅ 19/19 |
 | CI (main + tag) | ✅ Linux · Windows · macOS |
 | Release v1.9.229 | ✅ ۱۹/۱۹ |
 | کانال آپدیت | ✅ با کلاینت ناشناس |
@@ -113,7 +118,7 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 | فایل | نقش |
 |---|---|
 | `scripts/checks/run-unit.mjs` | کشف خودکار `tests/unit/*.mjs` (SERIAL: `verify_pine80`, `test_round266`, `test_round281`) |
-| `scripts/checks/e2e-gate.mjs` | ۱۵ سوئیت منتخب، tree-kill روی timeout |
+| `scripts/checks/e2e-gate.mjs` | ۱۹ سوئیت منتخب (۱۵ رگرسیون + ۴ هارنس آدیت)، tree-kill روی timeout |
 | `.github/workflows/ci.yml` | سه پلتفرم |
 | `.github/workflows/package.yml` | بیلد + Release + گیت صحت |
 

@@ -293,7 +293,7 @@ npm run dist:linux   # dist/OJchart.AppImage
 ۲. **`check:imports`** — حل شدن همه‌ی import/exportهای نسبی به فایل واقعی.
 ۳. **`check:py`** — کامپایل همه‌ی `provider/*.py`.
 ۴. **`check:electron`** — تطابق Electron پین‌شده با `node_modules`، نبود APIهای حذف‌شده در main/preload و سازگاری electron-builder با رانتایم.
-۵. **`test:unit`** — اجرای ۱۵۸ مجموعه‌ی Node در `tests/unit/` (چارت، ابزار ترسیم، موتور Pine، قراردادهای IPC).
+۵. **`test:unit`** — اجرای ۱۷۹ مجموعه‌ی Node در `tests/unit/` (چارت، ابزار ترسیم، موتور Pine، قراردادهای IPC).
 ۶. **`check:mt5`** — اجرای `provider/mt5.py` روی پکیج replay‌پذیر `MetaTrader5` (بدون نیاز به ترمینال)؛ [`docs/MT5-HARNESS.md`](docs/MT5-HARNESS.md).
 ۷. **`smoke`** — اجرای `provider/demo.py`، سرو `src/`، ورود دمو در یک پنجره‌ی **Electron آفسکرین** و بررسی: اپ دیده شود، لاگین مخفی، کندل‌ها لود شوند، canvas موجود باشد، صفر خطای کنسول و صفر درخواست ناموفق.
 

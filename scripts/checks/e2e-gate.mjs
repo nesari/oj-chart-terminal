@@ -27,6 +27,16 @@
  *   round289  drawing leftovers (profile scopes / band / dragged levels) (new)
  *   round290  version row + auto-update degraded mode in a browser build  (new)
  *   round294  About/version popup on the toolbar: version + manual check  (new)
+ *   audit_left_toolbar  every drawing tool paints, no orphans             (new)
+ *   audit_core_chart_tv  chart API surface, styles, context menus          (new)
+ *   audit_app_sweep     every panel/toolbar entry opens real content       (new)
+ *   audit_app_deep      user flows end-to-end (alert, drawing, pine, trade) (new)
+ *
+ * ROUND297: the four discovery harnesses that found the R286/R287 bugs are now
+ * part of the gate. They were "runnable at any time" but nothing ran them, so a
+ * regression could only be found by a human remembering to look. They cost
+ * ~30s on a cold runner and cover the two areas a unit suite cannot: the real
+ * drawing toolbar and the real app shell.
  *
  * History: until ROUND283 every archived suite was silently broken — the move
  * into `tests/archive/e2e/` added a directory level, so `ROOT` (three
@@ -63,6 +73,11 @@ const CURATED = [
   'e2e_round289_drawing_leftovers.py',
   'e2e_round290_autoupdate.py',
   'e2e_round294_about_version.py',
+  /* ROUND297: the discovery harnesses are now a permanent part of the gate. */
+  'audit_left_toolbar.py',
+  'audit_core_chart_tv.py',
+  'audit_app_sweep.py',
+  'audit_app_deep.py',
 ];
 
 /* Per attempt. A cold Windows runner needs ~30s for a heavy suite; the retry
