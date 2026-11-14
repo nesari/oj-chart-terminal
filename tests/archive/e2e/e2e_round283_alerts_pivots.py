@@ -10,6 +10,12 @@ Two live paths that only exist end-to-end:
      the full-pass replay is suppressed by the renderer cursor). The card's
      master switch must silence it.
 
+     ROUND297: the replay read happens in the same synchronous block as the
+     awaited rebuild, and the live drain is called directly. Both used to
+     depend on a sleep, which made a live tick look like a replay leak on a
+     slow CI runner (tag v1.9.228). A timing-dependent assertion is not a
+     test — it is a coin flip.
+
   B. Pivot levels (ROUND282). ta.pivot_point_levels + ta.max/ta.min +
      time("D") anchors must produce real drawings on the chart, proving the
      time()/bare-variable fixes reach the renderer.
@@ -68,13 +74,20 @@ with open(os.path.join(ROOT, 'fixtures', 'pine', 'corpus', 'pivot-levels-sample.
     PIVOT_SRC = f.read()
 
 # Stage A: install the script, rebuild, then drive the alert plumbing.
+#
+# ROUND297 (tag v1.9.228 race): every read of the replay state MUST happen in
+# the same synchronous block that resumes from a completed rebuild(). rebuild()
+# resolves only after runFull() has advanced the cursor past the tape its
+# history pass produced. The old 1500 ms wait let the NEXT live tick append a
+# legitimate event, so the test compared a fresh tape length (`2`) against an
+# already-advanced cursor (`1` from the replay pass) and called the live event
+# a replay leak. Nothing was wrong with the product; the wait was the bug.
 ALERT_JS = """async ({name, src}) => {
   const A = window.__app;
   const pane = A.App.panes[0];
   const rec = A.PineScriptsStore.create(name, src);
   const inst = A.PineUI.add(pane, rec.id);
   await A.PineUI.rebuild(pane, inst);
-  await new Promise((r) => setTimeout(r, 1500));
 
   const seen = [];
   A.PineUI.setAlertSink((ev) => seen.push(ev));
@@ -82,27 +95,25 @@ ALERT_JS = """async ({name, src}) => {
   const st = A.PineUI.debug(pane).find((s) => s.adapter && s.adapter.inst && s.adapter.inst.id === inst.id);
   const tapeBefore = st ? st.alerts : -1;
   const cursorBefore = st ? st.alertCursor : -1;
+  const seqBefore = st ? st.alertSeq : -1;
 
-  /* A full pass must never surface as a live alert: the cursor starts past
-     everything that pass produced. */
+  /* A full pass must never surface as a live alert: the cursor is already at
+     the runtime's last replay seq, so this drain finds nothing. */
   const afterReplay = A.PineUI.pollAlerts();
 
-  /* Now simulate the NEXT live bar: append a bar and push it (the same-bar
+  /* Simulate the NEXT live bar: append a bar and push it (the same-bar
      forming re-run is deliberately deduped by the engine, so only a new bar
-     may legitimately fire again).
-     NOTE: the app's own Alerts.onTick hook drains the tape continuously, so
-     the events may already have reached the sink by the time we poll. The
-     contract under test is "the sink sees the live events exactly once", not
-     "our manual poll is the one that drained them". */
+     may legitimately fire again). pushNewBar() runs synchronously and the
+     drain below is the same call the panel's tick hook makes, so delivery is
+     deterministic: no sleep and no race against Alerts.onTick. */
   const bars = pane.bars.slice();
   const last = bars[bars.length - 1];
   const o = last.close;
   bars.push({ time: last.time + 900, open: o, high: o + 6, low: o - 1, close: o + 5, volume: 10 });
   st.rt.pushNewBar(bars);
-  await new Promise((r) => setTimeout(r, 600));
-
   const drained = A.PineUI.pollAlerts();
-  /* whatever the app drained, a further poll must find nothing new */
+  const seenLive = seen.map((e) => ({ kind: e.kind, title: e.title, message: e.message, script: e.script }));
+  /* whatever the first drain delivered, a second drain must find nothing new */
   const redrained = A.PineUI.pollAlerts();
   const inv = A.PineUI.pineAlertInventory();
 
@@ -110,8 +121,8 @@ ALERT_JS = """async ({name, src}) => {
     instId: inst.id,
     status: st ? st.status : 'no-st',
     errors: (st && st.errors) || [],
-    tapeBefore, cursorBefore, afterReplay, drained, redrained,
-    seen: seen.map((e) => ({ kind: e.kind, title: e.title, message: e.message, script: e.script })),
+    tapeBefore, cursorBefore, seqBefore, afterReplay, drained, redrained,
+    seen: seenLive,
     inv: inv.map((i) => ({ title: i.title, key: i.key, script: i.script })),
     replaySuppressed: afterReplay === 0,
   };
@@ -189,18 +200,20 @@ def main():
 
             print('  -- A. Pine -> Alerts bridge (ROUND279) --')
             a = page.evaluate(ALERT_JS, {'name': 'TST283-ALERTS', 'src': ALERT_SRC})
-            print('    status=%s tape=%s cursor=%s replay=%s drained=%s' % (
-                a.get('status'), a.get('tapeBefore'), a.get('cursorBefore'),
+            print('    status=%s tape=%s cursor=%s seq=%s replay=%s drained=%s' % (
+                a.get('status'), a.get('tapeBefore'), a.get('cursorBefore'), a.get('seqBefore'),
                 a.get('afterReplay'), a.get('drained')))
             print('    seen=%s' % (a.get('seen'),))
             check('alert script runs', a['status'] == 'ok', a.get('errors'))
             check('the full pass produced a tape', (a.get('tapeBefore') or 0) > 0, a)
-            check('renderer cursor starts past the replay tape',
-                  (a.get('cursorBefore') or 0) >= (a.get('tapeBefore') or 0), a)
+            check('the cursor is the runtime alert high-water seq',
+                  a.get('seqBefore') is not None and a.get('cursorBefore') == a.get('seqBefore'), a)
             check('history replay surfaces NO live alert', a.get('replaySuppressed') is True, a)
             kinds = {e.get('kind') for e in (a.get('seen') or [])}
             check('a new live bar delivered alerts to the sink',
                   ('condition' in kinds or 'alert' in kinds), a.get('seen'))
+            check('each live event reached the sink exactly once',
+                  (a.get('drained') or 0) > 0 and len(a.get('seen') or []) == a.get('drained'), a)
             check('polling is idempotent (nothing new on a second drain)', a.get('redrained') == 0, a)
             check('the sink received events', len(a.get('seen') or []) > 0, a.get('seen'))
             check('a condition event was delivered', 'condition' in kinds, kinds)
