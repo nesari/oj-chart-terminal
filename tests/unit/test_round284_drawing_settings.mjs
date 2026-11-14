@@ -24,6 +24,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { schemaTable } from './source-utils.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -69,44 +70,9 @@ function readEngineOpts() {
 }
 
 function readSchemas() {
-  const src = fs.readFileSync(path.join(DRW, 'settings.js'), 'utf8');
-  const s0 = src.indexOf('const SCHEMAS = {');
-  const openBrace = src.indexOf('{', s0);
-  const closeBrace = matchBrace(src, openBrace);
-  const out = {};
-  const collect = (arrStart) => {
-    const arrEnd = matchBrace(src, arrStart);
-    const items = [];
-    let j = arrStart + 1;
-    while (j < arrEnd) {
-      if (src[j] === '{') { const e = matchBrace(src, j); items.push(src.slice(j, e + 1)); j = e + 1; }
-      else j++;
-    }
-    return { items, end: arrEnd };
-  };
-  let i = openBrace + 1;
-  while (i < closeBrace) {
-    const m = /^\s*([a-zA-Z0-9_]+)\s*:\s*\[/.exec(src.slice(i, i + 400));
-    if (m) {
-      const arrStart = src.indexOf('[', i + m[0].length - 1);
-      const { items, end } = collect(arrStart);
-      out[m[1]] = items;
-      i = end + 1;
-      continue;
-    }
-    i++;
-  }
-  /* Schemas are ALSO declared as `SCHEMAS.<tool> = [...]` after the table, and
-     those assignments win at runtime. Missing them made the first audit report
-     17 tools as "no schema" when they had one all along. */
-  const re = /SCHEMAS\.([a-zA-Z0-9_]+)\s*=\s*(\[|SCHEMAS\.([a-zA-Z0-9_]+))/g;
-  let m2;
-  while ((m2 = re.exec(src))) {
-    if (m2[2].startsWith('SCHEMAS.')) { if (out[m2[3]]) out[m2[1]] = out[m2[3]]; continue; }
-    const arrStart = src.indexOf('[', m2.index + m2[0].length - 1);
-    out[m2[1]] = collect(arrStart).items;
-  }
-  return out;
+  /* ROUND297: one table is the only source. The shared parser also resolves
+     schemas aliased to a const array (the four arrow-mark tools). */
+  return schemaTable().table;
 }
 
 const LINE = ['color', 'width', 'style'];
@@ -172,9 +138,9 @@ const SCHEMA = readSchemas();
 /* ---------- 3. the specific ROUND284 additions ---------- */
 /* Only two tools genuinely lacked a writable option. The other tools in the
    first audit (measure, callout, emoji, circle, curve, polyline, …) DO have
-   schemas — declared as `SCHEMAS.<tool> = [...]` after the table, which the
-   first analysis missed. They are asserted as regressions below, not as new
-   work. */
+   schemas. ROUND297 put them in the ONE `SCHEMAS` table (they used to be
+   post-table `SCHEMAS.<tool> = [...]` assignments); they are asserted as
+   regressions below, not as new work. */
 {
   const has = (id, re) => (SCHEMA[id] || []).some((it) => re.test(it));
 
@@ -190,8 +156,8 @@ const SCHEMA = readSchemas();
 /* ---------- 3b. regressions: schemas that already existed keep working ---------- */
 {
   const has = (id, re) => (SCHEMA[id] || []).some((it) => re.test(it));
-  /* these were declared via SCHEMAS.x = [...] — pinned so a future refactor
-     that drops one is caught here instead of silently falling back */
+  /* these moved into the single table in ROUND297 — pinned so a future
+     refactor that drops one is caught here instead of silently falling back */
   ok(has('measure', /key:\s*'fillOpacity'/), 'measure still has its box opacity');
   ok(has('measure', /key:\s*'showArrows'/), 'measure still has the arrow toggle');
   ok(has('measure', /key:\s*'showLabel'/), 'measure still has the info label toggle');

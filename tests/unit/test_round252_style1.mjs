@@ -1,4 +1,4 @@
-import { readSource } from './source-utils.mjs';
+import { readSource, schemaTable } from './source-utils.mjs';
 /**
  * test_round252_style1.mjs — ROUND252 settings batch 1 (labels, infoline,
  * parallel levels, background fills).
@@ -43,11 +43,16 @@ ok(tools.includes('for (const lv of levelsOf(d, []))'), 'extra level lines in dr
 ok(/parallel: \[[\s\S]*?kind: 'levels'/.test(settings), 'parallel levels editor');
 
 /* 4 — background fills on open strokes */
-for (const id of ['polyline', 'curve', 'dblcurve']) {
-  const re = new RegExp("SCHEMAS\\." + id + " = \\[[\\s\\S]*?kind: 'fill'");
-  ok(re.test(settings), 'schema fill: ' + id);
+{
+  /* ROUND297: assert the parsed schema table, so the check cannot slide into
+     the next tool's entries (and cannot depend on a `SCHEMAS.x =` text pin). */
+  const table = schemaTable().table;
+  const hasFill = (id) => (table[id] || []).some((it) => /kind: 'fill'/.test(it));
+  for (const id of ['polyline', 'curve', 'dblcurve']) {
+    ok(hasFill(id), 'schema fill: ' + id);
+  }
+  ok(hasFill('brush'), 'schema fill: brush');
 }
-ok(/SCHEMAS\.brush = \[[\s\S]*?kind: 'fill'/.test(settings), 'schema fill: brush');
 ok((tools2.match(/if \(d\.opts\.fill\) \{\s*ctx\.save\(\);\s*ctx\.globalAlpha = fillAlphaOf\(d\);/g) || []).length >= 4,
   'fill blocks in brush/polyline/curve/dblcurve draws');
 

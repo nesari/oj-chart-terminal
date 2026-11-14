@@ -81,8 +81,8 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 - **فیکسچر بروکر دوم** — اختیاری.
 
 ### بدهی فنی شناخته‌شده
-- **`SCHEMAS` دو منبع دارد:** جدول `const SCHEMAS = {...}` و تخصیص‌های بعدی `SCHEMAS.x = [...]`. تست ضدتکرار جلوی تکرار را می‌گیرد، ولی ریشه‌ای حل نشده. بازسازی ممکن است (یک منبع واحد).
-- **فلیک‌های E2E:** `round196` (اصلاح شده با plot کردن `close`)، `round283` (گاهی روی CI تگ می‌شکند — محلی ۳/۳ سبز). الگو: بیشترشان **خود تست** مشکل دارند نه محصول.
+- ~~**`SCHEMAS` دو منبع دارد**~~ — **راند ۲۹۷ حل شد:** همهٔ schemaهای داخلی در یک جدول واحد‌اند؛ `SCHEMAS.x = [...]` و `registerSchema` حذف شدند. تست ضدتکرار هم کلید تکراری داخل جدول را می‌گیرد و هم هر تخصیص بیرون از آن را.
+- **فلیک‌های E2E:** `round196` (اصلاح شده با plot کردن `close`)، `round283` (**راند ۲۹۷:** race با حذف `setTimeout` حل شد — خواندن همگام بعد از `rebuild` و درین دستی بعد از `pushNewBar`؛ دیگر به تیک `onTick` وابسته نیست). الگو: بیشترشان **خود تست** مشکل دارند نه محصول.
 
 ---
 
@@ -103,7 +103,7 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 ### ترسیم
 | فایل | نقش |
 |---|---|
-| `src/renderer/js/drawing/settings.js` | `DEFAULTS` + `SCHEMAS` (منبع خطر تکرار) |
+| `src/renderer/js/drawing/settings.js` | `DEFAULTS` + جدول واحد `SCHEMAS` (از راند ۲۹۷) |
 | `src/renderer/js/drawing/tools.js` | measure، disjoint، chip label |
 | `src/renderer/js/drawing/tools2/analysis.js` | موتور مشترک حجم پروفایل، ghostfeed، posforecast، sector |
 | `src/renderer/js/drawing/tools2/marks.js` | callout (چیدمان متن، دنباله) |

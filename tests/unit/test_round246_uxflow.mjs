@@ -1,4 +1,4 @@
-import { readSource } from './source-utils.mjs';
+import { readSource, schemaTable } from './source-utils.mjs';
 /**
  * test_round246_uxflow.mjs — ROUND246 creation flows + annotations + gannbox.
  *
@@ -60,8 +60,13 @@ for (const id of ['callout', 'flagmark', 'arrowmarkl', 'arrowmarkr']) {
 }
 
 /* 6 — schemas + factory sizes for the marks */
-for (const id of ['arrowmarkl', 'arrowmarkr', 'flagmark', 'callout']) {
-  ok(new RegExp('SCHEMAS\\.' + id + ' = ').test(settings), 'schema: ' + id);
+{
+  /* ROUND297: read the REAL parsed schema table, not a `SCHEMAS.x =` text pin —
+     every built-in now lives in the single table. */
+  const table = schemaTable().table;
+  for (const id of ['arrowmarkl', 'arrowmarkr', 'flagmark', 'callout']) {
+    ok(!!table[id], 'schema: ' + id);
+  }
 }
 ok(/flagmark: Object\.assign\(\{[^}]*markSize: 26/.test(tools2), 'flagmark factory size');
 ok(/arrowmark[lr]: Object\.assign\(\{[^}]*markSize: 22/.test(tools2), 'arrowmark l/r factory size');

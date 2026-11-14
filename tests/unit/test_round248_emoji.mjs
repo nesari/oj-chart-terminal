@@ -1,4 +1,4 @@
-import { readSource } from './source-utils.mjs';
+import { readSource, schemaTable } from './source-utils.mjs';
 /**
  * test_round248_emoji.mjs — ROUND248 Icons (emoji) tool wiring.
  *
@@ -44,7 +44,7 @@ ok(ui.includes("{ id: 'icons', base: 'emoji', tools: ['emoji'] }"), 'icons group
 ok(/^    emoji: \[/m.test(tools), 'CTX entry');
 
 /* 4 — settings: schema + grid builder + dispatch + CSS */
-ok(/SCHEMAS\.emoji = \[\s*\{ kind: 'emoji' \}/.test(settings), 'schema with emoji kind');
+ok((schemaTable().table.emoji || []).some((it) => /kind: 'emoji'/.test(it)), 'schema with emoji kind');
 ok(settings.includes('function buildEmoji(fld)'), 'buildEmoji exists');
 ok(settings.includes("else if (fld.kind === 'emoji') buildEmoji(fld);"), 'dispatch wired');
 ok(settings.includes("import { TOOLS, EMOJI_CATS } from './tools.js';"), 'catalogue import');

@@ -80,6 +80,12 @@ import { Log } from '../../../core/logger.js';
 
   /* ================= Style-tab schemas (per tool) ================= */
   const TXT = { kind: 'text' }; // annotation font fields (Text tab shared)
+  /* ROUND297: the four arrow-mark tools share one schema; declare it once so
+     the table below remains the ONLY source of built-in schemas. */
+  const ARROWMARK_U = [
+    { kind: 'color', key: 'color', label: 'Color' },
+    { kind: 'select', key: 'markSize', label: 'Size', options: [['14', 'Small'], ['22', 'Medium'], ['30', 'Large'], ['40', 'X-Large']] },
+  ];
   const SCHEMAS = {
     trend: [
       { kind: 'line', arrows: true },
@@ -544,91 +550,92 @@ import { Log } from '../../../core/logger.js';
       { kind: 'color', key: 'color', label: 'Color' },
       { kind: 'number', key: 'fontSize', label: 'Font size', min: 8, max: 24 },
     ],
+    /* ROUND297: these built-ins used to be assigned AFTER the table as
+       `SCHEMAS.<tool> = [...]`. Two sources of truth let a duplicate silently
+       override the rich schema (exactly what hid volprofile/avolprofile's
+       options). Every built-in now lives in THIS table; the post-table
+       registration hook is gone. */
+    measure: [
+      /* round 21: the measure is a first-class TV tool — full Style tab */
+      { kind: 'line' },
+      { kind: 'slider', key: 'fillOpacity', label: 'Box opacity', min: 0.02, max: 1, step: 0.02 },
+      { kind: 'check', key: 'showLabel', label: 'Show info label' },
+      /* ROUND289 (TV parity): each card row is switchable on its own. */
+      { kind: 'check', key: 'showPrice', label: 'Price change', showIf: 'showLabel' },
+      { kind: 'check', key: 'showBars', label: 'Bar count', showIf: 'showLabel' },
+      { kind: 'check', key: 'showDuration', label: 'Duration', showIf: 'showLabel' },
+      { kind: 'check', key: 'showArrows', label: 'Show arrows' },
+    ],
+    /* ROUND 69: TV shapes-flyout additions — Style tabs mirror TV
+       (research: Brush = Line+Opacity; Highlighter = Color+Width+Opacity;
+       Arrow marker = Color+Size; Arrow marks = Color+Size; Rotated rectangle
+       and Circle add TV's Background; the line-only tools = Line) */
+    brush: [
+      { kind: 'line' },
+      { kind: 'slider', key: 'borderOpacity', label: 'Opacity', min: 0.05, max: 1, step: 0.05 },
+      /* ROUND252 (TV parity): Background fills the closed stroke. */
+      { kind: 'fill', label: 'Background' },
+    ],
+    highlighter: [
+      { kind: 'color', key: 'color', label: 'Color' },
+      { kind: 'number', key: 'width', label: 'Width', min: 4, max: 40 },
+      { kind: 'slider', key: 'borderOpacity', label: 'Opacity', min: 0.05, max: 1, step: 0.05 },
+    ],
+    arrowmarker: [
+      { kind: 'color', key: 'color', label: 'Color' },
+      { kind: 'select', key: 'markSize', label: 'Size', options: [['12', 'Small'], ['18', 'Medium'], ['26', 'Large'], ['36', 'X-Large']] },
+    ],
+    arrowmarku: ARROWMARK_U,
+    arrowmarkd: ARROWMARK_U,
+    /* ROUND246: the annotations back on the menu get real Style tabs (size for
+       the marks; line + background + font size for the callout bubble). */
+    arrowmarkl: ARROWMARK_U,
+    arrowmarkr: ARROWMARK_U,
+    flagmark: [
+      /* ROUND284: the painter strokes the pole with opts.width, but this schema
+         only offered a colour swatch — so the pole thickness was stuck at the
+         factory value. `line` supplies colour + width + style together. */
+      { kind: 'line' },
+      { kind: 'select', key: 'markSize', label: 'Size', options: [['18', 'Small'], ['26', 'Medium'], ['34', 'Large'], ['44', 'X-Large']] },
+      { kind: 'fill', label: 'Background' },
+    ],
+    callout: [
+      { kind: 'line' },
+      { kind: 'fill', label: 'Background' },
+      { kind: 'number', key: 'fontSize', label: 'Font size', min: 8, max: 48 },
+      /* ROUND285 (TV parity): which side the tail points from. "Auto" picks the
+         side facing the leader target, which is TV's default behaviour. */
+      { kind: 'select', key: 'pointer', label: 'Pointer', options: [['auto', 'Auto'], ['up', 'Up'], ['down', 'Down'], ['left', 'Left'], ['right', 'Right']] },
+    ],
+    /* ROUND248 (TV parity): Icons category — the glyph grid + size. */
+    emoji: [
+      { kind: 'emoji' },
+      { kind: 'number', key: 'size', label: 'Size', min: 8, max: 128 },
+    ],
+    rotrect: [
+      { kind: 'line' },
+      { kind: 'fill', label: 'Background' },
+    ],
+    circle: [
+      { kind: 'line' },
+      { kind: 'fill', label: 'Background' },
+    ],
+    path: [{ kind: 'line' }],
+    polyline: [
+      { kind: 'line' },
+      /* ROUND252 (TV parity): Background fills the closed polyline. */
+      { kind: 'fill', label: 'Background' },
+    ],
+    arc: [{ kind: 'line' }],
+    curve: [
+      { kind: 'line' },
+      { kind: 'fill', label: 'Background' },
+    ],
+    dblcurve: [
+      { kind: 'line' },
+      { kind: 'fill', label: 'Background' },
+    ],
   };
-  SCHEMAS.measure = [
-    /* round 21: the measure is a first-class TV tool — full Style tab */
-    { kind: 'line' },
-    { kind: 'slider', key: 'fillOpacity', label: 'Box opacity', min: 0.02, max: 1, step: 0.02 },
-    { kind: 'check', key: 'showLabel', label: 'Show info label' },
-    /* ROUND289 (TV parity): each card row is switchable on its own. */
-    { kind: 'check', key: 'showPrice', label: 'Price change', showIf: 'showLabel' },
-    { kind: 'check', key: 'showBars', label: 'Bar count', showIf: 'showLabel' },
-    { kind: 'check', key: 'showDuration', label: 'Duration', showIf: 'showLabel' },
-    { kind: 'check', key: 'showArrows', label: 'Show arrows' },
-  ];
-
-  /* ROUND 69: TV shapes-flyout additions — Style tabs mirror TV
-     (research: Brush = Line+Opacity; Highlighter = Color+Width+Opacity;
-     Arrow marker = Color+Size; Arrow marks = Color+Size; Rotated rectangle
-     and Circle add TV's Background; the line-only tools = Line) */
-  SCHEMAS.brush = [
-    { kind: 'line' },
-    { kind: 'slider', key: 'borderOpacity', label: 'Opacity', min: 0.05, max: 1, step: 0.05 },
-    /* ROUND252 (TV parity): Background fills the closed stroke. */
-    { kind: 'fill', label: 'Background' },
-  ];
-  SCHEMAS.highlighter = [
-    { kind: 'color', key: 'color', label: 'Color' },
-    { kind: 'number', key: 'width', label: 'Width', min: 4, max: 40 },
-    { kind: 'slider', key: 'borderOpacity', label: 'Opacity', min: 0.05, max: 1, step: 0.05 },
-  ];
-  SCHEMAS.arrowmarker = [
-    { kind: 'color', key: 'color', label: 'Color' },
-    { kind: 'select', key: 'markSize', label: 'Size', options: [['12', 'Small'], ['18', 'Medium'], ['26', 'Large'], ['36', 'X-Large']] },
-  ];
-  SCHEMAS.arrowmarku = [
-    { kind: 'color', key: 'color', label: 'Color' },
-    { kind: 'select', key: 'markSize', label: 'Size', options: [['14', 'Small'], ['22', 'Medium'], ['30', 'Large'], ['40', 'X-Large']] },
-  ];
-  SCHEMAS.arrowmarkd = SCHEMAS.arrowmarku;
-  /* ROUND246: the annotations back on the menu get real Style tabs (size for
-     the marks; line + background + font size for the callout bubble). */
-  SCHEMAS.arrowmarkl = SCHEMAS.arrowmarku;
-  SCHEMAS.arrowmarkr = SCHEMAS.arrowmarku;
-  SCHEMAS.flagmark = [
-    /* ROUND284: the painter strokes the pole with opts.width, but this schema
-       only offered a colour swatch — so the pole thickness was stuck at the
-       factory value. `line` supplies colour + width + style together. */
-    { kind: 'line' },
-    { kind: 'select', key: 'markSize', label: 'Size', options: [['18', 'Small'], ['26', 'Medium'], ['34', 'Large'], ['44', 'X-Large']] },
-    { kind: 'fill', label: 'Background' },
-  ];
-  SCHEMAS.callout = [
-    { kind: 'line' },
-    { kind: 'fill', label: 'Background' },
-    { kind: 'number', key: 'fontSize', label: 'Font size', min: 8, max: 48 },
-    /* ROUND285 (TV parity): which side the tail points from. "Auto" picks the
-       side facing the leader target, which is TV's default behaviour. */
-    { kind: 'select', key: 'pointer', label: 'Pointer', options: [['auto', 'Auto'], ['up', 'Up'], ['down', 'Down'], ['left', 'Left'], ['right', 'Right']] },
-  ];
-  /* ROUND248 (TV parity): Icons category — the glyph grid + size. */
-  SCHEMAS.emoji = [
-    { kind: 'emoji' },
-    { kind: 'number', key: 'size', label: 'Size', min: 8, max: 128 },
-  ];
-  SCHEMAS.rotrect = [
-    { kind: 'line' },
-    { kind: 'fill', label: 'Background' },
-  ];
-  SCHEMAS.circle = [
-    { kind: 'line' },
-    { kind: 'fill', label: 'Background' },
-  ];
-  SCHEMAS.path = [{ kind: 'line' }];
-  SCHEMAS.polyline = [
-    { kind: 'line' },
-    /* ROUND252 (TV parity): Background fills the closed polyline. */
-    { kind: 'fill', label: 'Background' },
-  ];
-  SCHEMAS.arc = [{ kind: 'line' }];
-  SCHEMAS.curve = [
-    { kind: 'line' },
-    { kind: 'fill', label: 'Background' },
-  ];
-  SCHEMAS.dblcurve = [
-    { kind: 'line' },
-    { kind: 'fill', label: 'Background' },
-  ];
 
   /* which tabs a tool shows (TV: all four; Coordinates adapts to point count) */
   function tabsFor(d) {
@@ -667,12 +674,6 @@ import { Log } from '../../../core/logger.js';
     if (!d.opts.vis) return true;
     const v = d.opts.vis[key];
     return !v || v.on !== false;
-  };
-
-  /* registration hook for tools2.js: the batch-2 tools add their Style-tab
-     schemas from their own file (keeps this file stable) */
-  DrawSettings.registerSchema = function (type, schema) {
-    if (type && Array.isArray(schema)) SCHEMAS[type] = schema;
   };
 
   /* last floating position of the tool-settings dialog (session-scoped, TV) */

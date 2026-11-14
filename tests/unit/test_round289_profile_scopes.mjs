@@ -292,42 +292,24 @@ const draw = (id, d, bars, extra) => {
 
 /* ---------- 9. both schemas expose the scope ---------- */
 {
-  const { readSource } = await import('./source-utils.mjs');
-  const st = readSource('src/renderer/js/drawing/settings.js');
-  /* the schema table may declare a tool ONCE; a second declaration later would
-     silently override the first (that is exactly what dropped Scope before) */
-  const tableStart = st.indexOf('const SCHEMAS = {');
-  let depth = 0, tableEnd = -1;
-  for (let i = st.indexOf('{', tableStart); i < st.length; i++) {
-    if (st[i] === '{') depth++;
-    else if (st[i] === '}') { depth--; if (!depth) { tableEnd = i; break; } }
-  }
-  const table = st.slice(tableStart, tableEnd);
-  const keys = [...table.matchAll(/^\s{4}([a-zA-Z0-9_]+):\s*\[/gm)].map((m) => m[1]);
-  const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
-  ok(dupes.length === 0, 'no tool is declared twice in the schema table', [...new Set(dupes)].join(', '));
-  /* ROUND289: the SAME class of bug lives outside the table — a later
-     `SCHEMAS.tool = [...]` silently wins over the table entry. The two
-     profiles shipped that way and it quietly dropped every rich option. A
-     tool must be declared in exactly ONE place: the table, or one assignment. */
-  const assigned = [...st.matchAll(/SCHEMAS\.([a-zA-Z0-9_]+)\s*=/g)].map((m) => m[1]);
-  const assignedDupes = assigned.filter((k, i) => assigned.indexOf(k) !== i);
-  ok(assignedDupes.length === 0, 'no tool is assigned to SCHEMAS twice', [...new Set(assignedDupes)].join(', '));
-  const both = [...new Set(keys.filter((k) => assigned.includes(k)))];
-  ok(both.length === 0, 'no tool is declared in the table AND reassigned later', both.join(', '));
+  const { schemaTable } = await import('./source-utils.mjs');
+  const { table, keys, duplicates, assignments } = schemaTable();
+  /* ROUND297: the table is the ONE source of built-in schemas. A tool must be
+     declared exactly once, and no post-table `SCHEMAS.x = [...]` assignment may
+     come back — that second source is what silently dropped Scope. */
+  ok(duplicates.length === 0, 'no tool is declared twice in the schema table', [...new Set(duplicates)].join(', '));
+  ok(assignments.length === 0, 'no built-in schema is assigned outside the table', [...new Set(assignments)].join(', '));
+  ok(keys.length >= 70, 'the schema table still covers the whole toolset (' + keys.length + ')');
 
-  /* and the two profile schemas now live in the winning declaration */
-  const vpIdx = st.search(/(?:^|\n)\s{4}volprofile:\s*\[/);
-  const avIdx = st.search(/(?:^|\n)\s{4}avolprofile:\s*\[/);
-  const vp = st.slice(vpIdx, vpIdx + 900);
-  const av = st.slice(avIdx, avIdx + 900);
-  ok(/key: 'scope', label: 'Scope'/.test(vp), 'volprofile has a Scope select');
-  ok(/'fixed'/.test(vp) && /'session'/.test(vp) && /'visible'/.test(vp), 'volprofile offers fixed/session/visible');
-  ok(/key: 'scope', label: 'Scope'/.test(av), 'avolprofile has a Scope select');
-  ok(/'anchor'/.test(av), 'avolprofile offers anchor');
+  const has = (id, re) => (table[id] || []).some((it) => re.test(it));
+  ok(has('volprofile', /key: 'scope', label: 'Scope'/), 'volprofile has a Scope select');
+  ok(has('volprofile', /'fixed'/) && has('volprofile', /'session'/) && has('volprofile', /'visible'/),
+    'volprofile offers fixed/session/visible');
+  ok(has('avolprofile', /key: 'scope', label: 'Scope'/), 'avolprofile has a Scope select');
+  ok(has('avolprofile', /'anchor'/), 'avolprofile offers anchor');
   /* the rich options survived the de-duplication */
-  ok(/key: 'vaPct'/.test(vp) && /key: 'showPoc'/.test(vp), 'volprofile keeps VA/POC options');
-  ok(/key: 'vaPct'/.test(av) && /key: 'showPoc'/.test(av), 'avolprofile keeps VA/POC options');
+  ok(has('volprofile', /key: 'vaPct'/) && has('volprofile', /key: 'showPoc'/), 'volprofile keeps VA/POC options');
+  ok(has('avolprofile', /key: 'vaPct'/) && has('avolprofile', /key: 'showPoc'/), 'avolprofile keeps VA/POC options');
 }
 
 console.log('\nROUND289: ' + pass + ' passed, ' + fail + ' failed.');
