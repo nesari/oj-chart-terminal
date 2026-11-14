@@ -100,7 +100,45 @@ const app = readSource('src/renderer/js/app.js');
     'and still has its own download/install buttons');
 }
 
-/* ---------- G. no test may pin a literal version ----------
+/* ---------- H. ROUND295: clicking must always do something ----------
+   The first shipped version of this popup was silent: `run()` returned early
+   when there was no Electron bridge, and the release link called
+   `window.electronAPI.openExternal` — which did not exist anywhere. Both buttons
+   looked alive and did nothing. */
+{
+  const pre = readSource('preload.js');
+  ok(/openExternal:\s*\(url\)\s*=>\s*ipcRenderer\.invoke\('open-external'/.test(pre),
+    'the preload exposes openExternal (it was missing entirely)');
+  ok(/open-external/.test(readSource('main.js')), 'main handles the open-external channel');
+  const mainSrc = readSource('main.js');
+  ok(/EXTERNAL_HOSTS/.test(mainSrc), 'main restricts which hosts may be opened');
+  ok(/protocol !== 'https:'/.test(mainSrc), 'only https links are allowed');
+  ok(/shell\.openExternal/.test(mainSrc), 'it goes through the OS shell');
+
+  /* the popup must fall back to a tab when there is no shell */
+  ok(/window\.open\(target, '_blank'/.test(about), 'the popup falls back to a new tab');
+  ok(/if \(!w && UI && UI\.toast\)/.test(about), 'a blocked popup is reported, not swallowed');
+
+  /* a click without a bridge must SAY so */
+  ok(/Update checks need the desktop app/.test(about),
+    'Check explains why nothing can happen without the bridge');
+  ok(/if \(!hasBridge\)/.test(about), 'that guard exists in the action handler');
+
+  /* the outcome of a check is announced to the user */
+  ok(/You are on the latest version/.test(about),
+    'an up-to-date result is stated explicitly');
+  ok(/Update available: v/.test(about), 'an available update is announced with its version');
+  ok(/Update channel unavailable/.test(about), 'an unreachable channel is explained');
+  ok(/Update check failed/.test(about), 'a real failure is reported as one');
+
+  /* and when a newer version exists the download PAGE is reachable */
+  ok(/class="ab-page/.test(about) || /ab-page/.test(about), 'a download-page action exists');
+  ok(/state === 'available' \|\| state === 'downloaded' \|\| state === 'channel'/.test(about),
+    'it appears only when there is something to download');
+  ok(/Open download page for v/.test(about), 'its label names the version');
+}
+
+/* ---------- I. no test may pin a literal version ----------
    The live e2e shipped with `ver == 'v1.9.225'` hard-coded, so the very next
    release turned CI red for a correct product. A version assertion must read
    package.json (or the running build), never a constant. */

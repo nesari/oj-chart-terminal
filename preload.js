@@ -28,6 +28,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateDownload: () => ipcRenderer.invoke('update-download'),
   updateInstall: () => ipcRenderer.invoke('update-install'),
   onUpdateState: (cb) => ipcRenderer.on('update-state', (e, s) => cb(s)),
+  /* ROUND295: the About popup links to the release page. It must go through
+     the OS shell, not `window.open` — a packaged Electron app has no tab strip
+     and `target=_blank` opens a blank window with no navigation. The URL is
+     validated in main (https + an allow-list host), never trusted here. */
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
 });
 
 /* ROUND122: chart-tab undock / dock-back (Chrome-style detachable tabs).

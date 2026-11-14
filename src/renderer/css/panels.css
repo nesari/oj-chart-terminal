@@ -234,6 +234,9 @@
 .ab-action.ab-primary { background: var(--accent, #2962ff); border-color: var(--accent, #2962ff); color: #fff; font-weight: 600; }
 .ab-notes { flex: 0 0 auto; height: 26px; font-size: 11px; padding: 0 8px; border-radius: 4px; border: 1px solid transparent; background: transparent; color: var(--text-dim); cursor: pointer; }
 .ab-notes:hover { color: var(--text); text-decoration: underline; }
+.ab-page-row { margin-top: 8px; }
+.ab-page { width: 100%; height: 24px; font-size: 11px; border-radius: 4px; border: 1px dashed var(--border2); background: transparent; color: var(--text-dim); cursor: pointer; }
+.ab-page:hover { color: var(--text); border-color: var(--accent, #2962ff); }
 .dg-dhead {
   font-size: 10px; letter-spacing: .4px; text-transform: uppercase;
   color: var(--text-dim); padding: 6px 10px 2px;

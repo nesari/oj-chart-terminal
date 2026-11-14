@@ -108,6 +108,18 @@ function render() {
     btn.classList.toggle('ab-primary', state === 'available' || state === 'downloaded');
   }
 
+  /* ROUND295: when a newer version EXISTS the user must be able to reach its
+     download page even if the in-app downloader is unavailable (no feed access,
+     a signed-build mismatch, an OS that refuses the installer). A second,
+     secondary link appears only in that state so the primary path stays clear. */
+  const page = popup.querySelector('.ab-page');
+  if (page) {
+    const showPage = state === 'available' || state === 'downloaded' || state === 'channel';
+    page.classList.toggle('hidden', !showPage);
+    page.dataset.url = releaseUrl(s.version || null);
+    page.textContent = s.version ? 'Open download page for v' + s.version : 'Open download page';
+  }
+
   /* release notes link points at the version being DISCUSSED, not a guess */
   const link = popup.querySelector('.ab-notes');
   if (link) {
@@ -119,11 +131,37 @@ function render() {
 
 async function onAction() {
   const s = UpdateUI.status || {};
+  const hasBridge = !!(typeof window !== 'undefined' && window.electronAPI && window.electronAPI.updateCheck);
   const state = s.state || 'unknown';
+
+  /* ROUND295: without the Electron bridge there is nothing to check — say so
+     instead of doing nothing. Clicking a button and seeing NO reaction is the
+     worst possible answer, and that is exactly what happened here. */
+  if (!hasBridge) {
+    if (UI && UI.toast) UI.toast('Update checks need the desktop app', 'err');
+    return;
+  }
+
   try {
-    if (state === 'available') await UpdateUI.download();
-    else if (state === 'downloaded') await UpdateUI.install();
-    else await UpdateUI.checkNow();
+    if (state === 'available') {
+      const next = await UpdateUI.download();
+      /* Even after the download starts, the honest destination is the release
+         page: the in-app installer only finishes what the feed describes. */
+      if (UI && UI.toast) UI.toast('Downloading update…');
+      if (next && next.state === 'error' && UI && UI.toast) UI.toast('Download failed', 'err');
+    } else if (state === 'downloaded') {
+      await UpdateUI.install();
+    } else {
+      const next = await UpdateUI.checkNow();
+      const st = (next && next.state) || 'unknown';
+      if (UI && UI.toast) {
+        if (st === 'none') UI.toast('You are on the latest version');           // up to date
+        else if (st === 'available') UI.toast('Update available: v' + (next.version || '?'));
+        else if (st === 'channel') UI.toast('Update channel unavailable — download from the release page', 'err');
+        else if (st === 'error') UI.toast('Update check failed — see Diagnostics', 'err');
+        else if (st === 'disabled') UI.toast('Auto-update is off in this build', 'err');
+      }
+    }
   } catch (e) {
     Log.warn('update', 'about action failed', { error: String(e && e.message || e) });
     if (UI && UI.toast) UI.toast('Update action failed', 'err');
@@ -148,16 +186,36 @@ function build() {
     <div class="ab-actions">
       <button class="ab-action">Check for updates</button>
       <button class="ab-notes" title="Open the release page">Release notes</button>
+    </div>
+    <div class="ab-page-row">
+      <button class="ab-page hidden"></button>
     </div>`;
   p.querySelector('.ab-action').addEventListener('click', onAction);
+  /* both links share the same opener: shell when packaged, tab in a browser */
+  const openLink = async (target) => {
+    const b = (typeof window !== 'undefined' && window.electronAPI) || null;
+    try {
+      if (b && b.openExternal) {
+        const r = await b.openExternal(target);
+        if (r && r.ok === false && UI && UI.toast) UI.toast('Could not open the release page', 'err');
+        return;
+      }
+      const w = window.open(target, '_blank', 'noopener');
+      if (!w && UI && UI.toast) UI.toast('Could not open the release page', 'err');
+    } catch (err) {
+      Log.warn('update', 'cannot open the release page', { error: String(err && err.message || err) });
+      if (UI && UI.toast) UI.toast('Could not open the release page', 'err');
+    }
+  };
   p.querySelector('.ab-notes').addEventListener('click', (e) => {
     e.preventDefault();
-    const url = e.currentTarget.dataset.url || releaseUrl(null);
-    /* open through the shell when available; fall back to a new tab */
-    try {
-      if (window.electronAPI && window.electronAPI.openExternal) window.electronAPI.openExternal(url);
-      else window.open(url, '_blank', 'noopener');
-    } catch (err) { Log.debug('update', 'cannot open the release page', { error: String(err) }); }
+    e.stopPropagation();
+    openLink(e.currentTarget.dataset.url || releaseUrl(null));
+  });
+  p.querySelector('.ab-page').addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openLink(e.currentTarget.dataset.url || releaseUrl(null));
   });
   return p;
 }

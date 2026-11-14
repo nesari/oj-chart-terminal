@@ -807,6 +807,21 @@ ipcMain.handle('update-download', async () => {
   return s;
 });
 ipcMain.handle('update-install', () => ({ ok: updater.install() }));
+/* ROUND295: open a link in the user's browser. Only https, and only hosts the
+   app itself links to — the renderer must not be able to launch arbitrary URLs
+   (a prompt-injection or a compromised component must not become a shell). */
+const EXTERNAL_HOSTS = ['github.com', 'www.github.com', 'tradingview.com', 'www.tradingview.com', 'metatrader5.com', 'www.metatrader5.com', 'metatrader.com', 'www.metatrader.com'];
+ipcMain.handle('open-external', async (e, url) => {
+  try {
+    const u = new URL(String(url || ''));
+    if (u.protocol !== 'https:') return { ok: false, error: 'only https links' };
+    if (!EXTERNAL_HOSTS.includes(u.hostname)) return { ok: false, error: 'host not allowed' };
+    await shell.openExternal(u.toString());
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err && err.message || err) };
+  }
+});
 updater.subscribe((s) => {
   for (const w of BrowserWindow.getAllWindows()) {
     try { if (!w.isDestroyed()) w.webContents.send('update-state', s); } catch (e) {}

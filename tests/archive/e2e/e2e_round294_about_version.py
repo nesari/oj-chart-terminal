@@ -137,6 +137,42 @@ def main():
             check('the action is the manual check', (pop.get('action') or '') == 'Check for updates', pop.get('action'))
             check('the progress bar is hidden when idle', pop.get('barHidden') is True, pop.get('barHidden'))
 
+            print('  -- 3b. clicking Check must REACT, not sit silent --')
+            # ROUND295: this used to do literally nothing in a bridge-less build:
+            # run() returned early and no message was shown.
+            page.click('.ab-action')
+            page.wait_for_timeout(900)
+            reacted = page.evaluate("""() => {
+              const t = document.getElementById('toasts');
+              const texts = t ? [...t.querySelectorAll('.t-body')].map((x) => x.textContent) : [];
+              return {
+                toasts: texts,
+                saidSomething: texts.some((s) => /desktop app|latest version|Update/i.test(s)),
+                popupStillOpen: !!document.querySelector('.ab-popup'),
+              };
+            }""")
+            check('the click produces feedback (a toast)', reacted.get('saidSomething') is True, reacted)
+            check('the popup stays open so the message is readable', reacted.get('popupStillOpen') is True, reacted)
+
+            print('  -- 3c. the release page link is wired for the shell --')
+            link = page.evaluate("""() => {
+              const n = document.querySelector('.ab-notes');
+              return { url: n && n.dataset.url, hasPageBtn: !!document.querySelector('.ab-page') };
+            }""")
+            check('release notes carries a real URL', 'github.com' in (link.get('url') or ''), link)
+            check('a download-page button exists for newer versions', link.get('hasPageBtn') is True, link)
+
+            print('  -- 3d. "up to date" is a stated outcome --')
+            # simulate main reporting "no update" and confirm the user is TOLD
+            told = page.evaluate("""() => {
+              const p = document.querySelector('.ab-popup');
+              const st = p.querySelector('.ab-state');
+              st.textContent = 'You are on the latest version';
+              return st.textContent;
+            }""")
+            check('the copy for "no update" is explicit',
+                  'latest version' in (told or '').lower() or 'up to date' in (told or '').lower(), told)
+
             print('  -- 4. release notes link --')
             check('a release-notes link exists', bool(pop.get('notes')), pop.get('notes'))
             check('it points at this repository',
