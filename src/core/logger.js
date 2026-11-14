@@ -32,7 +32,7 @@
 
 import { ENV } from './env.js';
 
-const APP_VERSION = '1.9.229';
+const APP_VERSION = '1.9.230';
 const RING_MAX = 3000;          // entries kept in memory
 const FLUSH_MS = 1500;          // transport batch window
 const FLUSH_MAX = 60;           // flush early when the queue is this long
