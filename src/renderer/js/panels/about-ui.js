@@ -40,7 +40,9 @@ const STATE_LINE = {
   downloaded: 'Ready to install',
   error: 'Could not check for updates',
   channel: 'Update channel unavailable — download from the release page',
-  disabled: 'Auto-update is off in this build',
+  /* self-install needs a packaged build; the CHECK above still ran, so this
+     must not read like a failure */
+  disabled: 'Self-install is off in this build — use the download page',
   unknown: '',
 };
 
@@ -56,6 +58,29 @@ function runningVersion() {
 function releaseUrl(version) {
   const base = 'https://github.com/nesari/oj-chart-terminal/releases';
   return version ? base + '/tag/v' + version : base + '/latest';
+}
+
+/** Open a release page through the OS shell (packaged) or a tab (browser).
+ *  A packaged Electron app has no tab strip, so `window.open` there produces a
+ *  blank window — the shell is the only correct destination. */
+async function openUrl(target) {
+  const b = (typeof window !== 'undefined' && window.electronAPI) || null;
+  try {
+    if (b && b.openExternal) {
+      const r = await b.openExternal(target);
+      if (r && r.ok === false && UI && UI.toast) UI.toast('Could not open the release page', 'err');
+      return;
+    }
+    const w = window.open(target, '_blank', 'noopener');
+    if (!w && UI && UI.toast) UI.toast('Could not open the release page', 'err');
+  } catch (err) {
+    Log.warn('update', 'cannot open the release page', { error: String(err && err.message || err) });
+    if (UI && UI.toast) UI.toast('Could not open the release page', 'err');
+  }
+}
+
+async function openReleasePage(version) {
+  return openUrl(releaseUrl(version));
 }
 
 function render() {
@@ -97,8 +122,10 @@ function render() {
 
   /* the action label follows the state — one button, never two */
   const btn = popup.querySelector('.ab-action');
+  const canInstall = s.canInstall !== false;
   if (btn) {
-    const label = state === 'available' ? 'Download update'
+    const label = state === 'available'
+      ? (canInstall ? 'Download update' : 'Open download page')
       : state === 'downloaded' ? 'Restart & install'
         : state === 'downloading' ? 'Downloading…'
           : state === 'checking' ? 'Checking…'
@@ -134,9 +161,8 @@ async function onAction() {
   const hasBridge = !!(typeof window !== 'undefined' && window.electronAPI && window.electronAPI.updateCheck);
   const state = s.state || 'unknown';
 
-  /* ROUND295: without the Electron bridge there is nothing to check — say so
-     instead of doing nothing. Clicking a button and seeing NO reaction is the
-     worst possible answer, and that is exactly what happened here. */
+  /* ROUND296: without an update bridge there is genuinely nothing to ask. Say
+     so instead of doing nothing — a silent button is the worst answer. */
   if (!hasBridge) {
     if (UI && UI.toast) UI.toast('Update checks need the desktop app', 'err');
     return;
@@ -144,9 +170,14 @@ async function onAction() {
 
   try {
     if (state === 'available') {
+      /* ROUND296: a build that cannot install still has a useful answer —
+         open the download page rather than starting a download that would
+         immediately dead-end. */
+      if (s.canInstall === false) {
+        openReleasePage(s.version || null);
+        return;
+      }
       const next = await UpdateUI.download();
-      /* Even after the download starts, the honest destination is the release
-         page: the in-app installer only finishes what the feed describes. */
       if (UI && UI.toast) UI.toast('Downloading update…');
       if (next && next.state === 'error' && UI && UI.toast) UI.toast('Download failed', 'err');
     } else if (state === 'downloaded') {
@@ -155,11 +186,14 @@ async function onAction() {
       const next = await UpdateUI.checkNow();
       const st = (next && next.state) || 'unknown';
       if (UI && UI.toast) {
-        if (st === 'none') UI.toast('You are on the latest version');           // up to date
+        /* The outcome is always stated — that is the whole point of the click.
+           `disabled` no longer means "could not check": the check ran through
+           the public API, so it lands on `none` or `available` like any other. */
+        if (st === 'none') UI.toast('You are on the latest version');
         else if (st === 'available') UI.toast('Update available: v' + (next.version || '?'));
         else if (st === 'channel') UI.toast('Update channel unavailable — download from the release page', 'err');
         else if (st === 'error') UI.toast('Update check failed — see Diagnostics', 'err');
-        else if (st === 'disabled') UI.toast('Auto-update is off in this build', 'err');
+        else if (st === 'checking') { /* still in flight; the status listener paints it */ }
       }
     }
   } catch (e) {
@@ -191,31 +225,19 @@ function build() {
       <button class="ab-page hidden"></button>
     </div>`;
   p.querySelector('.ab-action').addEventListener('click', onAction);
-  /* both links share the same opener: shell when packaged, tab in a browser */
-  const openLink = async (target) => {
-    const b = (typeof window !== 'undefined' && window.electronAPI) || null;
-    try {
-      if (b && b.openExternal) {
-        const r = await b.openExternal(target);
-        if (r && r.ok === false && UI && UI.toast) UI.toast('Could not open the release page', 'err');
-        return;
-      }
-      const w = window.open(target, '_blank', 'noopener');
-      if (!w && UI && UI.toast) UI.toast('Could not open the release page', 'err');
-    } catch (err) {
-      Log.warn('update', 'cannot open the release page', { error: String(err && err.message || err) });
-      if (UI && UI.toast) UI.toast('Could not open the release page', 'err');
-    }
-  };
+  /* both links open the release page the same way */
   p.querySelector('.ab-notes').addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    openLink(e.currentTarget.dataset.url || releaseUrl(null));
+    const u = e.currentTarget.dataset.url
+      || (UpdateUI.status && UpdateUI.status.notesUrl)
+      || null;
+    if (u) openUrl(u); else openReleasePage((UpdateUI.status || {}).version || null);
   });
   p.querySelector('.ab-page').addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    openLink(e.currentTarget.dataset.url || releaseUrl(null));
+    openReleasePage((UpdateUI.status || {}).version || null);
   });
   return p;
 }

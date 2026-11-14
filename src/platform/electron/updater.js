@@ -29,6 +29,27 @@
 'use strict';
 
 const { app } = require('electron');
+const path = require('node:path');
+const fs = require('node:fs');
+
+/* ROUND296: `app.getVersion()` answers the ELECTRON version in an unpackaged
+   run (it reads `version` from the nearest package.json, which here is empty —
+   Electron falls back to its own). The app's real version lives in
+   package.json -> APP_VERSION, so resolve it explicitly when not packaged.
+   Getting this wrong made the check compare against 33.4.11 and conclude
+   "up to date" for the wrong reason. */
+let versionOverride = null;   // test seam: see setVersionOverride()
+function appVersion() {
+  if (versionOverride) return versionOverride;
+  try {
+    if (app.isPackaged) return app.getVersion();
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', 'package.json'), 'utf8'));
+    if (pkg && pkg.version) return String(pkg.version);
+  } catch (e) { /* fall through */ }
+  return app.getVersion();
+}
+/** Test-only: pretend this build is `v`. Never called by production code. */
+function setVersionOverride(v) { versionOverride = v ? String(v).replace(/^v/, '') : null; }
 
 /* Kept compatible with the plain-CJS style of the other platform modules
    (provider-path.js / mt5-detect.js) so main.js can require() it directly. */
@@ -48,13 +69,90 @@ const state = {
   current: null,      // the running version (informational)
   percent: 0,         // download progress 0..100
   error: null,        // short, user-safe message
+  /* ROUND296: whether this build can actually install an update itself. An
+     API-only check can still report `available`, so the UI needs to know the
+     difference between "there is a newer version" and "I can deliver it". */
+  canInstall: false,
 };
 
 let started = false;
 let listeners = [];
 
 function snapshot() {
-  return Object.assign({}, state, { current: app.getVersion() });
+  return Object.assign({}, state, { current: appVersion() });
+}
+
+/* ROUND296 — ask GitHub directly when the updater cannot run.
+ *
+ * `electron-updater` is only meaningful in a PACKAGED build, so a dev/portable
+ * run reported `disabled` and the Check button could not answer the one
+ * question the user actually has: "is there a newer version?"
+ *
+ * Being unable to SELF-INSTALL is not the same as being unable to KNOW. This
+ * reads the public releases API (no token, same data the feed derives from) so
+ * the UI can always say "you are on the latest version" or "vX is available".
+ * It never downloads or installs — those still belong to electron-updater. */
+const RELEASES_API = 'https://api.github.com/repos/nesari/oj-chart-terminal/releases/latest';
+
+function cmpVersions(a, b) {
+  const pa = String(a || '').replace(/^v/, '').split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = String(b || '').replace(/^v/, '').split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0, y = pb[i] || 0;
+    if (x > y) return 1;
+    if (x < y) return -1;
+  }
+  return 0;
+}
+
+function fetchLatestRelease(timeoutMs) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    try {
+      const https = require('node:https');
+      const req = https.get(RELEASES_API, {
+        headers: { 'User-Agent': 'ojchart-update-check', Accept: 'application/vnd.github+json' },
+        timeout: timeoutMs || 12000,
+      }, (r) => {
+        if (r.statusCode !== 200) { r.resume(); finish({ ok: false, status: r.statusCode }); return; }
+        let body = '';
+        r.on('data', (d) => { body += d; });
+        r.on('end', () => {
+          try {
+            const j = JSON.parse(body);
+            finish({ ok: true, tag: j.tag_name || j.name || null, url: j.html_url || null, draft: !!j.draft, prerelease: !!j.prerelease });
+          } catch (e) { finish({ ok: false, status: 'parse' }); }
+        });
+      });
+      req.on('timeout', () => { try { req.destroy(); } catch (e) {} finish({ ok: false, status: 'timeout' }); });
+      req.on('error', (e) => finish({ ok: false, status: String(e && e.code || 'net') }));
+      req.end();
+    } catch (e) { finish({ ok: false, status: 'throw' }); }
+  });
+}
+
+/** Compare the running build with the latest published release.
+ *  Returns the same status shape, so every surface renders it unchanged. */
+async function checkViaApi(log) {
+  setState({ state: 'checking', error: null });
+  const r = await fetchLatestRelease();
+  if (!r.ok) {
+    /* an unreachable API is a channel fact, not a crash */
+    log('info', 'release API not reachable', { status: r.status });
+    setState({ state: 'channel', error: null });
+    return snapshot();
+  }
+  const current = appVersion();
+  const latest = String(r.tag || '').replace(/^v/, '');
+  const url = r.url || null;
+  if (latest && cmpVersions(latest, current) > 0) {
+    log('info', 'update available (api check)', { current, latest });
+    setState({ state: 'available', version: latest, error: null, notesUrl: url });
+  } else {
+    setState({ state: 'none', version: null, error: null, notesUrl: url });
+  }
+  return snapshot();
 }
 
 function emit() {
@@ -103,15 +201,18 @@ function init(opts) {
   started = true;
 
   if (!app.isPackaged) {
-    setState({ state: 'disabled', error: null });
-    log('debug', 'update check disabled in a dev build');
+    /* The in-app INSTALLER needs a packaged build, but the user can still be
+       told whether a newer version exists — see checkViaApi(). */
+    setState({ state: 'disabled', error: null, canInstall: false });
+    log('debug', 'self-install unavailable in a dev build; version check still works via the API');
     return snapshot();
   }
   if (!autoUpdater) {
-    setState({ state: 'disabled', error: 'updater unavailable' });
+    setState({ state: 'disabled', error: 'updater unavailable', canInstall: false });
     log('warn', 'electron-updater missing from the packaged build', { error: String(loadError && loadError.message || loadError) });
     return snapshot();
   }
+  setState({ canInstall: true });
 
   /* Never install without consent, and never restart the app on its own.
      `autoInstallOnAppQuit` stays FALSE: with it true, a user who downloaded an
@@ -165,8 +266,17 @@ async function check(opts) {
   const log = (opts && opts.log) || function () {};
   init({ log });
   const s = snapshot();
-  if (s.state === 'disabled') return s;
   if (s.state === 'checking' || s.state === 'downloading') return s;
+
+  /* ROUND296: when the in-app installer is unavailable (dev build, or the
+     updater module missing) we can still ANSWER the question. Checking and
+     installing are different capabilities; refusing to check told the user
+     nothing they could act on. */
+  const canSelfInstall = s.state !== 'disabled' && !!autoUpdater;
+  if (!canSelfInstall) {
+    log('debug', 'self-install unavailable — checking the release API only');
+    return checkViaApi(log);
+  }
   try {
     await autoUpdater.checkForUpdates();
   } catch (e) {
@@ -186,6 +296,13 @@ async function download(opts) {
   const log = (opts && opts.log) || function () {};
   const s = snapshot();
   if (s.state !== 'available') return s;
+  /* ROUND296: an API-only check can find an update in a build that cannot
+     install it (dev/portable). Do not pretend to start a download there — the
+     UI's job is to open the release page instead. */
+  if (!s.canInstall || !autoUpdater) {
+    log('debug', 'download requested without the in-app installer');
+    return s;
+  }
   try {
     setState({ state: 'downloading', percent: 0 });
     await autoUpdater.downloadUpdate();
@@ -216,4 +333,4 @@ function subscribe(fn) {
   return function () { listeners = listeners.filter((f) => f !== fn); };
 }
 
-module.exports = { init, check, download, install, status: snapshot, subscribe };
+module.exports = { init, check, download, install, status: snapshot, subscribe, setVersionOverride };

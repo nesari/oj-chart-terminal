@@ -95,12 +95,20 @@ const log = (lvl, msg, ctx) => logs.push({ lvl, msg, ctx });
   calls.check = 0; calls.download = 0;
   updater = loadUpdater();
   const s = updater.init({ log });
-  ok(s.state === 'disabled', 'a dev build reports disabled', s.state);
+  ok(s.state === 'disabled', 'a dev build reports disabled (no self-install)', s.state);
+  /* ROUND296: not being able to SELF-INSTALL must not stop us from CHECKING.
+     The check now goes to the public releases API, so this asserts the answer
+     is a real verdict rather than the old silent "disabled". */
   const c = await updater.check({ log });
-  ok(c.state === 'disabled', 'check in a dev build stays disabled', c.state);
-  ok(calls.check === 0, 'a dev build never calls checkForUpdates', calls.check);
-  ok((await updater.download({ log })).state === 'disabled', 'download in a dev build is a no-op');
+  ok(['none', 'available', 'channel', 'error'].includes(c.state),
+    'check in a dev build still returns a verdict', c.state);
+  ok(calls.check === 0, 'a dev build never calls the electron-updater path', calls.check);
   ok(updater.install() === false, 'install refuses unless a download finished');
+  /* the DOWNLOAD path belongs to the installer; a dev build must never drive
+     it even when the API found a newer version */
+  const d = await updater.download({ log });
+  ok(d.state === c.state || d.state === 'available',
+    'download does not enter the downloading state', d.state);
   ok(logs.some((l) => /dev build/i.test(l.msg)), 'the disabled path is logged');
 }
 

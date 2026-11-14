@@ -38,15 +38,17 @@ const UPDATE_POLL_MS = 6 * 60 * 60 * 1000;
 const STATE_TEXT = {
   idle: '',
   checking: 'Checking…',
-  none: 'Up to date',
+  none: 'You are on the latest version',
   available: 'Update available',
   downloading: 'Downloading…',
   downloaded: 'Ready to install',
-  error: 'Check failed',
+  error: 'Could not check for updates',
   /* the release feed is not reachable at all (private repo, or no release
      published yet) — a configuration fact, not an app failure */
   channel: 'Update channel unavailable — download from the release page',
-  disabled: 'Auto-update is off in this build',
+  /* ROUND296: self-install needs a packaged build, but a version CHECK still
+     works — so this is a note, never the answer to a click. */
+  disabled: 'Self-install is off in this build — use the download page',
   unknown: '',
 };
 
@@ -94,7 +96,12 @@ function paint() {
     check.classList.toggle('hidden', st === 'downloading' || st === 'downloaded' || st === 'disabled');
     check.disabled = st === 'checking';
   }
-  if (get) get.classList.toggle('hidden', st !== 'available');
+  /* ROUND296: `canInstall` decides whether "Download update" is an honest
+     offer. A dev/portable build can DETECT a newer version but cannot install
+     it, so there it must show the release page instead of a button that will
+     do nothing. */
+  const canInstall = status.canInstall !== false;
+  if (get) get.classList.toggle('hidden', st !== 'available' || !canInstall);
   if (inst) inst.classList.toggle('hidden', st !== 'downloaded');
   /* `channel` is not an error: the panel must not paint it red, and the user
      must not be told to "retry" something that cannot work until the release

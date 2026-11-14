@@ -163,15 +163,22 @@ def main():
             check('a download-page button exists for newer versions', link.get('hasPageBtn') is True, link)
 
             print('  -- 3d. "up to date" is a stated outcome --')
-            # simulate main reporting "no update" and confirm the user is TOLD
-            told = page.evaluate("""() => {
-              const p = document.querySelector('.ab-popup');
-              const st = p.querySelector('.ab-state');
-              st.textContent = 'You are on the latest version';
-              return st.textContent;
+            # ROUND296: the click must produce a VERDICT. In this browser harness
+            # there is no Electron bridge, so the honest answer is the
+            # "needs the desktop app" toast — but it must be a toast, not silence.
+            told = ' '.join(reacted.get('toasts') or [])
+            check('the click states an outcome rather than nothing',
+                  'latest version' in told.lower() or 'desktop app' in told.lower(), told)
+
+            print('  -- 3e. the copy for "off" is about self-install, not checking --')
+            # the old string was shown as a RED error right after a click and read
+            # like a failure; the check itself now always runs
+            copy = page.evaluate("""() => {
+              const st = document.querySelector('.ab-state');
+              return st ? st.textContent : '';
             }""")
-            check('the copy for "no update" is explicit',
-                  'latest version' in (told or '').lower() or 'up to date' in (told or '').lower(), told)
+            check('it does not claim auto-update is simply "off"',
+                  'auto-update is off' not in (copy or '').lower(), copy)
 
             print('  -- 4. release notes link --')
             check('a release-notes link exists', bool(pop.get('notes')), pop.get('notes'))

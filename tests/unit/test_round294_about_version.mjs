@@ -75,8 +75,14 @@ const app = readSource('src/renderer/js/app.js');
     'it detects whether the update bridge exists');
   ok(/state = hasBridge \? 'idle' : 'disabled'/.test(about),
     'without a bridge it reports disabled instead of an empty state');
-  ok(/Auto-update is off in this build/.test(update) || /Auto-update is off/.test(update),
-    'the disabled state has plain-word copy');
+  /* ROUND296: the old copy said "Auto-update is off in this build", which was
+     shown as a RED toast right after a click and read like a failure. The check
+     now runs through the public API, so the wording must be about
+     SELF-INSTALL, not about checking. */
+  ok(/Self-install is off in this build/.test(update),
+    'the disabled state describes self-install, not "update is off"');
+  ok(!/Auto-update is off in this build/.test(update),
+    'the old misleading copy is gone');
   ok(/channel:/.test(update), 'the unreachable-channel state exists too');
   /* never offer the update path without a bridge */
   ok(!/checkNow\(\)\);\s*$/m.test(about.slice(0, 0)) || true, 'sanity');
@@ -136,6 +142,42 @@ const app = readSource('src/renderer/js/app.js');
   ok(/state === 'available' \|\| state === 'downloaded' \|\| state === 'channel'/.test(about),
     'it appears only when there is something to download');
   ok(/Open download page for v/.test(about), 'its label names the version');
+}
+
+/* ---------- J. ROUND296: knowing is not installing ----------
+   A dev/portable build cannot self-install, and the Check button used to answer
+   "Auto-update is off in this build" — a red toast for a click that should have
+   produced a verdict. Checking and installing are separate capabilities. */
+{
+  const upd = readSource('src/platform/electron/updater.js');
+  ok(/checkViaApi/.test(upd), 'there is an API-based version check');
+  ok(/RELEASES_API/.test(upd), 'it reads the public releases endpoint');
+  ok(!/Authorization/.test(upd), 'it uses no token (a shipped app has none)');
+  ok(/cmpVersions/.test(upd), 'versions are compared numerically, not lexically');
+  /* compareVersions must handle 1.9.9 < 1.9.10 — the classic string-compare bug */
+  const fnText = upd.slice(upd.indexOf('function cmpVersions'), upd.indexOf('function fetchLatestRelease'));
+  const cmp = new Function(fnText + '\nreturn cmpVersions;')();
+  ok(cmp('1.9.10', '1.9.9') > 0, '1.9.10 is newer than 1.9.9 (not a string compare)');
+  ok(cmp('1.9.9', '1.9.10') < 0, 'and the reverse');
+  ok(cmp('v1.9.28', '1.9.28') === 0, 'a leading v is ignored');
+  ok(cmp('1.10.0', '1.9.99') > 0, 'minor rollover is handled');
+
+  /* the check must not be blocked by "cannot install" */
+  ok(/const canSelfInstall = s\.state !== 'disabled' && !!autoUpdater/.test(upd),
+    'check distinguishes self-install from knowing');
+  ok(/return checkViaApi\(log\)/.test(upd), 'without self-install it still checks');
+
+  /* and downloading must be blocked there, so the UI offers the page instead */
+  ok(/if \(!s\.canInstall \|\| !autoUpdater\)/.test(upd),
+    'download refuses when the build cannot install');
+  ok(/canInstall: false/.test(upd), 'the status carries canInstall');
+
+  const aboutSrc = readSource('src/renderer/js/panels/about-ui.js');
+  ok(/s\.canInstall === false/.test(aboutSrc), 'the popup honours canInstall');
+  ok(/openReleasePage\(s\.version/.test(aboutSrc),
+    'it opens the download page instead of starting a dead download');
+  ok(/canInstall \? 'Download update' : 'Open download page'/.test(aboutSrc),
+    'the button label tells the truth about what it will do');
 }
 
 /* ---------- I. no test may pin a literal version ----------
