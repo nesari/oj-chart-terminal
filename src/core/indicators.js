@@ -1,474 +1,72 @@
 /**
- * Technical indicators library (round 27 — parity port)
+ * Built-in indicator registry (ROUND299) — Pine, single source of truth.
  *
- * Pure math + indicator registry, ported 1:1 from the reference platform's
- * lib/chart/indicators.ts. ZERO DOM / LWC dependency here — rendering lives
- * in indicators-ui.js. Structure returned by compute():
- * { lines: [{ values, color, width, style? }],
- * hist?: { values, colorUp, colorDown },
- * band?: { upper, lower, fill },
- * levels?: [{ value, color, dashed }] }
- * values arrays are aligned with pane.bars (null = no data).
+ * Until ROUND298 this module held 27 hand-written JavaScript implementations
+ * (`compute: (bars, p, c) => ...`). The R298 differential audit showed why
+ * that was the wrong design: it existed only to be compared against the Pine
+ * engine, four bugs lived exclusively in that duplicate, and the two drifted
+ * whenever one side changed.
+ *
+ * All 27 indicators are now REAL Pine scripts (core/pine/builtins-catalog.js)
+ * executed by the same engine that runs the user's scripts. This file keeps
+ * only the compatibility surface that the rest of the app and the public
+ * `window.__app` facade already depended on:
+ *
+ *   Indicators.all        -> catalog entries (type/label/group/pane/params)
+ *   Indicators.def(type)  -> entry or null
+ *   Indicators.LIST       -> legacy alias for `all` (some audits read it)
+ *   Indicators.title(inst)-> legend title with normalized params
+ *   Indicators.paramValue -> the integer-period normalization the old
+ *                            settings dialog used (kept for API stability;
+ *                            Pine inputs validate themselves now)
+ *   Indicators.scriptId   -> the Pine script id for a legacy type
+ *   Indicators.migrate()  -> legacy {type, params} -> Pine {scriptId, inputs}
+ *
+ * There is deliberately NO compute() here any more: nothing may add a second
+ * implementation of a built-in formula. Rendering goes through PineUI.
  *
  * @module core/indicators
- *
- * Phase 3: moved from the renderer (chart/) into the platform-agnostic
- * core — the registry and every compute() are pure math with zero DOM,
- * LWC or host-global references, so Node/web/mobile reuse it as-is.
- *
- * ROUND 74 (Pine engine): the math kernels (sma/ema/wma/stdev/rsi/
- * trueRange/atr) now LIVE in core/pine/stdlib/ta.js and are imported here —
- * one source of truth shared by the built-in indicators and the Pine ta.*
- * namespace (the roadmap's no-parallel-implementations rule).
  */
 
-import { kernels } from './pine/stdlib/ta.js';
-const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
+import { BUILTIN_INDICATORS, BUILTIN_BY_TYPE, BUILTIN_BY_ID, legacyParamsToInputs } from './pine/builtins-catalog.js';
 
+/* The legacy registry shape, derived from the Pine catalog so the dialog,
+   persistence and the public API keep working unchanged. `pane` is the old
+   spelling of `overlay === false ? 'separate' : 'main'`. */
+const DEFS = BUILTIN_INDICATORS.map((d) => ({
+  type: d.type,
+  scriptId: d.id,
+  label: d.label,
+  group: d.group,
+  pane: d.overlay ? 'main' : 'separate',
+  overlay: d.overlay,
+  /* legacy param descriptors (key/label/default) for API consumers that still
+     read them; the authoritative inputs are the script's input.* calls. */
+  params: Object.keys(d.params || {}).map((key) => ({
+    key, label: d.params[key],
+  })),
+  /* `colors` used to feed the dialog dot + legend swatch. The real colors now
+     come from the script's plot() arguments; this is only a fallback hint for
+     the few call sites that colour a dot before the script has run. */
+  colors: {},
+}));
 
-  /* ------------------------------ Registry ------------------------------- */
-  const closes = (bars) => bars.map((b) => b.close);
-  const hl2 = (bars) => bars.map((b) => (b.high + b.low) / 2);
+const MAP = new Map(DEFS.map((d) => [d.type, d]));
 
-  const UP = '#26a69a', DOWN = '#ef5350', BLUE = '#2962ff', ORANGE = '#ff9800',
-    PURPLE = '#ab47bc', TEAL = '#00bcd4', YELLOW = '#ffd54f';
-  const LVL = (v) => ({ value: v, color: 'rgba(178,181,190,0.4)', dashed: true });
+const Indicators = {
+  all: DEFS,
+  get LIST() { return DEFS; },
+  def(type) { return MAP.get(type) || null; },
+  /** the Pine script id backing a legacy indicator type */
+  scriptId(type) { const d = MAP.get(type); return d ? d.scriptId : ''; },
+  /** catalog definition (source + inputs) for a script id */
+  catalog(scriptId) { return BUILTIN_BY_ID.get(scriptId) || null; },
+  isBuiltinScript(scriptId) { return BUILTIN_BY_ID.has(scriptId); },
 
-  const DEFS = [
-    /* ---------------------------- Trend (main) --------------------------- */
-    { type: 'sma', label: 'Moving Average (SMA)', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20, int: true }],
-      colors: { line: BLUE },
-      compute: (bars, p, c) => ({ lines: [{ values: sma(closes(bars), p.length), color: c.line, width: 2 }] }) },
-    { type: 'ema', label: 'Moving Average (EMA)', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20, int: true }],
-      colors: { line: ORANGE },
-      compute: (bars, p, c) => ({ lines: [{ values: ema(closes(bars), p.length), color: c.line, width: 2 }] }) },
-    { type: 'wma', label: 'Moving Average (WMA)', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20, int: true }],
-      colors: { line: PURPLE },
-      compute: (bars, p, c) => ({ lines: [{ values: wma(closes(bars), p.length), color: c.line, width: 2 }] }) },
-    { type: 'hma', label: 'Hull Moving Average', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 21, int: true }],
-      colors: { line: TEAL },
-      compute: (bars, p, c) => {
-        const half = Math.max(2, Math.round(p.length / 2));
-        const wHalf = wma(closes(bars), half).map((v) => (v == null ? null : 2 * v));
-        const wFull = wma(closes(bars), p.length).map((v) => (v == null ? null : -v));
-        const diff = wHalf.map((v, i) => (v != null && wFull[i] != null ? v + wFull[i] : null));
-        return { lines: [{ values: wma(diff, Math.max(2, Math.round(Math.sqrt(p.length)))), color: c.line, width: 2 }] };
-      } },
-    { type: 'bollinger', label: 'Bollinger Bands', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20, int: true }, { key: 'mult', label: 'StdDev', def: 2, min: 0.5, max: 6 }],
-      colors: { line: BLUE },
-      compute: (bars, p, c) => {
-        const basis = sma(closes(bars), p.length), dev = stdev(closes(bars), p.length);
-        const upper = basis.map((b, i) => (b != null && dev[i] != null ? b + p.mult * dev[i] : null));
-        const lower = basis.map((b, i) => (b != null && dev[i] != null ? b - p.mult * dev[i] : null));
-        return {
-          lines: [{ values: basis, color: c.line, width: 1 }, { values: upper, color: c.line, width: 1 }, { values: lower, color: c.line, width: 1 }],
-          band: { upper, lower, fill: 'rgba(41,98,255,0.06)' },
-        };
-      } },
-    { type: 'donchian', label: 'Donchian Channels', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20, int: true }],
-      colors: { line: TEAL },
-      compute: (bars, p, c) => {
-        const upper = new Array(bars.length).fill(null), lower = new Array(bars.length).fill(null), basis = new Array(bars.length).fill(null);
-        for (let i = p.length - 1; i < bars.length; i++) {
-          let hi = -Infinity, lo = Infinity;
-          for (let j = 0; j < p.length; j++) { hi = Math.max(hi, bars[i - j].high); lo = Math.min(lo, bars[i - j].low); }
-          upper[i] = hi; lower[i] = lo; basis[i] = (hi + lo) / 2;
-        }
-        return {
-          lines: [{ values: upper, color: c.line, width: 1 }, { values: lower, color: c.line, width: 1 }, { values: basis, color: c.line, width: 1, style: 'dashed' }],
-          band: { upper, lower, fill: 'rgba(0,188,212,0.05)' },
-        };
-      } },
-    { type: 'keltner', label: 'Keltner Channels', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20, int: true }, { key: 'mult', label: 'Multiplier', def: 2, min: 0.5, max: 6 }],
-      colors: { line: YELLOW },
-      compute: (bars, p, c) => {
-        const basis = ema(closes(bars), p.length), a = atr(bars, p.length);
-        const upper = basis.map((b, i) => (b != null && a[i] != null ? b + p.mult * a[i] : null));
-        const lower = basis.map((b, i) => (b != null && a[i] != null ? b - p.mult * a[i] : null));
-        return {
-          lines: [{ values: basis, color: c.line, width: 1 }, { values: upper, color: c.line, width: 1 }, { values: lower, color: c.line, width: 1 }],
-          band: { upper, lower, fill: 'rgba(255,213,79,0.05)' },
-        };
-      } },
-    { type: 'envelopes', label: 'Moving Average Envelopes', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'Length', def: 20, int: true }, { key: 'percent', label: 'Percent', def: 2, min: 0.1, max: 20 }],
-      colors: { line: BLUE },
-      compute: (bars, p, c) => {
-        const basis = sma(closes(bars), p.length), k = p.percent / 100;
-        const upper = basis.map((b) => (b != null ? b * (1 + k) : null));
-        const lower = basis.map((b) => (b != null ? b * (1 - k) : null));
-        return {
-          lines: [{ values: basis, color: c.line, width: 1 }, { values: upper, color: c.line, width: 1 }, { values: lower, color: c.line, width: 1 }],
-        };
-      } },
-    { type: 'vwap', label: 'VWAP (Session)', group: 'Volume', pane: 'main',
-      params: [],
-      colors: { line: ORANGE },
-      compute: (bars, p, c) => {
-        const out = new Array(bars.length).fill(null);
-        let cumPV = 0, cumV = 0, curDay = -1;
-        for (let i = 0; i < bars.length; i++) {
-          const day = Math.floor(bars[i].time / 86400);
-          if (day !== curDay) { curDay = day; cumPV = 0; cumV = 0; }
-          const tp = (bars[i].high + bars[i].low + bars[i].close) / 3;
-          const v = bars[i].volume || 1;
-          cumPV += tp * v; cumV += v;
-          out[i] = cumPV / cumV;
-        }
-        return { lines: [{ values: out, color: c.line, width: 2 }] };
-      } },
-    /* ROUND298 (TV parity): rewritten to the same state machine as the Pine
-       engine's ta.sar (which the reference documents), two defects fixed:
-        1. the first plotted point was one acceleration step EARLY — the loop
-           advanced sar before the first bar's value was emitted, so every
-           reading drifted from bar 1 (1.0999867 vs 1.0999831 on EURUSD M15);
-        2. sar was never bounded by the prior two bars' extremes, so in an
-           uptrend it could print ABOVE a prior low (TV clamps it below, and
-           that clamp is what produces the flat steps users expect).
-       Fractions stay user-facing as percentages (dialog default 2/2/20 =
-       0.02/0.02/0.2), converted once here. */
-    { type: 'sar', label: 'Parabolic SAR', group: 'Trend', pane: 'main',
-      params: [{ key: 'start', label: 'Start', def: 2, min: 1, max: 10 }, { key: 'inc', label: 'Increment', def: 2, min: 1, max: 10 }, { key: 'max', label: 'Max', def: 20, min: 5, max: 50 }],
-      colors: { up: UP, down: DOWN },
-      compute: (bars, p, c) => {
-        const dots = new Array(bars.length).fill(null), ups = new Array(bars.length).fill(null);
-        const step = p.start / 100, incStep = p.inc / 100, maxStep = p.max / 100;
-        if (bars.length > 1) {
-          let isUp = bars[1].close >= bars[0].close;
-          let af = step;
-          let ep = isUp ? bars[1].high : bars[1].low;
-          let sar = isUp ? bars[0].low : bars[0].high;
-          dots[1] = sar; ups[1] = isUp;
-          for (let i = 2; i < bars.length; i++) {
-            const p1 = bars[i - 1], p2 = bars[i - 2];
-            let next = sar + af * (ep - sar);
-            if (isUp) {
-              const bound = Math.min(p1.low, p2.low);
-              next = Math.min(next, bound);
-              if (bars[i].low < next) { isUp = false; sar = ep; ep = bars[i].low; af = step; }
-              else {
-                if (bars[i].high > ep) { ep = bars[i].high; af = Math.min(af + incStep, maxStep); }
-                sar = next;
-              }
-            } else {
-              const bound = Math.max(p1.high, p2.high);
-              next = Math.max(next, bound);
-              if (bars[i].high > next) { isUp = true; sar = ep; ep = bars[i].high; af = step; }
-              else {
-                if (bars[i].low < ep) { ep = bars[i].low; af = Math.min(af + incStep, maxStep); }
-                sar = next;
-              }
-            }
-            dots[i] = sar; ups[i] = isUp;
-          }
-        }
-        return {
-          lines: [
-            { values: dots.map((d, i) => (d != null && ups[i] ? d : null)), color: c.up, width: 2, style: 'dots' },
-            { values: dots.map((d, i) => (d != null && !ups[i] ? d : null)), color: c.down, width: 2, style: 'dots' },
-          ],
-        };
-      } },
-    { type: 'supertrend', label: 'SuperTrend', group: 'Trend', pane: 'main',
-      params: [{ key: 'length', label: 'ATR Length', def: 10, int: true }, { key: 'mult', label: 'Factor', def: 3, min: 0.5, max: 10 }],
-      colors: { up: UP, down: DOWN },
-      compute: (bars, p, c) => {
-        const a = atr(bars, p.length);
-        const up = new Array(bars.length).fill(null), down = new Array(bars.length).fill(null);
-        let dir = 1, prevUpper = Infinity, prevLower = -Infinity;
-        for (let i = 0; i < bars.length; i++) {
-          if (a[i] == null) continue;
-          const mid = (bars[i].high + bars[i].low) / 2;
-          let upper = mid + p.mult * a[i], lower = mid - p.mult * a[i];
-          if (prevUpper !== Infinity) upper = bars[i].close > prevUpper ? upper : Math.min(upper, prevUpper);
-          if (prevLower !== -Infinity) lower = bars[i].close < prevLower ? lower : Math.max(lower, prevLower);
-          if (prevUpper !== Infinity) {
-            if (dir === 1 && bars[i].close < upper) dir = -1;
-            else if (dir === -1 && bars[i].close > lower) dir = 1;
-          }
-          up[i] = dir === 1 ? lower : null;
-          down[i] = dir === -1 ? upper : null;
-          prevUpper = upper; prevLower = lower;
-        }
-        return { lines: [{ values: up, color: c.up, width: 2 }, { values: down, color: c.down, width: 2 }] };
-      } },
-    { type: 'ichimoku', label: 'Ichimoku Cloud', group: 'Trend', pane: 'main',
-      params: [{ key: 'conv', label: 'Conversion', def: 9, int: true }, { key: 'base', label: 'Base', def: 26, int: true }, { key: 'spanB', label: 'Span B', def: 52, int: true }],
-      colors: { conv: BLUE, base: DOWN, spanA: 'rgba(38,166,154,0.7)', spanB: 'rgba(239,83,80,0.7)' },
-      compute: (bars, p, c) => {
-        const midpoint = (len) => {
-          const out = new Array(bars.length).fill(null);
-          for (let i = len - 1; i < bars.length; i++) {
-            let hi = -Infinity, lo = Infinity;
-            for (let j = 0; j < len; j++) { hi = Math.max(hi, bars[i - j].high); lo = Math.min(lo, bars[i - j].low); }
-            out[i] = (hi + lo) / 2;
-          }
-          return out;
-        };
-        const conv = midpoint(p.conv), base = midpoint(p.base);
-        const shift = (arr, n) => {
-          const out = new Array(bars.length).fill(null);
-          for (let i = 0; i < bars.length; i++) { const src = i - n; if (src >= 0 && src < bars.length) out[i] = arr[src]; }
-          return out;
-        };
-        const spanA = conv.map((v, i) => (v != null && base[i] != null ? (v + base[i]) / 2 : null));
-        const spanB = midpoint(p.spanB);
-        return {
-          lines: [
-            { values: conv, color: c.conv, width: 1 },
-            { values: base, color: c.base, width: 1 },
-            { values: shift(spanA, p.base), color: c.spanA, width: 1 },
-            { values: shift(spanB, p.base), color: c.spanB, width: 1 },
-          ],
-        };
-      } },
-
-    /* -------------------------- Oscillators (sub) ------------------------ */
-    { type: 'rsi', label: 'Relative Strength Index', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 14, int: true }],
-      colors: { line: PURPLE }, fixedRange: [0, 100],
-      compute: (bars, p, c) => ({
-        lines: [{ values: rsi(closes(bars), p.length), color: c.line, width: 2 }],
-        levels: [LVL(70), { value: 50, color: 'rgba(178,181,190,0.25)', dashed: true }, LVL(30)],
-      }) },
-    { type: 'macd', label: 'MACD', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'fast', label: 'Fast', def: 12, int: true }, { key: 'slow', label: 'Slow', def: 26, int: true }, { key: 'signal', label: 'Signal', def: 9, int: true }],
-      colors: { macd: BLUE, signal: ORANGE, up: 'rgba(38,166,154,0.5)', down: 'rgba(239,83,80,0.5)' },
-      compute: (bars, p, c) => {
-        const src = closes(bars);
-        const fast = ema(src, p.fast), slow = ema(src, p.slow);
-        const macdLine = fast.map((v, i) => (v != null && slow[i] != null ? v - slow[i] : null));
-        const signal = ema(macdLine, p.signal);
-        const hist = macdLine.map((v, i) => (v != null && signal[i] != null ? v - signal[i] : null));
-        return {
-          lines: [{ values: macdLine, color: c.macd, width: 2 }, { values: signal, color: c.signal, width: 2 }],
-          hist: { values: hist, colorUp: c.up, colorDown: c.down, colorMode: 'sign' },
-          levels: [{ value: 0, color: 'rgba(178,181,190,0.3)', dashed: true }],
-        };
-      } },
-    { type: 'stochastic', label: 'Stochastic', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'k', label: '%K Length', def: 14, int: true }, { key: 'd', label: '%D Smoothing', def: 3, int: true }],
-      colors: { k: BLUE, d: ORANGE }, fixedRange: [0, 100],
-      compute: (bars, p, c) => {
-        const kVals = new Array(bars.length).fill(null);
-        for (let i = p.k - 1; i < bars.length; i++) {
-          let hi = -Infinity, lo = Infinity;
-          for (let j = 0; j < p.k; j++) { hi = Math.max(hi, bars[i - j].high); lo = Math.min(lo, bars[i - j].low); }
-          /* ROUND298 (TV parity): a zero range is na, not a fabricated 50 —
-             the same rule the Pine engine's ta.stoch now follows. */
-          kVals[i] = hi === lo ? null : ((bars[i].close - lo) / (hi - lo)) * 100;
-        }
-        return {
-          lines: [{ values: kVals, color: c.k, width: 2 }, { values: sma(kVals, p.d), color: c.d, width: 2 }],
-          levels: [LVL(80), LVL(20)],
-        };
-      } },
-    { type: 'stochrsi', label: 'Stochastic RSI', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'length', label: 'RSI Length', def: 14, int: true }, { key: 'stoch', label: 'Stoch Length', def: 14, int: true }],
-      colors: { k: BLUE, d: ORANGE }, fixedRange: [0, 100],
-      compute: (bars, p, c) => {
-        const r = rsi(closes(bars), p.length);
-        const kVals = new Array(bars.length).fill(null);
-        for (let i = p.stoch - 1; i < bars.length; i++) {
-          let hi = -Infinity, lo = Infinity, ok = true;
-          for (let j = 0; j < p.stoch; j++) {
-            const v = r[i - j];
-            /* ROUND298: the window must be FULLY warmed up. The old code broke
-               out on the first null but left hi/lo partly accumulated and then
-               reported a value from a fractional window — StochRSI painted
-               readings ~13 bars before its RSI input existed. */
-            if (v == null || !isFinite(v)) { ok = false; break; }
-            hi = Math.max(hi, v); lo = Math.min(lo, v);
-          }
-          /* ROUND298 (TV parity): zero range is na, never a fabricated 50. */
-          if (ok && hi !== lo) kVals[i] = ((r[i] - lo) / (hi - lo)) * 100;
-        }
-        return {
-          lines: [{ values: kVals, color: c.k, width: 2 }, { values: sma(kVals, 3), color: c.d, width: 2 }],
-          levels: [LVL(80), LVL(20)],
-        };
-      } },
-    { type: 'willr', label: 'Williams %R', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 14, int: true }],
-      colors: { line: YELLOW }, fixedRange: [-100, 0],
-      compute: (bars, p, c) => {
-        const out = new Array(bars.length).fill(null);
-        for (let i = p.length - 1; i < bars.length; i++) {
-          let hi = -Infinity, lo = Infinity;
-          for (let j = 0; j < p.length; j++) { hi = Math.max(hi, bars[i - j].high); lo = Math.min(lo, bars[i - j].low); }
-          /* ROUND298 (TV parity): zero range is na, not a fabricated -50. */
-          out[i] = hi === lo ? null : ((hi - bars[i].close) / (hi - lo)) * -100;
-        }
-        return { lines: [{ values: out, color: c.line, width: 2 }], levels: [LVL(-20), LVL(-80)] };
-      } },
-    { type: 'cci', label: 'Commodity Channel Index', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 20, int: true }],
-      colors: { line: BLUE },
-      compute: (bars, p, c) => {
-        const tp = bars.map((b) => (b.high + b.low + b.close) / 3);
-        const ma = sma(tp, p.length);
-        const out = new Array(bars.length).fill(null);
-        for (let i = p.length - 1; i < bars.length; i++) {
-          const m = ma[i];
-          if (m == null) continue;
-          let dev = 0;
-          for (let j = 0; j < p.length; j++) dev += Math.abs(tp[i - j] - m);
-          dev /= p.length;
-          out[i] = dev === 0 ? 0 : (tp[i] - m) / (0.015 * dev);
-        }
-        return { lines: [{ values: out, color: c.line, width: 2 }], levels: [LVL(100), LVL(-100)] };
-      } },
-    { type: 'atr', label: 'Average True Range', group: 'Volatility', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 14, int: true }],
-      colors: { line: '#e91e63' },
-      compute: (bars, p, c) => ({ lines: [{ values: atr(bars, p.length), color: c.line, width: 2 }] }) },
-    { type: 'stddev', label: 'Standard Deviation', group: 'Volatility', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 20, int: true }],
-      colors: { line: TEAL },
-      compute: (bars, p, c) => ({ lines: [{ values: stdev(closes(bars), p.length), color: c.line, width: 2 }] }) },
-    /* ROUND298 (TV parity): "Momentum" is the PRICE CHANGE (close - close[n]),
-       which is what TradingView's Momentum indicator plots and what the Pine
-       engine's ta.mom returns. This used to plot close / close[n] * 100 — the
-       Momentum *ratio* — so a EURUSD chart read ~101.1 where TV reads 0.0012,
-       and the values were unusable next to any other oscillator. The ratio
-       survives as its own documented indicator (Rate of Change), one row down. */
-    { type: 'momentum', label: 'Momentum', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 10, int: true }],
-      colors: { line: BLUE },
-      compute: (bars, p, c) => {
-        const out = new Array(bars.length).fill(null);
-        for (let i = p.length; i < bars.length; i++) out[i] = bars[i].close - bars[i - p.length].close;
-        return { lines: [{ values: out, color: c.line, width: 2 }], levels: [{ value: 0, color: 'rgba(178,181,190,0.3)', dashed: true }] };
-      } },
-    { type: 'roc', label: 'Rate of Change', group: 'Oscillators', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 9, int: true }],
-      colors: { line: ORANGE },
-      compute: (bars, p, c) => {
-        const out = new Array(bars.length).fill(null);
-        for (let i = p.length; i < bars.length; i++) out[i] = ((bars[i].close - bars[i - p.length].close) / bars[i - p.length].close) * 100;
-        return { lines: [{ values: out, color: c.line, width: 2 }], levels: [{ value: 0, color: 'rgba(178,181,190,0.3)', dashed: true }] };
-      } },
-    { type: 'awesome', label: 'Awesome Oscillator', group: 'Oscillators', pane: 'separate',
-      params: [],
-      colors: { up: UP, down: DOWN },
-      compute: (bars, p, c) => {
-        const hl = hl2(bars);
-        const smaFast = sma(hl, 5), smaSlow = sma(hl, 34);
-        const ao = smaFast.map((v, i) => (v != null && smaSlow[i] != null ? v - smaSlow[i] : null));
-        /* ROUND261: the FIRST valid AO value is bar 34 (index 33, once the
-           34-period SMA has a full window) — it used to be suppressed by an
-           `i > 0 && ao[i-1] != null` guard, so every AO histogram started one
-           bar late. Color is derived by fillSeries from the previous value. */
-        return {
-          lines: [],
-          /* ROUND298 (TV parity): AO's histogram colors by comparison with the
-             PREVIOUS bar (TV's AO is a momentum oscillator; a shrinking
-             positive bar is painted red), which is the `prev` mode below. */
-          hist: { values: ao, colorUp: c.up, colorDown: c.down, colorMode: 'prev' },
-          levels: [{ value: 0, color: 'rgba(178,181,190,0.3)', dashed: true }],
-        };
-      } },
-
-    /* ------------------------------ Volume ------------------------------- */
-    { type: 'volume', label: 'Volume', group: 'Volume', pane: 'separate',
-      params: [{ key: 'ma', label: 'MA Length', def: 20, int: true }],
-      colors: { up: 'rgba(38,166,154,0.6)', down: 'rgba(239,83,80,0.6)', ma: BLUE },
-      compute: (bars, p, c) => {
-        const vol = bars.map((b) => b.volume);
-        return {
-          lines: [{ values: sma(vol, p.ma), color: c.ma, width: 1 }],
-          hist: { values: vol.map((v) => (v > 0 ? v : null)), colorUp: c.up, colorDown: c.down,
-            /* ROUND298 (TV parity): volume bars are colored by the CANDLE
-               direction (close vs open), not by the previous volume — that is
-               what TV's Volume does and what the "up"/"down" colors mean. */
-            colors: bars.map((b) => (b.close >= b.open ? c.up : c.down)),
-            colorMode: 'explicit' },
-        };
-      } },
-    { type: 'obv', label: 'On Balance Volume', group: 'Volume', pane: 'separate',
-      params: [],
-      colors: { line: BLUE },
-      compute: (bars, p, c) => {
-        /* ROUND261: keep the output aligned with bars — an empty history used
-           to return [0] (one value for zero bars). */
-        const out = bars.length ? [0] : [];
-        for (let i = 1; i < bars.length; i++) {
-          if (bars[i].close > bars[i - 1].close) out.push(out[i - 1] + bars[i].volume);
-          else if (bars[i].close < bars[i - 1].close) out.push(out[i - 1] - bars[i].volume);
-          else out.push(out[i - 1]);
-        }
-        return { lines: [{ values: out, color: c.line, width: 2 }] };
-      } },
-    { type: 'mfi', label: 'Money Flow Index', group: 'Volume', pane: 'separate',
-      params: [{ key: 'length', label: 'Length', def: 14, int: true }],
-      colors: { line: PURPLE }, fixedRange: [0, 100],
-      compute: (bars, p, c) => {
-        const tp = bars.map((b) => (b.high + b.low + b.close) / 3);
-        const out = new Array(bars.length).fill(null);
-        let posSum = 0, negSum = 0;
-        const win = [];
-        /* ROUND298 (TV parity): the window is over the LAST `length` bars and
-           the reading starts only once it is full — exactly ta.mfi's rule in
-           the engine (and the reference). The native copy ran one bar ahead of
-           it (it started at i = length over a window of length+1 flows), so the
-           built-in MFI and the same indicator written in Pine disagreed by a
-           whole bar for the entire history. Flat bars feed neither side. */
-        for (let i = 1; i < bars.length; i++) {
-          const flow = tp[i] * bars[i].volume;
-          const dir = tp[i] > tp[i - 1] ? 1 : (tp[i] < tp[i - 1] ? -1 : 0);
-          win.push({ flow, dir });
-          if (dir > 0) posSum += flow; else if (dir < 0) negSum += flow;
-          while (win.length > p.length) {
-            const old = win.shift();
-            if (old.dir > 0) posSum -= old.flow; else if (old.dir < 0) negSum -= old.flow;
-          }
-          if (win.length === p.length) {
-            /* no directional flow at all -> no reading (not 0 / not 100) */
-            if (posSum === 0 && negSum === 0) out[i] = null;
-            else out[i] = negSum === 0 ? 100 : 100 - 100 / (1 + posSum / negSum);
-          }
-        }
-        return { lines: [{ values: out, color: c.line, width: 2 }], levels: [LVL(80), LVL(20)] };
-      } },
-    { type: 'adline', label: 'Accumulation / Distribution', group: 'Volume', pane: 'separate',
-      params: [],
-      colors: { line: ORANGE },
-      compute: (bars, p, c) => {
-        /* ROUND298 (TV parity): bar 0 contributes its OWN CLV*volume, it is not
-           a zero seed. The series used to start at 0 and add from bar 1, so
-           every A/D value was short by exactly the first bar's flow — a
-           constant offset against TV (the shape matched, the absolute value
-           never did, and comparing two symbols' A/D levels was meaningless).
-           ROUND261's empty-history alignment is preserved: 0 bars -> []. */
-        const out = new Array(bars.length).fill(null);
-        for (let i = 0; i < bars.length; i++) {
-          const range = bars[i].high - bars[i].low;
-          const clv = range === 0 ? 0 : ((bars[i].close - bars[i].low) - (bars[i].high - bars[i].close)) / range;
-          out[i] = (i === 0 ? 0 : out[i - 1]) + clv * bars[i].volume;
-        }
-        return { lines: [{ values: out, color: c.line, width: 2 }] };
-      } },
-  ];
-
-  const MAP = {};
-  DEFS.forEach((d) => { MAP[d.type] = d; });
-
-  /* ROUND261: indicator periods are integers (TV input.int). A fractional or
-     non-numeric length typed in the settings dialog used to reach the math
-     kernels raw — fractional windows read bars[19.5] (undefined -> throw,
-     swallowed by compute()'s catch -> an apparently empty indicator) and
-     sma(src, 20.5) divided a 21-value sum by 20.5. Normalize ONCE at this
-     boundary so compute() and the legend title agree, and persisted layouts
-     with stale/poisoned values heal on load. */
-  function paramValue(p, inst) {
-    const raw = (inst.params && inst.params[p.key] != null) ? inst.params[p.key] : p.def;
+  /* Kept for API stability. Pine inputs own their own validation now, so this
+     is only used to render a legend title for a legacy-shaped record. */
+  paramValue(p, inst) {
+    const raw = (inst && inst.params && inst.params[p.key] != null) ? inst.params[p.key] : p.def;
     if (!p.int) return raw;
     let v = Number(raw);
     if (!isFinite(v)) v = p.def;
@@ -477,43 +75,51 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
     if (v < lo) v = lo;
     if (p.max != null && v > p.max) v = p.max;
     return v;
-  }
+  },
 
-  const Indicators = {
-    all: DEFS,
-    def(type) { return MAP[type] || null; },
-    /* ROUND261: shared period normalization — the settings dialog uses the
-       exact same rule so the value it shows/commits is the value computed. */
-    paramValue(p, inst) { return paramValue(p, inst); },
-    compute(inst, bars) {
-      const def = MAP[inst.type];
-      if (!def) return { lines: [] };
-      const params = {};
-      for (const p of def.params) params[p.key] = paramValue(p, inst);
-      const colors = Object.assign({}, def.colors, inst.colors || {});
-      let out;
-      try { out = def.compute(bars, params, colors) || { lines: [] }; } catch (e) { out = { lines: [] }; }
-      /* round 31: per-instance Style overrides (indicator settings dialog):
-         width 1..4 + named line style applied to every LINE plot — histogram
-         bodies keep their own look. */
-      if (inst.style && typeof inst.style === 'object') {
-        const w = parseInt(inst.style.width, 10);
-        const st = inst.style.lineStyle;
-        for (const ln of out.lines || []) {
-          if (w >= 1 && w <= 4) ln.width = w;
-          if (typeof st === 'string' && st) ln.style = st;
-        }
-      }
-      out.params = params;
-      return out;
-    },
-    title(inst) {
-      const def = MAP[inst.type];
-      if (!def) return inst.type;
-      if (!def.params.length) return def.label;
-      const ps = def.params.map((p) => paramValue(p, inst)).join(', ');
-      return `${def.label} (${ps})`;
-    },
-  };
+  /**
+   * Legend title. A legacy record ({type, params}) shows the same
+   * "Label (params)" shape the old registry produced. Pine instances
+   * ({scriptId, inputs}) get the catalog label — their values live in the
+   * engine and PineUI renders those.
+   */
+  title(inst) {
+    if (!inst) return '';
+    if (inst.scriptId) {
+      const c = BUILTIN_BY_ID.get(inst.scriptId);
+      return c ? c.label : (inst.type || '');
+    }
+    const d = MAP.get(inst.type);
+    if (!d) return inst.type || '';
+    /* Only show params the record actually carries. A freshly added indicator
+       has {} and must read as the bare label, not "Label ()". */
+    const keys = d.params.map((p) => p.key).filter((k) => inst.params && inst.params[k] != null);
+    if (!keys.length) return d.label;
+    const ps = d.params.filter((p) => inst.params && inst.params[p.key] != null)
+      .map((p) => this.paramValue(p, inst)).join(', ');
+    return `${d.label} (${ps})`;
+  },
+
+  /**
+   * Migrate a persisted legacy indicator record to a Pine instance.
+   * Returns null when the type is unknown so the caller can drop the record
+   * instead of inventing an indicator.
+   */
+  migrate(rec, inputDefs) {
+    const d = rec && MAP.get(rec.type);
+    if (!d) return null;
+    return {
+      scriptId: d.scriptId,
+      inputs: legacyParamsToInputs(BUILTIN_BY_TYPE.get(d.type), rec.params, inputDefs),
+      /* carry the parts of the old record that still mean something on a Pine
+         instance (eye state and the sub-pane height share) */
+      visible: rec.visible !== false,
+      ...(rec.frac > 0 ? { frac: rec.frac } : {}),
+      /* legacy per-instance style is translated by PineUI's style keys, which
+         already speak plot titles; a legacy type-keyed blob is dropped rather
+         than applied to the wrong plot. */
+    };
+  },
+};
 
 export { Indicators };

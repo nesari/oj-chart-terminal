@@ -130,6 +130,10 @@ function boot() {
     if (TimeSales) TimeSales.init();
     if (Compare) Compare.init();
     Manager.init();
+    /* ROUND299: built-in indicators are Pine scripts now, so the Indicators UI
+       drives PineUI. The two modules form an import cycle, so the link is made
+       here at boot rather than at module evaluation (TDZ safety). */
+    try { IndicatorsUI.wirePine(PineUI); } catch (e) { Log.debug('app', 'indicator/Pine wiring failed', e) }
     Manager.applyTimezone();
     /* ROUND121 (user request): the tab strip restores/adopts AFTER the chart
        stack boots — first run adopts the live chart as tab 1 (zero behaviour
@@ -420,8 +424,7 @@ function boot() {
     window.__app = {
       App, Manager, Toolbar, Snapshot, Tabs, UI, Watchlist, Alerts, TimeSales, Replay,
       Settings, ObjectTree, DataWindow, Diagnostics, Compare, IndicatorsUI,
-      Indicators, DrawSettings, DrawTools, Log, AppErr, TZ, Theme, Undo, Feed, U, icon, RightPanel,
-      /* ROUND287: `Alerts` and `Replay` used to be listed twice (harmless at
+      Indicators, DrawSettings, DrawTools, Log, AppErr, TZ, Theme, Undo, Feed, U, icon, RightPanel,      /* ROUND287: `Alerts` and `Replay` used to be listed twice (harmless at
          runtime, but it hid which entries are actually intended). */
       News, PineUI, PineEditor, PineScriptsStore,
       Trade, TradeAlerts, TradeTicket, TradeDock, TradeOverlay, OneClick,

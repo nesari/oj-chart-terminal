@@ -619,6 +619,11 @@ function ensureRows(pane) {
 function renderRows(pane) {
   U.clear(ensureRows(pane));
   for (const inst of pane.pineScripts || []) {
+    /* ROUND299: built-in indicators are Pine scripts, but their legend row is
+       owned by indicators-ui (it carries the legacy record id, the settings
+       dialog and the TV value display). Drawing one here too produced two rows
+       for one indicator. User scripts keep their row here unchanged. */
+    if (PineScriptsStore.isBuiltin(inst.scriptId)) continue;
     const st = state(pane, inst.id);
     /* ROUND 74 (TV parity): a non-overlay script's row lives INSIDE its
        sub-pane header (like every built-in separate indicator since

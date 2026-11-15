@@ -1,14 +1,25 @@
 /**
- * Indicators UI (round 27 — parity port)
+ * Indicators UI (ROUND299) — Pine-backed built-ins.
  *
- * Binds the pure indicator library (chart/indicators.js) to the LWC chart:
- * - overlay indicators  -> extra series on the MAIN price scale
- * - separate indicators -> series on dedicated overlay scales, slotted
- * bottom-up (scaleMargins), each with its own legend row
- * - legend rows with live values at the crosshair + eye/gear/remove
- * - Indicators dialog (search + favorites + groups) and per-instance
- * settings dialog
- * Instances live on pane.indicators and persist via Manager.persistPanes.
+ * Before ROUND299 this module bound a HAND-WRITTEN JavaScript indicator
+ * library to lightweight-charts: it created line/histogram series, painted
+ * band fills with a custom canvas primitive, and kept its own colour rules.
+ * All of that duplicated the Pine renderer and drifted from it (the R298
+ * audit found band fills that never painted and histograms coloured by the
+ * wrong rule).
+ *
+ * Every built-in indicator is now a Pine script, so this module no longer
+ * draws anything. It is an ADAPTER that keeps the long-standing public API
+ * (`IndicatorsUI.add(pane, 'rsi')`, `remove`, `recompute`, the legend rows,
+ * the dialog) working by creating Pine instances through PineUI:
+ *
+ *   pane.indicators  legacy registry records (id/type/params/colors/visible)
+ *   -> inst          Pine instance {id, scriptId, inputs, visible, frac}
+ *   -> PineUI.add    the real engine instance, persisted with the pane
+ *
+ * The legacy record stays on the pane as the source of truth for the public
+ * API and old layouts; the Pine instance mirrors it. `syncPine` reconciles the
+ * two, and `migrateLegacy` converts a saved layout on load.
  *
  * @module chart/indicators-ui
  */
@@ -18,821 +29,513 @@ import { icon } from '../ui/icons.js';
 import { App } from '../../../core/state.js';
 import { Manager } from './manager.js';
 import { Indicators } from '../../../core/indicators.js';
-/* ROUND84 (My scripts): the dialog lists the user's stored Pine scripts with
-   add-to-chart / edit-code / delete — exactly like the reference platform.
-   PineScriptsStore is dependency-free; PineEditor + Manager.* calls happen
-   strictly at CLICK time (never at module evaluation), so the existing
-   manager ↔ indicators-ui module cycle stays safe. */
+import { BUILTIN_BY_TYPE, BUILTIN_INDICATORS } from '../../../core/pine/builtins-catalog.js';
 import { PineScriptsStore } from '../panels/pine-scripts-store.js';
 import { PineEditor } from '../panels/pine-editor.js';
+import { compile } from '../../../core/pine/compile.js';
 
-const LWC = window.LightweightCharts;
+const UI = {};
+const FAV_KEY = 'mt5_ind_favs';
 
-  const UI = {};
-  const FAV_KEY = 'mt5_ind_favs';
-  const PALETTE = ['#2962ff', '#26a69a', '#ef5350', '#ff9800', '#ab47bc', '#00bcd4', '#ffd54f', '#e8e8e8'];
+/* ROUND299: legacy record id -> Pine instance id. The Pine instance keeps its
+ * own id (PineUI allocates it) because the renderer, persistence and adapter
+ * all key on it; this map is only for reconciling the two registries. */
+const PINE_OF = new WeakMap(); // pane -> Map(legacyId -> pineInstId)
 
-  /* per-pane render state: instanceId -> { series: [...], levels: [...] } */
-  const RT = new Map();
+function pineMap(pane) {
+  let m = PINE_OF.get(pane);
+  if (!m) { m = new Map(); PINE_OF.set(pane, m); }
+  return m;
+}
 
-  function rt(pane) {
-    if (!RT.has(pane)) RT.set(pane, new Map());
-    return RT.get(pane);
-  }
+/* ---------- legacy record <-> Pine instance identity ----------
+   A legacy record is { id, type, params, colors, style, frac, visible }.
+   Its Pine twin is { id, scriptId, inputs, visible, frac }. `syncPine` keeps
+   the pair in step: it creates what is missing (including a migration from
+   old params), removes orphans, and pushes param changes into the engine. */
+function pineIdOf(pane, rec) { return pineMap(pane).get(rec.id) || ''; }
 
-  /* ---------- separate-pane slot layout ----------
-     ROUND 32: REPLACED by TRUE sub-panes (TradingView parity). The old
-     scaleMargins "slots" drew MACD/RSI INSIDE the price chart (bottom band,
-     no axis labels, overlapping candles) — the user report: indicators must
-     live in their correct mode, like TradingView, where every oscillator is
-     a real pane below the price chart with its own price scale. The slot
-     hack is gone; manager.layoutSubPanes now stacks one LWC chart per
-     separate indicator below the main one (see ensureSub). */
+function pineInstOf(pane, rec) {
+  const pineId = pineIdOf(pane, rec);
+  if (!pineId) return null;
+  return (pane.pineScripts || []).find((i) => i.id === pineId) || null;
+}
 
-  /* ---------- round 32: the TRUE sub-pane of one separate indicator ----------
-     Created lazily by buildSeries, removed by destroySeries. Geometry is
-     (re)computed by Manager.layoutSubPanes. */
-  function ensureSub(pane, inst) {
-    if (!pane._subs) pane._subs = new Map();
-    let sub = pane._subs.get(inst.id);
-    if (sub) return sub;
-    const hostEl = U.el('div', 'sub-pane sub-ind', pane.host);
-    const leg = U.el('div', 'sub-legend', hostEl);
-    const chart = LWC.createChart(hostEl, Manager.subChartOptions(pane));
-    sub = { instId: inst.id, host: hostEl, legend: leg, chart,
-      chartEl: hostEl.querySelector('.tv-lightweight-charts'), firstSeries: null };
-    pane._subs.set(inst.id, sub);
-    /* round 33: the fresh chart has no synced `minimumWidth` yet — invalidate
-       the axis-sync guard so the next layout re-applies the width to ALL
-       panes (a skipped re-apply left new panes misaligned, round-32 C7) */
-    if (Manager.invalidateAxisSync) Manager.invalidateAxisSync(pane);
-    /* start from the main chart's current visible range (avoid the lib's
-       auto-fit flash until the range-sync subscription catches up) */
-    try {
-      const lr = pane.chart.timeScale().getVisibleLogicalRange();
-      if (lr) chart.timeScale().setVisibleLogicalRange({ from: lr.from, to: lr.to });
-    } catch (e) {}
-    Manager.layoutSubPanes(pane);
-    return sub;
-  }
+/** the compiled input definitions for a builtin type (cached by compile) */
+function inputDefsFor(type) {
+  const def = BUILTIN_BY_TYPE.get(type);
+  if (!def) return [];
+  try {
+    const c = compile(def.source);
+    if (!c.ok) return [];
+    const ci = c.collectInputs({ tfSec: 60, symbol: 'T', mintick: 0.00001 });
+    return ci.ok ? (ci.inputs || []) : [];
+  } catch (e) { return []; }
+}
 
-  /* round 32: axis-label precision for oscillator values (MACD on EURUSD
-     prints 1e-4-scale numbers — the lib default 2 decimals would read 0.00) */
-  function autoPrecision(values) {
-    let m = 0;
-    for (let i = 0; i < values.length; i++) {
-      const v = values[i];
-      if (v != null && isFinite(v)) { const a = Math.abs(v); if (a > m) m = a; }
-    }
-    if (m === 0) return 2;
-    if (m < 0.01) return 6;
-    if (m < 0.1) return 5;
-    if (m < 1) return 4;
-    if (m < 100) return 2;
-    if (m < 10000) return 1;
-    return 0;
-  }
+/**
+ * Bring the Pine instances in line with the legacy registry for one pane.
+ * Called from recompute() — the single funnel every add/remove/settings path
+ * already goes through.
+ */
+function syncPine(pane) {
+  if (!pane) return;
+  const recs = pane.indicators || [];
+  pane.pineScripts = pane.pineScripts || [];
+  const live = new Map(); // legacyId -> pine inst
+  const validIds = new Set();
 
-  /* ---------- series construction ---------- */
-  function makeLineSeries(pane, opts) {
-    return pane.chart.addLineSeries(opts);
-  }
-
-  /* round 31: named line style -> LWC LineStyle (per-instance Style tab) */
-  function LWC_LINE_STYLE(name) {
-    const S = LWC.LineStyle;
-    return { solid: S.Solid, dotted: S.Dotted, dashed: S.Dashed, largedashed: S.LargeDashed }[name] ?? S.Solid;
-  }
-
-  /* round 31 (TV parity): Show/Hide must actually hide the series on the
-     chart — the eye used to only dim the legend row while the lines stayed
-     painted. Toggles the LWC `visible` option of every series of the inst. */
-  function applyVisibility(pane, inst) {
-    const state = rt(pane).get(inst.id);
-    if (!state) return;
-    const on = inst.visible !== false;
-    for (const { s } of state.series) { try { s.applyOptions({ visible: on }); } catch (e) {} }
-  }
-
-  function buildSeries(pane, inst) {
-    const def = Indicators.def(inst.type);
-    if (!def) return;
-    const state = { series: [], levels: [], chart: pane.chart, sub: null };
-    const out = Indicators.compute(inst, pane.bars);
-    if (def.pane === 'main') {
-      const scaleId = pane._scaleId || 'right';
-      for (const ln of out.lines) {
-        const dots = ln.style === 'dots';
-        const s = makeLineSeries(pane, {
-          priceScaleId: scaleId,
-          color: ln.color,
-          lineWidth: ln.width || 2,
-          lineStyle: LWC_LINE_STYLE(ln.style),
-          lineVisible: !dots,
-          pointMarkersVisible: dots,
-          pointMarkersRadius: dots ? 1 : undefined,
-          crosshairMarkerVisible: !dots,
-          priceLineVisible: false,
-          lastValueVisible: false,
-        });
-        state.series.push({ s, ln });
+  for (const rec of recs) {
+    const scriptId = Indicators.scriptId(rec.type);
+    if (!scriptId) continue; // unknown type: leave it invisible, never crash
+    validIds.add(rec.id);
+    let inst = pineInstOf(pane, rec);
+    if (!inst) {
+      /* Recover an EXISTING Pine twin before creating one. The id map is
+         in-memory only, so any path that rebuilds the pane (layout restore,
+         tab snapshot) could otherwise attach a SECOND runtime for the same
+         indicator — two identical lines drawn on top of each other. Matching
+         on the builtin scriptId among instances no legacy record claims is
+         safe because a builtin type can only be added once per pane through
+         the registry (a user may add it twice, in which case the first
+         unclaimed one is correct). */
+      const claimed = new Set(pineMap(pane).values());
+      const orphan = (pane.pineScripts || []).find((i) =>
+        i && i.scriptId === scriptId && !claimed.has(i.id));
+      if (orphan) {
+        inst = orphan;
+        pineMap(pane).set(rec.id, inst.id);
       }
+    }
+    if (!inst) {
+      /* create from the legacy record */
+      const migrated = Indicators.migrate(rec, inputDefsFor(rec.type));
+      inst = {
+        id: Date.now() + Math.floor(Math.random() * 999),
+        scriptId,
+        inputs: (migrated && migrated.inputs) || {},
+        visible: rec.visible !== false,
+        ...(rec.frac > 0 ? { frac: rec.frac } : {}),
+      };
+      pane.pineScripts.push(inst);
+      pineMap(pane).set(rec.id, inst.id);
+      /* the engine needs a rebuild for a brand-new instance */
+      scheduleRebuild(pane, inst);
     } else {
-      /* round 32: one TRUE sub-pane per separate indicator (TV parity) —
-         own LWC chart, own price scale + axis labels, own legend row */
-      const sub = ensureSub(pane, inst);
-      state.sub = sub;
-      state.chart = sub.chart;
-      const scaleId = pane._scaleId || 'right';
-      const base = {
-        priceScaleId: scaleId,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        autoscaleInfoProvider: def.fixedRange
-          ? () => ({ priceRange: { minValue: def.fixedRange[0], maxValue: def.fixedRange[1] } })
-          : undefined,
-      };
-      let first = null;
-      if (out.hist) {
-        const h = sub.chart.addHistogramSeries(Object.assign({}, base, {
-          color: out.hist.colorUp,
-        }));
-        first = h;
-        state.series.push({ s: h, hist: out.hist });
-      }
-      out.lines.forEach((ln, li) => {
-        const s = sub.chart.addLineSeries(Object.assign({}, base, {
-          color: ln.color,
-          lineWidth: ln.width || 2,
-          lineStyle: LWC_LINE_STYLE(ln.style),
-          priceFormat: def.fixedRange
-            ? { type: 'price', precision: 2, minMove: 0.01 }
-            : (() => { const pr = autoPrecision(ln.values); return { type: 'price', precision: pr, minMove: Math.pow(10, -pr) }; })(),
-          /* TV: the oscillator pane shows its last value pill on the axis */
-          lastValueVisible: li === 0 && !out.hist,
-        }));
-        if (!first) first = s;
-        state.series.push({ s, ln });
-      });
-      sub.chart.priceScale(scaleId).applyOptions({ scaleMargins: { top: 0.12, bottom: 0.08 } });
-      sub.firstSeries = first;
-      /* level lines (RSI 70/30, MACD 0, ...) on the first series */
-      for (const lv of out.levels || []) {
-        try {
-          state.levels.push(first.createPriceLine({
-            price: lv.value, color: lv.color, lineWidth: 1,
-            lineStyle: lv.dashed ? LWC.LineStyle.Dashed : LWC.LineStyle.Solid,
-            axisLabelVisible: false, title: '',
-          }));
-        } catch (e) {}
+      /* keep the mirror in step without a rebuild: inputs are read by the
+         runtime each full pass, visibility is a renderer toggle. */
+      inst.visible = rec.visible !== false;
+      if (rec.frac > 0) inst.frac = rec.frac;
+      const inputs = legacyInputs(rec);
+      if (inputs && JSON.stringify(inputs) !== JSON.stringify(inst.inputs)) {
+        inst.inputs = inputs;
+        scheduleRebuild(pane, inst);
       }
     }
-    rt(pane).set(inst.id, state);
-    fillSeries(pane, inst, out);
+    live.set(rec.id, inst);
   }
 
-  function fillSeries(pane, inst, precomputed) {
-    const state = rt(pane).get(inst.id);
-    if (!state) return;
-    const bars = pane.bars;
-    const out = precomputed || Indicators.compute(inst, bars);
-    for (const { s, ln, hist } of state.series) {
-      const vals = hist ? hist.values : (ln ? ln.values : null);
-      if (!vals) continue;
-      const data = [];
-      for (let i = 0; i < bars.length; i++) {
-        const v = vals[i];
-        if (v == null || !isFinite(v)) data.push({ time: bars[i].time }); // whitespace
-        else {
-          const c = hist ? histColorAt(hist, i, v) : undefined;
-          data.push(c != null ? { time: bars[i].time, value: v, color: c } : { time: bars[i].time, value: v });
-        }
-      }
-      try { s.setData(data); } catch (e) {}
+  /* drop Pine instances whose legacy record is gone */
+  for (const [legacyId, pineId] of Array.from(pineMap(pane))) {
+    if (validIds.has(legacyId)) continue;
+    pane.pineScripts = pane.pineScripts.filter((i) => i.id !== pineId);
+    pineMap(pane).delete(legacyId);
+    try { if (PineUI) PineUI.remove(pane, pineId); } catch (e) {}
+  }
+}
+
+/* ROUND299: parameter edits arrive as legacy `params` (the dialog keeps the
+   same control shape), so translate them through the catalog's title map. */
+function legacyInputs(rec) {
+  const def = BUILTIN_BY_TYPE.get(rec.type);
+  if (!def) return null;
+  const defs = inputDefsFor(rec.type);
+  const byTitle = new Map();
+  for (const d of defs) if (d.title) byTitle.set(d.title, d);
+  const out = {};
+  for (const key of Object.keys(def.params || {})) {
+    const v = rec.params && rec.params[key];
+    if (v == null) continue;
+    const d = byTitle.get(def.params[key]);
+    if (d) out[d.id] = v;
+  }
+  return out;
+}
+
+/* Rebuilds are async and the engine serialises them per instance; firing one
+   per keystroke in the settings dialog would queue a pass per digit. Coalesce
+   to one per pane on the next microtask-ish turn. */
+const PENDING = new WeakMap();
+function scheduleRebuild(pane, inst) {
+  if (!inst) return;
+  let set = PENDING.get(pane);
+  if (!set) { set = new Set(); PENDING.set(pane, set); }
+  set.add(inst);
+  if (set._scheduled) return;
+  set._scheduled = true;
+  Promise.resolve().then(() => {
+    set._scheduled = false;
+    const list = Array.from(set);
+    set.clear();
+    for (const i of list) {
+      try { if (PineUI) PineUI.rebuild(pane, i); } catch (e) {}
     }
-    /* ROUND298: the band fill (Bollinger / Donchian / Keltner) was produced by
-       the compute functions since round 27 but never read here — all three
-       channels drew bare lines with no shading, unlike TradingView. */
-    paintBand(pane, inst, state, out, bars);
-  }
+  });
+}
 
-  /* ROUND298 (TV parity): how a histogram body is colored.
-       'sign'     — green above zero, red below (MACD, TV's default)
-       'prev'     — vs the previous bar's value (Awesome Oscillator)
-       'explicit' — colors[] supplied by the compute function (Volume)
-     The old code always used 'prev', so MACD's histogram was painted by
-     whether it rose or fell rather than by its sign, and Volume ignored the
-     candle direction entirely. */
-  function histColorAt(hist, i, v) {
-    const mode = hist.colorMode || 'prev';
-    if (mode === 'explicit') {
-      const arr = hist.colors || [];
-      return arr[i] || hist.colorUp;
-    }
-    if (mode === 'sign') return v >= 0 ? hist.colorUp : hist.colorDown;
-    const vals = hist.values;
-    return (i > 0 && vals[i - 1] != null && vals[i - 1] > v) ? hist.colorDown : hist.colorUp;
-  }
+/* PineUI is reached lazily: pine-ui.js <-> indicators-ui.js form a module
+   cycle, and touching the binding at evaluation time is a TDZ ReferenceError
+   (the same trap ROUND184 documented for Manager.strategyMarkers). */
+let PineUI = null;
+function wirePine(ui) { if (ui) PineUI = ui; }
 
-  /* ---------- band fill (series primitive, under the candles) ----------
-     A filled channel needs a polygon between two price series: lightweight-
-     charts has no area-between-lines series, so this rides the same
-     series-primitive seam trade/history.js already uses (attachPrimitive is
-     in this LWC build) with zOrder 'bottom', so shading lands UNDER the
-     candles exactly like TV's band fill. Drawn per contiguous run of
-     non-null bars; gaps break the run instead of bridging it. */
-  function paintBand(pane, inst, state, out, bars) {
-    const band = out.band;
-    if (!band || !band.upper || !band.lower) return;
-    const bandPrims = rtPrims(pane);
-    let prim = state.bandPrim || bandPrims.get(inst.id);
-    if (!prim) {
-      if (!pane.series || typeof pane.series.attachPrimitive !== 'function') return;
-      prim = makeBandPrimitive(pane);
-      try { pane.series.attachPrimitive(prim); } catch (e) { return; }
-      bandPrims.set(inst.id, prim);
-    }
-    state.bandPrim = prim;
-    prim.band = band;
-    prim.bars = bars;
-    if (prim._req) { try { prim._req(); } catch (e) {} }
-  }
+/* ------------------------------------------------------------------ */
+/* Public API                                                          */
+/* ------------------------------------------------------------------ */
 
-  /* ROUND298: band primitives are tracked on the PANE (not only on the render
-     state) because the state map is rebuilt on some repaint paths while the
-     chart — and any primitive already attached to it — lives on. Without this
-     a stale state would attach a SECOND primitive for the same indicator and
-     the band would paint twice (double alpha). Pane-scoped, so it still dies
-     with the chart. */
-  function rtPrims(pane) {
-    if (!pane._indBandPrims) pane._indBandPrims = new Map();
-    return pane._indBandPrims;
-  }
+function recompute(pane) {
+  if (!pane || !pane.chart) return;
+  syncPine(pane);
+  renderRows(pane);
+}
 
-  function makeBandPrimitive(pane) {
-    const prim = {
-      band: null, bars: [],
-      _req: null,
-      attached(param) { prim._req = (param && param.requestUpdate) || null; },
-      detached() { prim._req = null; },
-      /* 'bottom' = painted beneath the series (candles stay on top). */
-      zOrder() { return 'bottom'; },
-      paneViews() {
-        return [{
-          renderer() {
-            return {
-              draw(target) {
-                try { drawBand(target, prim, pane); } catch (e) {}
-              },
-            };
-          },
-        }];
-      },
-    };
-    return prim;
-  }
+/* The old per-tick recompute painted series data. The engine owns ticks now
+   (PineUI.onTickPane does the incremental last-bar update), so this only has
+   to keep the legend values fresh. */
+function tickRecompute(pane) {
+  if (!pane || !pane.chart) return;
+  updateRowValues(pane, null);
+}
 
-  function drawBand(target, prim, pane) {
-    const b = prim.band, bars = prim.bars || [];
-    if (!b || !b.upper || !b.lower || !bars.length) return;
-    const series = pane && pane.series;
-    if (!series || typeof series.priceToCoordinate !== 'function') return;
-    let timeScale = null;
-    try { timeScale = pane.chart.timeScale(); } catch (e) { return; }
-    if (!timeScale) return;
-    target.useMediaCoordinateSpace((scope) => {
-      const ctx = scope.context;
-      ctx.save();
-      ctx.fillStyle = b.fill || 'rgba(41,98,255,0.06)';
-      let run = [];
-      const flush = () => {
-        if (run.length > 1) {
-          ctx.beginPath();
-          for (let k = 0; k < run.length; k++) {
-            const x = run[k].x, y = run[k].u;
-            if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-          }
-          for (let k = run.length - 1; k >= 0; k--) ctx.lineTo(run[k].x, run[k].l);
-          ctx.closePath();
-          ctx.fill();
-        }
-        run = [];
-      };
-      for (let i = 0; i < bars.length; i++) {
-        const u = b.upper[i], l = b.lower[i];
-        if (u == null || l == null || !isFinite(u) || !isFinite(l)) { flush(); continue; }
-        let x = null, yu = null, yl = null;
-        try { x = timeScale.timeToCoordinate(bars[i].time); } catch (e) { x = null; }
-        try { yu = series.priceToCoordinate(u); } catch (e) { yu = null; }
-        try { yl = series.priceToCoordinate(l); } catch (e) { yl = null; }
-        if (x == null || yu == null || yl == null) { flush(); continue; }
-        run.push({ x, u: yu, l: yl });
-      }
-      flush();
-      ctx.restore();
-    });
-  }
-
-  function destroySeries(pane, instId) {
-    const state = rt(pane).get(instId);
-    if (!state) return;
-    /* ROUND298: a band fill is a pane-level primitive, not a series — it would
-       outlive its indicator and keep shading the chart after Remove. */
-    const bandPrims = rtPrims(pane);
-    const bandPrim = state.bandPrim || bandPrims.get(instId);
-    if (bandPrim) {
-      try { pane.series.detachPrimitive(bandPrim); } catch (e) {}
-      bandPrims.delete(instId);
-      state.bandPrim = null;
-    }
-    /* round 32: series may live on the main chart OR on the instance's
-       sub-chart; the sub-pane (wrapper + chart) dies with its last series */
-    const chart = state.chart || pane.chart;
-    for (const { s } of state.series) { try { chart.removeSeries(s); } catch (e) {} }
-    rt(pane).delete(instId);
-    if (state.sub) { try { Manager.removeSubPane(pane, instId); } catch (e) {} }
-  }
-
-  /* ---------- legend rows ----------
-     round 32: overlay indicators keep their rows in the chart's top legend;
-     each separate indicator's row lives INSIDE its own sub-pane (TV pane
-     header: name + values + eye/gear/remove). */
-  function ensureRows(pane) {
-    if (!pane._indRows) {
-      pane._indRows = U.el('div', 'ind-rows', pane.legend);
-    }
-    return pane._indRows;
-  }
-
-  function mkRow(pane, inst, def, box) {
-    const row = U.el('div', 'ind-row' + (inst.visible === false ? ' hidden-inst' : ''), box);
-    row.dataset.iid = String(inst.id);
-    const dotC = def.colors.line || def.colors.up || def.colors.conv || '#2962ff';
-    const title = U.el('span', 'ind-title', row);
-    title.innerHTML = `<i class="ind-dot"></i>${U.esc(Indicators.title(inst))}`;
-    title.querySelector('.ind-dot').style.background = dotC; // CSP: CSSOM not style="" attr
-    const vals = U.el('span', 'ind-vals', row);
-    const btns = U.el('span', 'ind-btns', row);
-    const eye = U.el('button', 'ind-btn', btns);
-    eye.innerHTML = icon(inst.visible === false ? 'eyeoff' : 'eye');
-    eye.title = 'Show / Hide';
-    eye.addEventListener('click', (e) => {
-      e.stopPropagation();
-      inst.visible = inst.visible === false;
-      U.lsSet('mt5_ind_touch', Date.now());
-      Manager.persistPanes();
-      recompute(pane);
-      renderRows(pane);
-    });
-    const gear = U.el('button', 'ind-btn', btns);
-    gear.innerHTML = icon('gear');
-    gear.title = 'Settings';
-    gear.addEventListener('click', (e) => { e.stopPropagation(); openSettingsDialog(pane, inst); });
-    const del = U.el('button', 'ind-btn ind-del', btns);
-    del.innerHTML = icon('x');
-    del.title = 'Remove';
-    del.addEventListener('click', (e) => {
-      e.stopPropagation();
-      remove(pane, inst.id);
-    });
-    row.addEventListener('click', () => openSettingsDialog(pane, inst));
-  }
-
-  function renderRows(pane) {
-    const box = ensureRows(pane);
-    U.clear(box);
-    for (const inst of pane.indicators || []) {
-      const def = Indicators.def(inst.type);
-      if (!def) continue;
-      let target = box;
-      if (def.pane === 'separate') {
-        const sub = pane._subs ? pane._subs.get(inst.id) : null;
-        if (sub) {
-          if (!sub._rows) sub._rows = U.el('div', 'ind-rows', sub.legend);
-          U.clear(sub._rows);
-          target = sub._rows;
-        }
-        /* no sub yet (bars not loaded) -> the row waits in the main legend
-           and migrates into the pane header as soon as the sub is built */
-      }
-      mkRow(pane, inst, def, target);
-    }
-    updateRowValues(pane, null);
-  }
-
-  function updateRowValues(pane, hoverTime) {
-    const bars = pane.bars;
-    let idx = bars.length - 1;
-    if (hoverTime != null && pane.barTimes.length) idx = U.nearestIndex(pane.barTimes, hoverTime);
-    /* ROUND288: the legend switches in Settings never reached this painter —
-       "Chart values" / indicator values were always written. They are honest
-       now: stIndValues hides the values, stIndTitles hides the whole row.
-       The settings object is reached lazily through the app facade (no new
-       import edge from this hot path). */
-    const S = (window.__app && window.__app.Settings && window.__app.Settings.conf) || {};
-    const showVals = S.stIndValues !== false && S.indFin !== 'hidden';
-    for (const inst of pane.indicators || []) {
-      /* round 32: rows live in the main legend OR inside the sub-pane header */
-      const row = pane.root.querySelector(`.ind-row[data-iid="${inst.id}"]`);
-      if (!row) continue;
-      if (S.stIndTitles === false) { row.style.display = 'none'; continue; }
-      row.style.display = '';
-      const valsEl = row.querySelector('.ind-vals');
-      if (!valsEl) continue;
-      const state = rt(pane).get(inst.id);
-      if (!showVals || !state || !bars.length || inst.visible === false) { valsEl.textContent = ''; continue; }
-      const parts = [];
-      const colorsForVals = [];
-      for (const { ln, hist, s } of state.series) {
-        const vals = hist ? hist.values : (ln ? ln.values : null);
-        if (!vals || idx < 0 || idx >= vals.length) continue;
-        const v = vals[idx];
-        if (v == null || !isFinite(v)) continue;
-        /* oscillators live on their own scale: allow more decimals than the
-           price format (MACD on EURUSD needs 7+ decimals to be readable) */
-        const d = pane.digits != null ? Math.min(8, Math.max(2, pane.digits + 2)) : 3;
-        colorsForVals.push(ln ? ln.color : hist.colorUp);
-        parts.push(`<b>${v.toFixed(d)}</b>`);
-      }
-      valsEl.innerHTML = parts.join(' ');
-      // round 81 CSP hardening: per-value colors applied via CSSOM (el.style.color),
-      // not a style="" attribute, so style-src no longer needs 'unsafe-inline'.
-      const bEls = valsEl.querySelectorAll('b');
-      for (let i = 0; i < bEls.length; i++) if (colorsForVals[i]) bEls[i].style.color = colorsForVals[i];
-    }
-  }
-
-  /* ---------- public API (wired into Manager) ---------- */
-  function recompute(pane) {
-    if (!pane || !pane.chart) return;
-    const list = pane.indicators || [];
-    const seen = new Set();
-    for (const inst of list) {
-      if (!Indicators.def(inst.type)) continue;
-      seen.add(inst.id);
-      if (!rt(pane).has(inst.id)) {
-        if (!pane.bars.length) continue; // nothing to compute yet
-        buildSeries(pane, inst);
-      } else {
-        fillSeries(pane, inst);
-      }
-      /* round 31: eye toggle = the series really disappears from the chart */
-      applyVisibility(pane, inst);
-    }
-    for (const instId of Array.from(rt(pane).keys())) {
-      if (!seen.has(instId)) destroySeries(pane, instId);
-    }
-    /* round 32: sub-pane set/order/margins may have changed (add/remove/eye);
-       layoutSubPanes is a no-op when there are no separate indicators */
-    if (pane._subs) {
-      try { Manager.layoutSubPanes(pane); } catch (e) {}
-      /* ROUND104: a freshly-built sub chart auto-fits on its first setData
-         and that auto-fit lands on a LATER frame, so this pin used to be
-         overwritten by it (the indicator then showed a different window than
-         the candles above it). Manager.syncSubRanges re-asserts the range
-         across the next two frames, which is after the library's fit. */
-      try { Manager.syncSubRanges(pane); } catch (e) {}
-    }
-    renderRows(pane);
-  }
-
-  function add(pane, type) {
-    const def = Indicators.def(type);
-    if (!def || !pane) return null;
-    pane.indicators = pane.indicators || [];
-    const inst = { id: Date.now() + Math.floor(Math.random() * 999), type, params: {}, colors: {}, visible: true };
-    pane.indicators.push(inst);
-    Manager.persistPanes();
-    recompute(pane);
-    return inst;
-  }
-
-  function remove(pane, id) {
-    pane.indicators = (pane.indicators || []).filter((i) => i.id !== id);
-    destroySeries(pane, id);
-    Manager.persistPanes();
-    recompute(pane);
-  }
-
-  /* throttled tick refresh: full recompute at most every 400ms per pane */
-  const _tickAt = new Map();
-  function tickRecompute(pane) {
-    if (!pane || !rt(pane).size) return;
-    const last = _tickAt.get(pane) || 0;
-    const now = Date.now();
-    if (now - last < 400) return;
-    _tickAt.set(pane, now);
-    for (const inst of pane.indicators || []) {
-      if (rt(pane).has(inst.id) && inst.visible !== false) fillSeries(pane, inst);
-    }
-  }
-
-  /* Phase 2: these hooks are DELEGATED from chart/manager.js (which imports
-     them from here) — no cross-module object mutation at module-evaluation
-     time, because manager.js ↔ indicators-ui.js form an ES module cycle and
-     top-level writes into a not-yet-initialized binding would throw (TDZ). */
-  function updateIndicatorRows(pane, hoverTime) { updateRowValues(pane, hoverTime); }
-
-  /* ---------- dialogs ---------- */
-  function favs() { return U.lsGet(FAV_KEY, ['ema', 'rsi', 'macd', 'volume']); }
-  function toggleFav(type) {
-    const f = favs();
-    const i = f.indexOf(type);
-    if (i >= 0) f.splice(i, 1); else f.push(type);
-    U.lsSet(FAV_KEY, f);
-  }
-
-  UI.openDialog = function () {
-    const layer = document.getElementById('popup-layer');
-    U.clear(layer);
-    const back = U.el('div', 'dialog-backdrop', layer);
-    const dlg = U.el('div', 'dialog ind-dialog', back);
-    /* ROUND 75 (BUG): same build-then-show discipline as the pine settings
-       dialog (BUG-74-D) — the layer is revealed ONLY after the body is fully
-       built and wired; the catch path restores a clean hidden layer so a
-       broken build can never leave a live backdrop swallowing every click
-       on the chart. The error still surfaces via the global handler. */
-    const close = () => { layer.classList.add('hidden'); U.clear(layer); document.removeEventListener('keydown', onKey); };
-    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
-    try {
-      dlg.innerHTML = `<h3>Indicators<button class="mini-btn dlg-x" title="Close">${icon('x')}</button></h3>
-        <div class="ind-search"><span class="ind-search-ic">${icon('search')}</span>
-          <input type="text" id="ind-search-input" placeholder="Search indicator…" spellcheck="false" autocomplete="off"></div>
-        <div class="ind-list"></div>`;
-      const list = dlg.querySelector('.ind-list');
-      document.addEventListener('keydown', onKey);
-      dlg.querySelector('.dlg-x').addEventListener('click', close);
-      back.addEventListener('mousedown', (e) => { if (e.target === back) close(); });
-
-      const renderList = (q) => {
-        U.clear(list);
-        const query = (q || '').trim().toLowerCase();
-        /* ROUND84: MY SCRIPTS — every script stored in the Pine library
-           (including the shipped samples) under its own section, TV-style.
-           Click = add to the active chart, pencil = edit the code in the Pine
-           Editor, trash = delete the script from the library.
-           ROUND241 (TV parity): strategy() scripts ALSO get their own
-           STRATEGIES section (every script whose declaration is strategy(),
-           via PineScriptsStore.isStrategy — the same rule as the compiler's
-           declMeta) plus a STRATEGY tag on each strategy row, so a strategy
-           is never mistaken for a plain indicator. MY SCRIPTS below it keeps
-           only the non-strategy scripts. */
-        const scripts = PineScriptsStore.all().filter((s) =>
-          !query || String(s.name || '').toLowerCase().indexOf(query) >= 0);
-        const stratScripts = scripts.filter((s) => PineScriptsStore.isStrategy(s.source));
-        const indScripts = scripts.filter((s) => !PineScriptsStore.isStrategy(s.source));
-        if (stratScripts.length) {
-          U.el('div', 'st-sec', list).textContent = 'STRATEGIES';
-          for (const s of stratScripts) mkScriptItem(s, true);
-        }
-        if (indScripts.length) {
-          U.el('div', 'st-sec', list).textContent = 'MY SCRIPTS';
-          for (const s of indScripts) mkScriptItem(s, false);
-        }
-        const groups = {};
-        for (const d of Indicators.all) {
-          if (query && d.label.toLowerCase().indexOf(query) < 0 && d.type.indexOf(query) < 0) continue;
-          (groups[d.group] = groups[d.group] || []).push(d);
-        }
-        const f = favs();
-        if (!query && f.length) {
-          U.el('div', 'st-sec', list).textContent = 'FAVORITES';
-          for (const t of f) {
-            const d = Indicators.def(t);
-            if (d) mkItem(d, true);
-          }
-        }
-        for (const g of Object.keys(groups)) {
-          U.el('div', 'st-sec', list).textContent = g.toUpperCase();
-          for (const d of groups[g]) mkItem(d, f.indexOf(d.type) >= 0);
-        }
-        function mkItem(d, faved) {
-          const it = U.el('button', 'ind-item', list);
-          const dotC = d.colors.line || d.colors.up || d.colors.conv || '#2962ff';
-          it.innerHTML = `<i class="ind-dot"></i><span class="ind-item-name">${d.label}</span>` +
-            `<span class="ind-item-meta">${d.pane === 'main' ? 'overlay' : 'pane'}</span>` +
-            `<span class="pu-star${faved ? ' faved' : ''}" title="Favorite">${icon(faved ? 'star' : 'starOutline')}</span>`;
-          it.querySelector('.ind-dot').style.background = dotC; // CSP: CSSOM not style="" attr
-          it.querySelector('.pu-star').addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleFav(d.type);
-            renderList(q);
-          });
-          it.addEventListener('click', () => {
-            const pane = App.activePane;
-            if (!pane) return;
-            add(pane, d.type);
-            UI.toast2(`Added ${d.label}`, 'ok');
-          });
-        }
-        function mkScriptItem(s, isStrat) {
-          const it = U.el('button', 'ind-item', list);
-          /* overlay/pane meta straight from the declaration line — no compile */
-          const overlay = /overlay\s*=\s*true/.test(String(s.source || ''));
-          it.innerHTML = `<i class="ind-dot"></i><span class="ind-item-name">${U.esc(String(s.name || 'Untitled script'))}` +
-            (isStrat ? ` <span class="pine-strat-tag">STRATEGY</span>` : '') + `</span>` +
-            `<span class="ind-item-meta">${overlay ? 'overlay' : 'pane'}</span>` +
-            `<span class="pu-star ms-edit" title="Edit code in Pine Editor">${icon('pencil')}</span>` +
-            `<span class="pu-star ms-del" title="Delete script">${icon('trash')}</span>`;
-          it.querySelector('.ind-dot').style.background = '#2962ff'; // CSP: CSSOM not style="" attr
-          it.querySelector('.ms-edit').addEventListener('click', (e) => {
-            e.stopPropagation();
-            close(); // the editor takes over the screen — the dialog must not sit on top of it
-            PineEditor.openScript(s.id);
-          });
-          it.querySelector('.ms-del').addEventListener('click', (e) => {
-            e.stopPropagation();
-            /* same semantics as the editor's own delete (round 74): instances
-               already on charts keep rendering but can no longer be edited */
-            if (!confirm('Delete "' + String(s.name || 'Untitled script') + '"? Instances already on charts keep working but can no longer be edited.')) return;
-            PineScriptsStore.remove(s.id);
-            UI.toast2('Deleted ' + String(s.name || 'script'), 'ok');
-            renderList(q);
-          });
-          it.addEventListener('click', () => {
-            const pane = App.activePane;
-            if (!pane) return;
-            Manager.addPine(pane, s.id); // ROUND84 delegation stub (pine-ui.add)
-            UI.toast2(`Added ${String(s.name || 'script')}`, 'ok');
-          });
-        }
-      };
-      renderList('');
-      const inp = dlg.querySelector('#ind-search-input');
-      inp.addEventListener('input', U.debounce(() => renderList(inp.value), 120));
-      inp.addEventListener('keydown', (e) => e.stopPropagation());
-      setTimeout(() => inp.focus(), 30);
-    /* reveal only after a fully-built, fully-wired dialog (ROUND 75 BUG) */
-    layer.classList.remove('hidden');
-    } catch (e) {
-      close();
-      throw e;
-    }
+function add(pane, type) {
+  if (!pane || !Indicators.def(type)) return null;
+  pane.indicators = pane.indicators || [];
+  const rec = {
+    id: Date.now() + Math.floor(Math.random() * 999),
+    type, params: {}, colors: {}, visible: true,
   };
+  pane.indicators.push(rec);
+  Manager.persistPanes();
+  recompute(pane);
+  return rec;
+}
 
-  /* ---------- round 31: TV-parity settings dialog ----------
-     Tabs like the reference platform: INPUTS (params) + STYLE (line width,
-     line style + per-series colors, palette + free color picker). Footer:
-     Remove (left) + Ok. Edits mutate the instance immediately; Ok rebuilds
-     the series (same commit path the old single-pane dialog used). */
-  function openSettingsDialog(pane, inst) {
-    const def = Indicators.def(inst.type);
-    if (!def) return;
-    const layer = document.getElementById('popup-layer');
-    U.clear(layer);
-    const back = U.el('div', 'dialog-backdrop', layer);
-    const dlg = U.el('div', 'dialog ind-settings', back);
-    /* ROUND 75 (BUG): build-then-show — see UI.openDialog above; a throw
-       mid-build must never leave a live backdrop over the chart. */
-    const close = () => { layer.classList.add('hidden'); U.clear(layer); document.removeEventListener('keydown', onKey); };
-    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
-    try {
-      dlg.innerHTML = `<h3>${Indicators.title(inst)}<button class="mini-btn dlg-x" title="Close">${icon('x')}</button></h3>
-        <div class="ist-tabs">
-          <button class="ist-tab on" data-tab="inputs">Inputs</button>
-          <button class="ist-tab" data-tab="style">Style</button>
-        </div>
-        <div class="ist-body"></div>
-        <div class="dlg-actions">
-          <button class="dlg-btn dlg-ghost ist-remove">Remove</button>
-          <span class="dlg-spacer"></span>
-          <button class="dlg-btn dlg-primary ist-ok">Ok</button>
-        </div>`;
-      const body = dlg.querySelector('.ist-body');
-      document.addEventListener('keydown', onKey);
-      dlg.querySelector('.dlg-x').addEventListener('click', close);
-      back.addEventListener('mousedown', (e) => { if (e.target === back) close(); });
+function remove(pane, id) {
+  const rec = (pane.indicators || []).find((i) => i.id === id);
+  pane.indicators = (pane.indicators || []).filter((i) => i.id !== id);
+  if (rec) {
+    const pineId = pineMap(pane).get(rec.id);
+    if (pineId) {
+      pineMap(pane).delete(rec.id);
+      try { if (PineUI) PineUI.remove(pane, pineId); } catch (e) {}
+    }
+  }
+  Manager.persistPanes();
+  recompute(pane);
+}
 
-      const hasLines = def.pane === 'main' || (def.colors && def.colors.line) || def.type === 'volume';
+/* ---------- legend rows ----------
+   One row per legacy record, in the pane legend or in the sub-pane header
+   that the Pine adapter created for a non-overlay script. Values come from
+   the RUNTIME's plot arrays, which is what the chart actually paints. */
+function ensureRows(pane) {
+  if (!pane._indRows) pane._indRows = U.el('div', 'ind-rows', pane.legend);
+  return pane._indRows;
+}
 
-    const renderInputs = () => {
-      U.clear(body);
-      for (const p of def.params) {
-        const lab = U.el('label', '', body);
-        lab.innerHTML = `<span>${p.label}</span>`;
-        const inp = U.el('input', '', lab);
-        inp.type = 'number';
-        inp.step = 'any';
-        if (p.min != null) inp.min = p.min;
-        if (p.max != null) inp.max = p.max;
-        inp.value = Indicators.paramValue(p, inst);
-        /* ROUND261: heal a persisted fractional/zero period on open, so the
-           dialog agrees with what compute() already runs. */
-        if (p.int) inst.params[p.key] = Number(inp.value);
-        inp.addEventListener('keydown', (e) => e.stopPropagation());
-        inp.addEventListener('change', () => {
-          const v = parseFloat(inp.value);
-          if (!isFinite(v)) return;
-          inst.params[p.key] = v;
-          if (p.int) {
-            const n = Indicators.paramValue(p, inst);
-            inst.params[p.key] = n;
-            inp.value = String(n);
-          }
+function mkRow(pane, rec, def, box) {
+  const row = U.el('div', 'ind-row' + (rec.visible === false ? ' hidden-inst' : ''), box);
+  row.dataset.iid = String(rec.id);
+  const dotC = (def && def.colors && def.colors.line) || '#2962ff';
+  const title = U.el('span', 'ind-title', row);
+  title.innerHTML = `<i class="ind-dot"></i>${U.esc(Indicators.title(rec))}`;
+  title.querySelector('.ind-dot').style.background = dotC; // CSP: CSSOM not style="" attr
+  const vals = U.el('span', 'ind-vals', row);
+  const btns = U.el('span', 'ind-btns', row);
+  const eye = U.el('button', 'ind-btn', btns);
+  eye.innerHTML = icon(rec.visible === false ? 'eyeoff' : 'eye');
+  eye.title = 'Show / Hide';
+  eye.addEventListener('click', (e) => {
+    e.stopPropagation();
+    rec.visible = rec.visible === false;
+    const inst = pineInstOf(pane, rec);
+    if (inst) { try { if (PineUI) PineUI.toggleVisible(pane, inst.id); } catch (er) {} }
+    U.lsSet('mt5_ind_touch', Date.now());
+    Manager.persistPanes();
+    recompute(pane);
+  });
+  const gear = U.el('button', 'ind-btn', btns);
+  gear.innerHTML = icon('gear');
+  gear.title = 'Settings';
+  gear.addEventListener('click', (e) => { e.stopPropagation(); openSettingsDialog(pane, rec); });
+  const del = U.el('button', 'ind-btn ind-del', btns);
+  del.innerHTML = icon('x');
+  del.title = 'Remove';
+  del.addEventListener('click', (e) => {
+    e.stopPropagation();
+    remove(pane, rec.id);
+  });
+  row.addEventListener('click', () => openSettingsDialog(pane, rec));
+}
+
+function renderRows(pane) {
+  const box = ensureRows(pane);
+  U.clear(box);
+  /* sub-pane headers are owned by the Pine adapter; clear the ones we made */
+  if (pane._subs) for (const [, sub] of pane._subs) if (sub._rows) U.clear(sub._rows);
+  for (const rec of pane.indicators || []) {
+    const def = Indicators.def(rec.type);
+    if (!def) continue;
+    let target = box;
+    if (def.pane === 'separate') {
+      /* the Pine adapter's sub-pane for this instance, when it exists */
+      const inst = pineInstOf(pane, rec);
+      const sub = (inst && pane._subs) ? pane._subs.get(inst.id) : null;
+      if (sub) {
+        if (!sub._rows) sub._rows = U.el('div', 'ind-rows', sub.legend);
+        target = sub._rows;
+      }
+    }
+    mkRow(pane, rec, def, target);
+  }
+  updateRowValues(pane, null);
+}
+
+function updateRowValues(pane, hoverTime) {
+  const bars = pane.bars || [];
+  let idx = bars.length - 1;
+  if (hoverTime != null && pane.barTimes && pane.barTimes.length) idx = U.nearestIndex(pane.barTimes, hoverTime);
+  const S = (window.__app && window.__app.Settings && window.__app.Settings.conf) || {};
+  const showVals = S.stIndValues !== false && S.indFin !== 'hidden';
+  for (const rec of pane.indicators || []) {
+    const row = pane.root.querySelector(`.ind-row[data-iid="${rec.id}"]`);
+    if (!row) continue;
+    if (S.stIndTitles === false) { row.style.display = 'none'; continue; }
+    row.style.display = '';
+    const valsEl = row.querySelector('.ind-vals');
+    if (!valsEl) continue;
+    const inst = pineInstOf(pane, rec);
+    const st = (inst && PineUI && PineUI.debug) ? PineUI.debug(pane).find((s) => s.rt && s.adapter && s.adapter.inst && s.adapter.inst.id === inst.id) : null;
+    if (!showVals || !st || !st.rt || rec.visible === false) { valsEl.textContent = ''; continue; }
+    const out = st.rt.viewOut || st.rt.out;
+    if (!out) { valsEl.textContent = ''; continue; }
+    const parts = [];
+    const colorsForVals = [];
+    const d = pane.digits != null ? Math.min(8, Math.max(2, pane.digits + 2)) : 3;
+    for (const key of out.plotsOrder || []) {
+      const p = out.plots.get(key);
+      if (!p || p.display === 'none') continue;
+      const v = p.values ? p.values[idx] : null;
+      if (v == null || !isFinite(v)) continue;
+      const c = p.colors && p.colors[idx];
+      colorsForVals.push((c && c.css) ? c.css() : '#2962ff');
+      parts.push(`<b>${v.toFixed(d)}</b>`);
+      /* TV shows one pill per plot; stop at 4 so a busy script cannot wrap the
+         legend onto a second line */
+      if (parts.length >= 4) break;
+    }
+    valsEl.innerHTML = parts.join(' ');
+    // round 81 CSP hardening: per-value colors via CSSOM, not style="" attrs
+    const bEls = valsEl.querySelectorAll('b');
+    for (let i = 0; i < bEls.length; i++) if (colorsForVals[i]) bEls[i].style.color = colorsForVals[i];
+  }
+}
+
+function updateIndicatorRows(pane, hoverTime) { updateRowValues(pane, hoverTime); }
+
+/* ---------- dialogs ---------- */
+
+function favs() { return U.lsGet(FAV_KEY, ['ema', 'rsi', 'macd', 'volume']); }
+function toggleFav(type) {
+  const f = favs();
+  const i = f.indexOf(type);
+  if (i >= 0) f.splice(i, 1); else f.push(type);
+  U.lsSet(FAV_KEY, f);
+}
+
+UI.openDialog = function () {
+  const layer = document.getElementById('popup-layer');
+  U.clear(layer);
+  const back = U.el('div', 'dialog-backdrop', layer);
+  const dlg = U.el('div', 'dialog ind-dialog', back);
+  const close = () => { layer.classList.add('hidden'); U.clear(layer); document.removeEventListener('keydown', onKey); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+  try {
+    dlg.innerHTML = `<h3>Indicators<button class="mini-btn dlg-x" title="Close">${icon('x')}</button></h3>
+      <div class="ind-search"><span class="ind-search-ic">${icon('search')}</span>
+        <input type="text" id="ind-search-input" placeholder="Search indicator…" spellcheck="false" autocomplete="off"></div>
+      <div class="ind-list"></div>`;
+    const list = dlg.querySelector('.ind-list');
+    document.addEventListener('keydown', onKey);
+    dlg.querySelector('.dlg-x').addEventListener('click', close);
+    back.addEventListener('mousedown', (e) => { if (e.target === back) close(); });
+
+    const renderList = (q) => {
+      U.clear(list);
+      const query = (q || '').trim().toLowerCase();
+      /* MY SCRIPTS — the user's own Pine library. Built-in indicators are NOT
+         listed here: they are app-provided scripts (ROUND299), shown in the
+         grouped sections below like any other built-in. */
+      const scripts = PineScriptsStore.all().filter((s) =>
+        !query || String(s.name || '').toLowerCase().indexOf(query) >= 0);
+      const stratScripts = scripts.filter((s) => PineScriptsStore.isStrategy(s.source));
+      const indScripts = scripts.filter((s) => !PineScriptsStore.isStrategy(s.source));
+      if (stratScripts.length) {
+        U.el('div', 'st-sec', list).textContent = 'STRATEGIES';
+        for (const s of stratScripts) mkScriptItem(s, true);
+      }
+      if (indScripts.length) {
+        U.el('div', 'st-sec', list).textContent = 'MY SCRIPTS';
+        for (const s of indScripts) mkScriptItem(s, false);
+      }
+      const groups = {};
+      for (const d of BUILTIN_INDICATORS) {
+        if (query && d.label.toLowerCase().indexOf(query) < 0 && d.type.indexOf(query) < 0) continue;
+        (groups[d.group] = groups[d.group] || []).push(d);
+      }
+      const f = favs();
+      if (!query && f.length) {
+        U.el('div', 'st-sec', list).textContent = 'FAVORITES';
+        for (const t of f) {
+          const d = BUILTIN_BY_TYPE.get(t);
+          if (d) mkItem(d, true);
+        }
+      }
+      for (const g of Object.keys(groups)) {
+        U.el('div', 'st-sec', list).textContent = g.toUpperCase();
+        for (const d of groups[g]) mkItem(d, f.indexOf(d.type) >= 0);
+      }
+
+      function mkItem(d, faved) {
+        const it = U.el('button', 'ind-item', list);
+        it.innerHTML = `<i class="ind-dot"></i><span class="ind-item-name">${U.esc(d.label)}</span>` +
+          `<span class="ind-item-meta">${d.overlay ? 'overlay' : 'pane'}</span>` +
+          `<span class="pu-star${faved ? ' faved' : ''}" title="Favorite">${icon(faved ? 'star' : 'starOutline')}</span>`;
+        it.querySelector('.ind-dot').style.background = '#2962ff'; // CSP: CSSOM not style="" attr
+        it.querySelector('.pu-star').addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleFav(d.type);
+          renderList(q);
+        });
+        it.addEventListener('click', () => {
+          const pane = App.activePane;
+          if (!pane) return;
+          add(pane, d.type);
+          UI.toast2(`Added ${d.label}`, 'ok');
         });
       }
-      if (!def.params.length) U.el('div', 'ist-empty', body).textContent = 'This indicator has no inputs.';
-    };
 
-    const renderStyle = () => {
-      U.clear(body);
-      if (!inst.style || typeof inst.style !== 'object') inst.style = {};
-      /* line width + line style (applies to the LINE plots of the indicator) */
-      if (hasLines) {
-        const labW = U.el('label', '', body);
-        labW.innerHTML = '<span>Line width</span>';
-        const selW = U.el('select', '', labW);
-        for (const w of [1, 2, 3, 4]) {
-          const o = U.el('option', '', selW);
-          o.value = String(w); o.textContent = String(w);
-        }
-        selW.value = String(inst.style.width || 2);
-        selW.addEventListener('change', () => { inst.style.width = parseInt(selW.value, 10) || 2; });
-
-        const labS = U.el('label', '', body);
-        labS.innerHTML = '<span>Line style</span>';
-        const selS = U.el('select', '', labS);
-        for (const [v, txt] of [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted'], ['largedashed', 'Large dashed']]) {
-          const o = U.el('option', '', selS);
-          o.value = v; o.textContent = txt;
-        }
-        selS.value = inst.style.lineStyle || 'solid';
-        selS.addEventListener('change', () => { inst.style.lineStyle = selS.value; });
-      }
-      /* per-series colors: palette + free color picker (TV Style tab).
-         The free picker doubles as the CURRENT-color swatch — it follows
-         palette picks, and picking a custom color writes it straight back. */
-      for (const key of Object.keys(def.colors)) {
-        const lab = U.el('label', '', body);
-        lab.innerHTML = `<span>${key} color</span>`;
-        const w = U.el('div', 'ist-colors', lab);
-        const free = U.el('input', 'ist-free', w);
-        free.type = 'color';
-        free.value = U.toHex(inst.colors[key] || def.colors[key]);
-        free.title = 'Current color / custom color';
-        for (const c of PALETTE) {
-          const sw = U.el('button', 'ist-sw', w);
-          sw.style.background = c;
-          sw.addEventListener('click', () => {
-            inst.colors[key] = c;
-            try { free.value = U.toHex(c); } catch (e) {}
-          });
-        }
-        free.addEventListener('input', () => { inst.colors[key] = free.value; });
+      function mkScriptItem(s, isStrat) {
+        const it = U.el('button', 'ind-item', list);
+        const overlay = /overlay\s*=\s*true/.test(String(s.source || ''));
+        it.innerHTML = `<i class="ind-dot"></i><span class="ind-item-name">${U.esc(String(s.name || 'Untitled script'))}` +
+          (isStrat ? ` <span class="pine-strat-tag">STRATEGY</span>` : '') + `</span>` +
+          `<span class="ind-item-meta">${overlay ? 'overlay' : 'pane'}</span>` +
+          `<span class="pu-star ms-edit" title="Edit code in Pine Editor">${icon('pencil')}</span>` +
+          `<span class="pu-star ms-del" title="Delete script">${icon('trash')}</span>`;
+        it.querySelector('.ind-dot').style.background = '#2962ff'; // CSP: CSSOM not style="" attr
+        it.querySelector('.ms-edit').addEventListener('click', (e) => {
+          e.stopPropagation();
+          close();
+          PineEditor.openScript(s.id);
+        });
+        it.querySelector('.ms-del').addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!confirm('Delete "' + String(s.name || 'Untitled script') + '"? Instances already on charts keep working but can no longer be edited.')) return;
+          PineScriptsStore.remove(s.id);
+          UI.toast2('Deleted ' + String(s.name || 'script'), 'ok');
+          renderList(q);
+        });
+        it.addEventListener('click', () => {
+          const pane = App.activePane;
+          if (!pane) return;
+          Manager.addPine(pane, s.id);
+          UI.toast2(`Added ${String(s.name || 'script')}`, 'ok');
+        });
       }
     };
-
-    /* tabs */
-    const renderTab = (name) => (name === 'style' ? renderStyle() : renderInputs());
-    const tabs = dlg.querySelectorAll('.ist-tab');
-    tabs.forEach((b) => b.addEventListener('click', () => {
-      tabs.forEach((x) => x.classList.toggle('on', x === b));
-      renderTab(b.dataset.tab);
-    }));
-    renderTab('inputs');
-
-    dlg.querySelector('.ist-ok').addEventListener('click', () => {
-      close();
-      destroySeries(pane, inst.id);
-      Manager.persistPanes();
-      recompute(pane);
-    });
-    dlg.querySelector('.ist-remove').addEventListener('click', () => { close(); remove(pane, inst.id); });
-    /* reveal only after a fully-built, fully-wired dialog (ROUND 75 BUG) */
+    renderList('');
+    const inp = dlg.querySelector('#ind-search-input');
+    inp.addEventListener('input', U.debounce(() => renderList(inp.value), 120));
+    inp.addEventListener('keydown', (e) => e.stopPropagation());
+    setTimeout(() => inp.focus(), 30);
     layer.classList.remove('hidden');
-    } catch (e) {
-      close();
-      throw e;
-    }
+  } catch (e) {
+    close();
+    throw e;
   }
+};
 
-  UI.toast2 = function (msg, kind) {
-    if (UI && UI.toast) UI.toast(msg, kind);
-  };
+/* ROUND299: the settings dialog is the PINE dialog. The legacy record's params
+   remain the storage shape, so the dialog writes `rec.params` and syncPine
+   translates them into engine inputs. This keeps the exact tab layout, input
+   rendering, colors, Visibility tab and Defaults/Reset behaviour that the
+   Pine dialog already implements — one dialog, no duplicate. */
+function openSettingsDialog(pane, rec) {
+  const inst = pineInstOf(pane, rec);
+  if (!inst) return;
+  if (!PineUI) { try { if (typeof window !== 'undefined' && window.__app && window.__app.PineUI) wirePine(window.__app.PineUI); } catch (e) {} }
+  if (!PineUI) return;
+  /* Bridge the legacy params into the instance's inputs before opening, so the
+     dialog shows the values the chart is actually using. */
+  const inputs = legacyInputs(rec);
+  if (inputs) inst.inputs = Object.assign({}, inst.inputs, inputs);
+  PineUI.openSettingsDialog(pane, inst, {
+    /* called after Ok: mirror the engine inputs back into the legacy record so
+       persistence, the legend title and any external reader stay in step. */
+    onCommit: (newInputs) => {
+      const def = BUILTIN_BY_TYPE.get(rec.type);
+      const defs = inputDefsFor(rec.type);
+      const byTitle = new Map();
+      for (const d of defs) if (d.title) byTitle.set(d.title, d);
+      rec.params = {};
+      if (def) {
+        for (const key of Object.keys(def.params || {})) {
+          const d = byTitle.get(def.params[key]);
+          if (d && newInputs && newInputs[d.id] != null) rec.params[key] = newInputs[d.id];
+        }
+      }
+      Manager.persistPanes();
+      renderRows(pane);
+    },
+    onRemove: () => remove(pane, rec.id),
+  });
+}
 
-  /* convenience for tests/debug */
+/* ROUND299: migrate a persisted layout. Old records carry {type, params,
+   colors, style}; Pine instances carry {scriptId, inputs}. Called by the
+   manager restore path so a user's saved charts survive the upgrade. */
+UI.migrateLegacy = function (pane, recs) {
+  if (!pane) return;
+  const out = [];
+  for (const raw of recs || []) {
+    if (!raw) continue;
+    if (raw.scriptId) { out.push(raw); continue; } // already Pine
+    const def = Indicators.def(raw.type);
+    if (!def) continue; // unknown/dropped indicator
+    const migrated = Indicators.migrate(raw, inputDefsFor(raw.type));
+    if (migrated) out.push(Object.assign({ id: raw.id }, migrated));
+  }
+  pane.indicators = out;
+};
+
   UI.add = add;
   UI.remove = remove;
   UI.recompute = recompute;
-  /* round 31: release the per-pane render state when its chart is destroyed
-     (layout switches) — dead pane objects no longer accumulate in RT */
+  UI.tickRecompute = tickRecompute;
+  UI.updateIndicatorRows = updateIndicatorRows;
+  UI.toast2 = function (msg, kind) {
+    try {
+      if (typeof window !== 'undefined' && window.__app && window.__app.UI && window.__app.UI.toast) window.__app.UI.toast(msg, kind);
+    } catch (e) {}
+  };
+
   function dropPane(pane) {
-    /* ROUND298: detach band primitives BEFORE dropping the state map. The chart
-       outlives this call on some rebuild paths (a theme/TF pass drops the
-       render state but keeps the chart), so a primitive left attached here
-       would be joined by a second one on the next paint and the band would
-       shade twice over. */
-    if (pane && pane._indBandPrims && pane.series) {
-      for (const [, prim] of pane._indBandPrims) {
-        try { pane.series.detachPrimitive(prim); } catch (e) {}
-      }
-      pane._indBandPrims.clear();
-    }
-    RT.delete(pane);
+    if (!pane) return;
+    PINE_OF.delete(pane);
+    PENDING.delete(pane);
   }
   UI.dropPane = dropPane;
-  /* ROUND288: the legend repaint is a public entry point too (Settings and
-     tests both call it). It was exported as a bare named export, so the
-     `IndicatorsUI` facade reachable from `window.__app` did not have it. */
-  UI.updateIndicatorRows = updateIndicatorRows;
-export { UI as IndicatorsUI, recompute, tickRecompute, updateIndicatorRows, dropPane };
+  UI.wirePine = wirePine;
+
+export { UI as IndicatorsUI, recompute, tickRecompute, updateIndicatorRows, dropPane, wirePine };

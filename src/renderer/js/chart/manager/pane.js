@@ -388,12 +388,15 @@ import { loadBars, loadOlder } from './history.js';
     const n = subs.length;
     const defH = () => U.clamp(Math.round(plotTotal / (n + 3.2)), 56, 220);
     /* ROUND 74: pine script instances carry `frac` too (their sub-panes are
-       first-class residents of the stack since round-74 sub-pane parity) */
+       first-class residents of the stack since round-74 sub-pane parity)
+       ROUND299: built-in indicators ARE Pine instances now, so a sub-pane id is
+       a pineScripts id first; the pane.indicators lookup stays as a fallback
+       for an instance whose Pine twin has not been created yet. */
     const instFrac = (id) => {
-      const i = (pane.indicators || []).find((z) => z.id === id);
-      if (i) return Number(i.frac);
       const p = (pane.pineScripts || []).find((z) => z.id === id);
-      return p ? Number(p.frac) : undefined;
+      if (p) return Number(p.frac);
+      const i = (pane.indicators || []).find((z) => z.id === id);
+      return i ? Number(i.frac) : undefined;
     };
     const subHs = subs.map((sub) => {
       const f = instFrac(sub.instId);
@@ -555,8 +558,10 @@ import { loadBars, loadOlder } from './history.js';
     const startY = e.clientY;
     sp.classList.add('dragging');
     document.body.style.cursor = 'row-resize';
-    const instOf = (id) => (pane.indicators || []).find((i) => i.id === id)
-      || (pane.pineScripts || []).find((i) => i.id === id); // ROUND 74: pine panes resize too
+    /* ROUND299: a sub-pane id is a pineScripts id (built-ins are Pine now);
+       the legacy registry is the fallback for a not-yet-synced instance. */
+    const instOf = (id) => (pane.pineScripts || []).find((i) => i.id === id)
+      || (pane.indicators || []).find((i) => i.id === id);
     const move = (ev) => {
       const dy = ev.clientY - startY;
       const below = heights[k + 1], above = heights[k];

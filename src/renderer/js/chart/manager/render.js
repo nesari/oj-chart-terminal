@@ -961,8 +961,10 @@ import { createPane } from './pane.js';
         ? savedStyles[i]
         : (keep && keep.style && App.STYLES.some((s) => s.id === keep.style) ? keep.style : App.style);
       const pane = createPane(grid, symbol, tf, style);
-      /* round 27: restore this chart's indicator instances (validated against
-         the registry in indicators-ui when the data arrives) */
+      /* ROUND299: restore this chart's indicator instances. Built-ins are Pine
+         scripts now, so a saved legacy record is MIGRATED into a Pine instance
+         (its Pine twin is created by IndicatorsUI's sync on first recompute);
+         a record whose type no longer exists is dropped rather than invented. */
       if (keep && Array.isArray(keep.indicators)) {
         pane.indicators = keep.indicators
           .filter((i) => i && Indicators && Indicators.def(i.type))

@@ -68,9 +68,15 @@ CONTROLS_JS = """() => {
 }"""
 
 # Add an indicator, then flip the legend gates and see the row react.
-LEGEND_JS = """() => {
+LEGEND_JS = """async () => {
   const A = window.__app;
   const pane = A.App.activePane;
+  if (!pane) return { error: 'no pane' };
+  const frames = (n) => new Promise((res) => {
+    let k = 0;
+    const step = () => (++k >= n ? res() : requestAnimationFrame(step));
+    requestAnimationFrame(step);
+  });
   const S = A.Settings;
 
   /* make sure there IS an indicator to observe */
@@ -83,6 +89,14 @@ LEGEND_JS = """() => {
   if (!row) return { error: 'no legend row' };
   const vals = row.querySelector('.ind-vals');
 
+  /* ROUND299: indicators are Pine scripts now, so legend values appear only
+     after the engine completes a pass. Waiting for them is the real
+     precondition for this assertion (the old JS computed synchronously). */
+  for (let k = 0; k < 60; k++) {
+    A.IndicatorsUI.updateIndicatorRows(pane, null);
+    if (vals && vals.textContent.trim().length) break;
+    await frames(2);
+  }
   const before = { rowDisplay: row.style.display, valsLen: (vals ? vals.textContent : '').length };
 
   S.set('indFin', 'hidden');

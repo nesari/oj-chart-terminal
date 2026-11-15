@@ -931,9 +931,30 @@ const builtins = {
         active: !(opts && opts.active === false),
       });
     }
-    const val = (this.inputValues && this.inputValues[id] != null) ? this.inputValues[id] : defval;
-    if (kind === 'color') { const c = toColor(val); return c || NA; }
-    return val;
+    const raw = (this.inputValues && this.inputValues[id] != null) ? this.inputValues[id] : defval;
+    if (kind === 'color') { const c = toColor(raw); return c || NA; }
+    /* ROUND299 (TV parity): input.int yields an INTEGER. TV's dialog is a
+       numeric field with a step of 1, and its runtime truncates/clamps to the
+       declared minval/maxval — a fractional or out-of-range override never
+       reaches a series call. The settings dialog can hold any typed number
+       (and a restored layout can hold anything at all), so normalize HERE, at
+       the single point every input value passes through: before, a persisted
+       "20.5" became ta.sma(close, 20.5) and the fractional window read
+       bars[19.5] (undefined -> silent blank indicator). */
+    if (kind === 'int') {
+      let v = Number(raw);
+      if (!isFinite(v)) v = Number(defval);
+      if (!isFinite(v)) v = 1;
+      v = Math.round(v);
+      const lo = (opts && (opts.minval != null || opts.min != null))
+        ? Number(opts.minval != null ? opts.minval : opts.min) : null;
+      const hi = (opts && (opts.maxval != null || opts.max != null))
+        ? Number(opts.maxval != null ? opts.maxval : opts.max) : null;
+      if (lo != null && isFinite(lo) && v < lo) v = Math.ceil(lo);
+      if (hi != null && isFinite(hi) && v > hi) v = Math.floor(hi);
+      return v;
+    }
+    return raw;
   },
 
   _inputSource(site, node, positional, restObj, frame) {

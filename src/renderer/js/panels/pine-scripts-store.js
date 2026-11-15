@@ -15,6 +15,7 @@ import { libTitleOf, matchCandidate } from '../../../core/pine/library.js';
    dialog — isStrategySource is the single source of truth next to the
    compiler's declMeta (first body statement opens strategy(). */
 import { isStrategySource } from '../../../core/pine/compile.js';
+import { BUILTIN_BY_ID } from '../../../core/pine/builtins-catalog.js';
 import { Log } from '../../../core/logger.js';
 
 const KEY = 'mt5_pine_scripts';
@@ -141,7 +142,30 @@ function _libTitleCacheTrim() { return _libTitles.size > 300; }
 
 const Store = {
   all() { return load().scripts; },
-  get(id) { return load().scripts.find((s) => s.id === id) || null; },
+  /* ROUND299: built-in indicators are REAL Pine scripts that live in the
+     catalog, not in the user's library — they resolve through get()/has() so
+     every existing Pine code path works unchanged, but they never appear in
+     "My Scripts", cannot be edited or deleted, and are not persisted per user.
+     A user script with the same id can never exist (builtin: prefix). */
+  isBuiltin(id) { return typeof id === 'string' && id.indexOf('builtin:') === 0; },
+  builtin(id) {
+    if (!this.isBuiltin(id)) return null;
+    const d = BUILTIN_BY_ID.get(id);
+    if (!d) return null;
+    return {
+      id: d.id, name: d.label, source: d.source,
+      /* a stable pseudo-stamp: builtin sources ship with the app, so they only
+         change on release (which invalidates the compile cache anyway) */
+      updatedAt: 1, createdAt: 1, builtin: true, group: d.group, type: d.type,
+    };
+  },
+  get(id) {
+    const b = this.builtin(id);
+    if (b) return b;
+    return load().scripts.find((s) => s.id === id) || null;
+  },
+  /** builtin ids plus the user's own, for compile/import resolution */
+  has(id) { return !!this.get(id); },
   /* ROUND241 (TV parity): true when the script's declaration is strategy()
      (dialog STRATEGIES section + STRATEGY row tags). Never throws — an
      unreadable source is simply not a strategy. */

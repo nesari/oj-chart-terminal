@@ -24,7 +24,11 @@ import { PLOT_STYLE_SET, applyInstanceStyle, effServerOffSec, hexStr, loadDefaul
 
 /* ------------------------------ settings dialog ----------------------- */
 
-function openSettingsDialog(pane, inst) {
+/* ROUND299: `hooks` lets a caller wrap the commit/remove paths without
+   duplicating this dialog. The built-in indicator adapter passes
+   onCommit/onRemove so a legacy record can mirror the engine inputs. */
+function openSettingsDialog(pane, inst, hooks) {
+  hooks = hooks || {};
   const st = state(pane, inst.id);
   const script = PineScriptsStore.get(inst.scriptId);
   if (!st || !script) return;
@@ -862,9 +866,14 @@ function openSettingsDialog(pane, inst) {
       inst.timeframe = tfPick || '';
       inst._tfTouched = true;
       Manager.persistPanes();
+      try { if (typeof hooks.onCommit === 'function') hooks.onCommit(values); } catch (e) {}
       rebuild(pane, inst);
     });
-    dlg.querySelector('.ist-remove').addEventListener('click', () => { close(); remove(pane, inst.id); });
+    dlg.querySelector('.ist-remove').addEventListener('click', () => {
+      close();
+      if (typeof hooks.onRemove === 'function') { try { hooks.onRemove(); return; } catch (e) {} }
+      remove(pane, inst.id);
+    });
     /* reveal only after a fully-built, fully-wired dialog (ROUND 75 BUG) */
     layer.classList.remove('hidden');
   } catch (e) {
