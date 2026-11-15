@@ -27,6 +27,7 @@
  *   round289  drawing leftovers (profile scopes / band / dragged levels) (new)
  *   round290  version row + auto-update degraded mode in a browser build  (new)
  *   round294  About/version popup on the toolbar: version + manual check  (new)
+ *   round298  built-in channel band fills + histogram color modes       (new)
  *   audit_left_toolbar  every drawing tool paints, no orphans             (new)
  *   audit_core_chart_tv  chart API surface, styles, context menus          (new)
  *   audit_app_sweep     every panel/toolbar entry opens real content       (new)
@@ -78,6 +79,8 @@ const CURATED = [
   'audit_core_chart_tv.py',
   'audit_app_sweep.py',
   'audit_app_deep.py',
+  /* ROUND298: channel band fills + histogram color modes must really paint. */
+  'e2e_round298_indicator_render.py',
 ];
 
 /* Per attempt. A cold Windows runner needs ~30s for a heavy suite; the retry

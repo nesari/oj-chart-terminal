@@ -204,17 +204,147 @@ const LWC = window.LightweightCharts;
         const v = vals[i];
         if (v == null || !isFinite(v)) data.push({ time: bars[i].time }); // whitespace
         else {
-          const c = hist ? (i > 0 && vals[i - 1] != null && vals[i - 1] > v ? hist.colorDown : hist.colorUp) : undefined;
+          const c = hist ? histColorAt(hist, i, v) : undefined;
           data.push(c != null ? { time: bars[i].time, value: v, color: c } : { time: bars[i].time, value: v });
         }
       }
       try { s.setData(data); } catch (e) {}
     }
+    /* ROUND298: the band fill (Bollinger / Donchian / Keltner) was produced by
+       the compute functions since round 27 but never read here — all three
+       channels drew bare lines with no shading, unlike TradingView. */
+    paintBand(pane, inst, state, out, bars);
+  }
+
+  /* ROUND298 (TV parity): how a histogram body is colored.
+       'sign'     — green above zero, red below (MACD, TV's default)
+       'prev'     — vs the previous bar's value (Awesome Oscillator)
+       'explicit' — colors[] supplied by the compute function (Volume)
+     The old code always used 'prev', so MACD's histogram was painted by
+     whether it rose or fell rather than by its sign, and Volume ignored the
+     candle direction entirely. */
+  function histColorAt(hist, i, v) {
+    const mode = hist.colorMode || 'prev';
+    if (mode === 'explicit') {
+      const arr = hist.colors || [];
+      return arr[i] || hist.colorUp;
+    }
+    if (mode === 'sign') return v >= 0 ? hist.colorUp : hist.colorDown;
+    const vals = hist.values;
+    return (i > 0 && vals[i - 1] != null && vals[i - 1] > v) ? hist.colorDown : hist.colorUp;
+  }
+
+  /* ---------- band fill (series primitive, under the candles) ----------
+     A filled channel needs a polygon between two price series: lightweight-
+     charts has no area-between-lines series, so this rides the same
+     series-primitive seam trade/history.js already uses (attachPrimitive is
+     in this LWC build) with zOrder 'bottom', so shading lands UNDER the
+     candles exactly like TV's band fill. Drawn per contiguous run of
+     non-null bars; gaps break the run instead of bridging it. */
+  function paintBand(pane, inst, state, out, bars) {
+    const band = out.band;
+    if (!band || !band.upper || !band.lower) return;
+    const bandPrims = rtPrims(pane);
+    let prim = state.bandPrim || bandPrims.get(inst.id);
+    if (!prim) {
+      if (!pane.series || typeof pane.series.attachPrimitive !== 'function') return;
+      prim = makeBandPrimitive(pane);
+      try { pane.series.attachPrimitive(prim); } catch (e) { return; }
+      bandPrims.set(inst.id, prim);
+    }
+    state.bandPrim = prim;
+    prim.band = band;
+    prim.bars = bars;
+    if (prim._req) { try { prim._req(); } catch (e) {} }
+  }
+
+  /* ROUND298: band primitives are tracked on the PANE (not only on the render
+     state) because the state map is rebuilt on some repaint paths while the
+     chart — and any primitive already attached to it — lives on. Without this
+     a stale state would attach a SECOND primitive for the same indicator and
+     the band would paint twice (double alpha). Pane-scoped, so it still dies
+     with the chart. */
+  function rtPrims(pane) {
+    if (!pane._indBandPrims) pane._indBandPrims = new Map();
+    return pane._indBandPrims;
+  }
+
+  function makeBandPrimitive(pane) {
+    const prim = {
+      band: null, bars: [],
+      _req: null,
+      attached(param) { prim._req = (param && param.requestUpdate) || null; },
+      detached() { prim._req = null; },
+      /* 'bottom' = painted beneath the series (candles stay on top). */
+      zOrder() { return 'bottom'; },
+      paneViews() {
+        return [{
+          renderer() {
+            return {
+              draw(target) {
+                try { drawBand(target, prim, pane); } catch (e) {}
+              },
+            };
+          },
+        }];
+      },
+    };
+    return prim;
+  }
+
+  function drawBand(target, prim, pane) {
+    const b = prim.band, bars = prim.bars || [];
+    if (!b || !b.upper || !b.lower || !bars.length) return;
+    const series = pane && pane.series;
+    if (!series || typeof series.priceToCoordinate !== 'function') return;
+    let timeScale = null;
+    try { timeScale = pane.chart.timeScale(); } catch (e) { return; }
+    if (!timeScale) return;
+    target.useMediaCoordinateSpace((scope) => {
+      const ctx = scope.context;
+      ctx.save();
+      ctx.fillStyle = b.fill || 'rgba(41,98,255,0.06)';
+      let run = [];
+      const flush = () => {
+        if (run.length > 1) {
+          ctx.beginPath();
+          for (let k = 0; k < run.length; k++) {
+            const x = run[k].x, y = run[k].u;
+            if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          for (let k = run.length - 1; k >= 0; k--) ctx.lineTo(run[k].x, run[k].l);
+          ctx.closePath();
+          ctx.fill();
+        }
+        run = [];
+      };
+      for (let i = 0; i < bars.length; i++) {
+        const u = b.upper[i], l = b.lower[i];
+        if (u == null || l == null || !isFinite(u) || !isFinite(l)) { flush(); continue; }
+        let x = null, yu = null, yl = null;
+        try { x = timeScale.timeToCoordinate(bars[i].time); } catch (e) { x = null; }
+        try { yu = series.priceToCoordinate(u); } catch (e) { yu = null; }
+        try { yl = series.priceToCoordinate(l); } catch (e) { yl = null; }
+        if (x == null || yu == null || yl == null) { flush(); continue; }
+        run.push({ x, u: yu, l: yl });
+      }
+      flush();
+      ctx.restore();
+    });
   }
 
   function destroySeries(pane, instId) {
     const state = rt(pane).get(instId);
     if (!state) return;
+    /* ROUND298: a band fill is a pane-level primitive, not a series — it would
+       outlive its indicator and keep shading the chart after Remove. */
+    const bandPrims = rtPrims(pane);
+    const bandPrim = state.bandPrim || bandPrims.get(instId);
+    if (bandPrim) {
+      try { pane.series.detachPrimitive(bandPrim); } catch (e) {}
+      bandPrims.delete(instId);
+      state.bandPrim = null;
+    }
     /* round 32: series may live on the main chart OR on the instance's
        sub-chart; the sub-pane (wrapper + chart) dies with its last series */
     const chart = state.chart || pane.chart;
@@ -686,7 +816,20 @@ const LWC = window.LightweightCharts;
   UI.recompute = recompute;
   /* round 31: release the per-pane render state when its chart is destroyed
      (layout switches) — dead pane objects no longer accumulate in RT */
-  function dropPane(pane) { RT.delete(pane); }
+  function dropPane(pane) {
+    /* ROUND298: detach band primitives BEFORE dropping the state map. The chart
+       outlives this call on some rebuild paths (a theme/TF pass drops the
+       render state but keeps the chart), so a primitive left attached here
+       would be joined by a second one on the next paint and the band would
+       shade twice over. */
+    if (pane && pane._indBandPrims && pane.series) {
+      for (const [, prim] of pane._indBandPrims) {
+        try { pane.series.detachPrimitive(prim); } catch (e) {}
+      }
+      pane._indBandPrims.clear();
+    }
+    RT.delete(pane);
+  }
   UI.dropPane = dropPane;
   /* ROUND288: the legend repaint is a public entry point too (Settings and
      tests both call it). It was exported as a bare named export, so the

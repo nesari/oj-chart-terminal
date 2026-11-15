@@ -10,8 +10,8 @@
 مخزن: `github.com/nesari/oj-chart-terminal` — **public** (از راند ۲۹۳).
 
 ```bash
-npm run verify      # دروازهٔ کامل: 179/179 unit + mt5 + smoke
-npm run check:e2e   # 19 سوئیت Playwright زنده
+npm run verify      # دروازهٔ کامل: 180/180 unit + mt5 + smoke
+npm run check:e2e   # 20 سوئیت Playwright زنده
 npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با هم
 ```
 
@@ -40,6 +40,13 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 - **`SCHEMAS` یک‌منبعی:** هر ۸۳ schema در یک جدول؛ `SCHEMAS.x = [...]` و `registerSchema` حذف شدند. پارسر مشترک `tests/unit/source-utils.mjs` aliasها (`ARROWMARK_U`) را resolve می‌کند و تکراری‌بودن کلید و تخصیص بیرون از جدول را می‌گیرد.
 - **هارنس‌های آدیت در CI:** چهار هارنس (`audit_left_toolbar`، `audit_core_chart_tv`، `audit_app_sweep`، `audit_app_deep`) به `check:e2e` اضافه شدند → **19/19**. قبلاً بدون گیت بودند.
 
+### برابری اندیکاتورها با TradingView (راند ۲۹۸)
+- **آدیت دیفرنسیال:** هر ۲۷ اندیکاتور داخلی با اجرای همان فرمول در موتور Pine روی ۴۰۰ کندل مقایسه شد. ۲۰ مورد از ابتدا یکسان بودند؛ ۱۰ مورد اختلاف داشتند که ۹ تای آن‌ها باگ واقعی بود.
+- **هستهٔ Pine:** `ta.wma` مقدار na را صفر می‌گرفت (خط جعلی صفر در HMA)، `ta.stoch`/`ta.wpr` در پنجرهٔ بدون دامنه مقدار ۵۰/−۵۰ جعل می‌کردند، `ta.mfi` آرگومان source را به‌جای volume استفاده می‌کرد (`hlc3*hlc3*volume`)، `ta.vwap` بدون آرگومان تابع برمی‌گرداند نه مقدار، و `ta.supertrend` تاپل مستندش را برنمی‌گرداند (جهت روی همهٔ کندل‌ها na).
+- **اندیکاتورهای داخلی:** Momentum حالا اختلاف قیمت است نه نسبت (۱۰۱.۱ در برابر ۰.۰۰۱۲)، A/D کندل اول را هم می‌شمارد، SAR از کندل ۱ شروع می‌کند و به سقف دو کندل قبل محدود می‌شود، StochRSI تا گرم‌شدن کامل پنجره خالی می‌ماند.
+- **رسم:** کانال‌ها (Bollinger/Donchian/Keltner) از راند ۲۷ دادهٔ `band` تولید می‌کردند ولی هیچ‌جا رسم نمی‌شد؛ حالا با یک series primitive در لایهٔ `bottom` زیر کندل‌ها پر می‌شوند. رنگ هیستوگرام هم درست شد: MACD بر اساس علامت نسبت به صفر (قبلاً بر اساس «بالاتر از کندل قبل»)، Volume بر اساس جهت کندل.
+- **گیت:** `test_round298_indicator_parity` (۵۱ چک) + `e2e_round298_indicator_render` (پیکسل واقعی band و رنگ‌های MACD) → **180/180** و **20/20**. هر دو با برگرداندن باگ‌ها قرمز می‌شوند (اثبات‌شده).
+
 ### امنیت و زیرساخت
 - **اسکن کل تاریخچهٔ گیت:** `scripts/checks/scan-history.mjs` — ۲٬۶۵۴ blob. رمزی که commit و بعد حذف شده هم پیدا می‌شود.
 - **`npm run go-public`:** آدیت → flip → تأیید کانال. در صورت یافته **امتناع** می‌کند.
@@ -51,8 +58,8 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 
 | مورد | وضعیت |
 |---|---|
-| `npm run verify` | ✅ 179/179 + mt5 + smoke |
-| E2E gate | ✅ 19/19 |
+| `npm run verify` | ✅ 180/180 + mt5 + smoke |
+| E2E gate | ✅ 20/20 |
 | CI (main + tag) | ✅ Linux · Windows · macOS |
 | Release v1.9.230 | ✅ ۱۹/۱۹ |
 | کانال آپدیت | ✅ با کلاینت ناشناس |
@@ -118,7 +125,7 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 | فایل | نقش |
 |---|---|
 | `scripts/checks/run-unit.mjs` | کشف خودکار `tests/unit/*.mjs` (SERIAL: `verify_pine80`, `test_round266`, `test_round281`) |
-| `scripts/checks/e2e-gate.mjs` | ۱۹ سوئیت منتخب (۱۵ رگرسیون + ۴ هارنس آدیت)، tree-kill روی timeout |
+| `scripts/checks/e2e-gate.mjs` | ۲۰ سوئیت منتخب (۱۵ رگرسیون + ۴ هارنس آدیت + ۱ e2e رسم اندیکاتور)، tree-kill روی timeout |
 | `.github/workflows/ci.yml` | سه پلتفرم |
 | `.github/workflows/package.yml` | بیلد + Release + گیت صحت |
 

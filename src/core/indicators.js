@@ -124,25 +124,47 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         }
         return { lines: [{ values: out, color: c.line, width: 2 }] };
       } },
+    /* ROUND298 (TV parity): rewritten to the same state machine as the Pine
+       engine's ta.sar (which the reference documents), two defects fixed:
+        1. the first plotted point was one acceleration step EARLY — the loop
+           advanced sar before the first bar's value was emitted, so every
+           reading drifted from bar 1 (1.0999867 vs 1.0999831 on EURUSD M15);
+        2. sar was never bounded by the prior two bars' extremes, so in an
+           uptrend it could print ABOVE a prior low (TV clamps it below, and
+           that clamp is what produces the flat steps users expect).
+       Fractions stay user-facing as percentages (dialog default 2/2/20 =
+       0.02/0.02/0.2), converted once here. */
     { type: 'sar', label: 'Parabolic SAR', group: 'Trend', pane: 'main',
       params: [{ key: 'start', label: 'Start', def: 2, min: 1, max: 10 }, { key: 'inc', label: 'Increment', def: 2, min: 1, max: 10 }, { key: 'max', label: 'Max', def: 20, min: 5, max: 50 }],
       colors: { up: UP, down: DOWN },
       compute: (bars, p, c) => {
         const dots = new Array(bars.length).fill(null), ups = new Array(bars.length).fill(null);
         const step = p.start / 100, incStep = p.inc / 100, maxStep = p.max / 100;
-        if (bars.length > 2) {
+        if (bars.length > 1) {
           let isUp = bars[1].close >= bars[0].close;
           let af = step;
-          let ep = isUp ? bars[0].high : bars[0].low;
+          let ep = isUp ? bars[1].high : bars[1].low;
           let sar = isUp ? bars[0].low : bars[0].high;
-          for (let i = 1; i < bars.length; i++) {
-            sar = sar + af * (ep - sar);
+          dots[1] = sar; ups[1] = isUp;
+          for (let i = 2; i < bars.length; i++) {
+            const p1 = bars[i - 1], p2 = bars[i - 2];
+            let next = sar + af * (ep - sar);
             if (isUp) {
-              if (bars[i].low < sar) { isUp = false; sar = ep; ep = bars[i].low; af = step; }
-              else if (bars[i].high > ep) { ep = bars[i].high; af = Math.min(af + incStep, maxStep); }
+              const bound = Math.min(p1.low, p2.low);
+              next = Math.min(next, bound);
+              if (bars[i].low < next) { isUp = false; sar = ep; ep = bars[i].low; af = step; }
+              else {
+                if (bars[i].high > ep) { ep = bars[i].high; af = Math.min(af + incStep, maxStep); }
+                sar = next;
+              }
             } else {
-              if (bars[i].high > sar) { isUp = true; sar = ep; ep = bars[i].high; af = step; }
-              else if (bars[i].low < ep) { ep = bars[i].low; af = Math.min(af + incStep, maxStep); }
+              const bound = Math.max(p1.high, p2.high);
+              next = Math.max(next, bound);
+              if (bars[i].high > next) { isUp = true; sar = ep; ep = bars[i].high; af = step; }
+              else {
+                if (bars[i].low < ep) { ep = bars[i].low; af = Math.min(af + incStep, maxStep); }
+                sar = next;
+              }
             }
             dots[i] = sar; ups[i] = isUp;
           }
@@ -227,7 +249,7 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         const hist = macdLine.map((v, i) => (v != null && signal[i] != null ? v - signal[i] : null));
         return {
           lines: [{ values: macdLine, color: c.macd, width: 2 }, { values: signal, color: c.signal, width: 2 }],
-          hist: { values: hist, colorUp: c.up, colorDown: c.down },
+          hist: { values: hist, colorUp: c.up, colorDown: c.down, colorMode: 'sign' },
           levels: [{ value: 0, color: 'rgba(178,181,190,0.3)', dashed: true }],
         };
       } },
@@ -239,7 +261,9 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         for (let i = p.k - 1; i < bars.length; i++) {
           let hi = -Infinity, lo = Infinity;
           for (let j = 0; j < p.k; j++) { hi = Math.max(hi, bars[i - j].high); lo = Math.min(lo, bars[i - j].low); }
-          kVals[i] = hi === lo ? 50 : ((bars[i].close - lo) / (hi - lo)) * 100;
+          /* ROUND298 (TV parity): a zero range is na, not a fabricated 50 —
+             the same rule the Pine engine's ta.stoch now follows. */
+          kVals[i] = hi === lo ? null : ((bars[i].close - lo) / (hi - lo)) * 100;
         }
         return {
           lines: [{ values: kVals, color: c.k, width: 2 }, { values: sma(kVals, p.d), color: c.d, width: 2 }],
@@ -253,13 +277,18 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         const r = rsi(closes(bars), p.length);
         const kVals = new Array(bars.length).fill(null);
         for (let i = p.stoch - 1; i < bars.length; i++) {
-          let hi = -Infinity, lo = Infinity;
+          let hi = -Infinity, lo = Infinity, ok = true;
           for (let j = 0; j < p.stoch; j++) {
             const v = r[i - j];
-            if (v == null) { hi = -Infinity; break; }
+            /* ROUND298: the window must be FULLY warmed up. The old code broke
+               out on the first null but left hi/lo partly accumulated and then
+               reported a value from a fractional window — StochRSI painted
+               readings ~13 bars before its RSI input existed. */
+            if (v == null || !isFinite(v)) { ok = false; break; }
             hi = Math.max(hi, v); lo = Math.min(lo, v);
           }
-          if (hi !== -Infinity) kVals[i] = hi === lo ? 50 : ((r[i] - lo) / (hi - lo)) * 100;
+          /* ROUND298 (TV parity): zero range is na, never a fabricated 50. */
+          if (ok && hi !== lo) kVals[i] = ((r[i] - lo) / (hi - lo)) * 100;
         }
         return {
           lines: [{ values: kVals, color: c.k, width: 2 }, { values: sma(kVals, 3), color: c.d, width: 2 }],
@@ -274,7 +303,8 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         for (let i = p.length - 1; i < bars.length; i++) {
           let hi = -Infinity, lo = Infinity;
           for (let j = 0; j < p.length; j++) { hi = Math.max(hi, bars[i - j].high); lo = Math.min(lo, bars[i - j].low); }
-          out[i] = hi === lo ? -50 : ((hi - bars[i].close) / (hi - lo)) * -100;
+          /* ROUND298 (TV parity): zero range is na, not a fabricated -50. */
+          out[i] = hi === lo ? null : ((hi - bars[i].close) / (hi - lo)) * -100;
         }
         return { lines: [{ values: out, color: c.line, width: 2 }], levels: [LVL(-20), LVL(-80)] };
       } },
@@ -303,13 +333,19 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
       params: [{ key: 'length', label: 'Length', def: 20, int: true }],
       colors: { line: TEAL },
       compute: (bars, p, c) => ({ lines: [{ values: stdev(closes(bars), p.length), color: c.line, width: 2 }] }) },
+    /* ROUND298 (TV parity): "Momentum" is the PRICE CHANGE (close - close[n]),
+       which is what TradingView's Momentum indicator plots and what the Pine
+       engine's ta.mom returns. This used to plot close / close[n] * 100 — the
+       Momentum *ratio* — so a EURUSD chart read ~101.1 where TV reads 0.0012,
+       and the values were unusable next to any other oscillator. The ratio
+       survives as its own documented indicator (Rate of Change), one row down. */
     { type: 'momentum', label: 'Momentum', group: 'Oscillators', pane: 'separate',
       params: [{ key: 'length', label: 'Length', def: 10, int: true }],
       colors: { line: BLUE },
       compute: (bars, p, c) => {
         const out = new Array(bars.length).fill(null);
-        for (let i = p.length; i < bars.length; i++) out[i] = (bars[i].close / bars[i - p.length].close) * 100;
-        return { lines: [{ values: out, color: c.line, width: 2 }], levels: [{ value: 100, color: 'rgba(178,181,190,0.3)', dashed: true }] };
+        for (let i = p.length; i < bars.length; i++) out[i] = bars[i].close - bars[i - p.length].close;
+        return { lines: [{ values: out, color: c.line, width: 2 }], levels: [{ value: 0, color: 'rgba(178,181,190,0.3)', dashed: true }] };
       } },
     { type: 'roc', label: 'Rate of Change', group: 'Oscillators', pane: 'separate',
       params: [{ key: 'length', label: 'Length', def: 9, int: true }],
@@ -332,7 +368,10 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
            bar late. Color is derived by fillSeries from the previous value. */
         return {
           lines: [],
-          hist: { values: ao, colorUp: c.up, colorDown: c.down },
+          /* ROUND298 (TV parity): AO's histogram colors by comparison with the
+             PREVIOUS bar (TV's AO is a momentum oscillator; a shrinking
+             positive bar is painted red), which is the `prev` mode below. */
+          hist: { values: ao, colorUp: c.up, colorDown: c.down, colorMode: 'prev' },
           levels: [{ value: 0, color: 'rgba(178,181,190,0.3)', dashed: true }],
         };
       } },
@@ -345,7 +384,12 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         const vol = bars.map((b) => b.volume);
         return {
           lines: [{ values: sma(vol, p.ma), color: c.ma, width: 1 }],
-          hist: { values: vol.map((v) => (v > 0 ? v : null)), colorUp: c.up, colorDown: c.down },
+          hist: { values: vol.map((v) => (v > 0 ? v : null)), colorUp: c.up, colorDown: c.down,
+            /* ROUND298 (TV parity): volume bars are colored by the CANDLE
+               direction (close vs open), not by the previous volume — that is
+               what TV's Volume does and what the "up"/"down" colors mean. */
+            colors: bars.map((b) => (b.close >= b.open ? c.up : c.down)),
+            colorMode: 'explicit' },
         };
       } },
     { type: 'obv', label: 'On Balance Volume', group: 'Volume', pane: 'separate',
@@ -370,18 +414,20 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
         const out = new Array(bars.length).fill(null);
         let posSum = 0, negSum = 0;
         const win = [];
+        /* ROUND298 (TV parity): the window is over the LAST `length` bars and
+           the reading starts only once it is full — exactly ta.mfi's rule in
+           the engine (and the reference). The native copy ran one bar ahead of
+           it (it started at i = length over a window of length+1 flows), so the
+           built-in MFI and the same indicator written in Pine disagreed by a
+           whole bar for the entire history. Flat bars feed neither side. */
         for (let i = 1; i < bars.length; i++) {
           const flow = tp[i] * bars[i].volume;
-          /* ROUND261: an UNCHANGED typical price is neither positive nor
-             negative money flow (the old `else` dumped flat bars into the
-             negative sum, so a flat/illiquid window reported MFI 0 =
-             extreme oversold). Flat bars contribute to neither sum. */
           const dir = tp[i] > tp[i - 1] ? 1 : (tp[i] < tp[i - 1] ? -1 : 0);
           win.push({ flow, dir });
           if (dir > 0) posSum += flow; else if (dir < 0) negSum += flow;
-          if (win.length > p.length) {
+          while (win.length > p.length) {
             const old = win.shift();
-            if (old) { if (old.dir > 0) posSum -= old.flow; else if (old.dir < 0) negSum -= old.flow; }
+            if (old.dir > 0) posSum -= old.flow; else if (old.dir < 0) negSum -= old.flow;
           }
           if (win.length === p.length) {
             /* no directional flow at all -> no reading (not 0 / not 100) */
@@ -395,13 +441,17 @@ const { sma, ema, wma, stdev, rsi, trueRange, atr } = kernels;
       params: [],
       colors: { line: ORANGE },
       compute: (bars, p, c) => {
-        /* ROUND261: keep the output aligned with bars — an empty history used
-           to return [0] (one value for zero bars). */
-        const out = bars.length ? [0] : [];
-        for (let i = 1; i < bars.length; i++) {
+        /* ROUND298 (TV parity): bar 0 contributes its OWN CLV*volume, it is not
+           a zero seed. The series used to start at 0 and add from bar 1, so
+           every A/D value was short by exactly the first bar's flow — a
+           constant offset against TV (the shape matched, the absolute value
+           never did, and comparing two symbols' A/D levels was meaningless).
+           ROUND261's empty-history alignment is preserved: 0 bars -> []. */
+        const out = new Array(bars.length).fill(null);
+        for (let i = 0; i < bars.length; i++) {
           const range = bars[i].high - bars[i].low;
           const clv = range === 0 ? 0 : ((bars[i].close - bars[i].low) - (bars[i].high - bars[i].close)) / range;
-          out.push(out[i - 1] + clv * bars[i].volume);
+          out[i] = (i === 0 ? 0 : out[i - 1]) + clv * bars[i].volume;
         }
         return { lines: [{ values: out, color: c.line, width: 2 }] };
       } },

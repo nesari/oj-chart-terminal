@@ -237,6 +237,14 @@ const taFns = {
     return pineNum(site.prev);
   },
 
+  /* ROUND298 (na rules, TV parity): a window holding ANY na value is na —
+     na arithmetic poisons the whole result. The old code substituted 0 for
+     na, so `ta.wma(2*wma(src,half) - wma(src,len))` (ta.hma's inner sum) read
+     a missing half-window as a REAL zero: HMA painted a flat 0 line for 20
+     bars before any real value existed. Same substitution also made
+     ta.wma(close, 20) report a value one bar early when the source stream
+     started with nulls (close is never null, but request.security and
+     user series are). */
   wma(site, src, len) {
     const L = intLen(len, 14);
     if (!site.win || site.len !== L) { site.win = new Win(L); site.len = L; }
@@ -245,7 +253,8 @@ const taFns = {
     let acc = 0;
     for (let j = 0; j < L; j++) {
       const v = site.win.last(L - 1 - j);
-      acc += (isFinite(v) ? v : 0) * (j + 1);
+      if (!isFinite(v)) return NA;
+      acc += v * (j + 1);
     }
     return pineNum(acc / ((L * (L + 1)) / 2));
   },
@@ -434,13 +443,26 @@ const taFns = {
     return [line, signal, hist];
   },
 
+  /* ROUND298 (TV parity): ta.supertrend returns a TUPLE
+     [supertrend, direction] — the documented destructuring form
+     `[st, dir] = ta.supertrend(3, 10)` is how essentially every published
+     Supertrend script consumes it. The kernel returned a bare number, so the
+     tuple decl read `dir` as na (and `st` as the line), and every
+     `direction < 0` / `direction == 1` branch in user scripts never fired.
+     Return shape now matches ta.macd/ta.bb (a plain array, which the tuple
+     decl destructures); reading it as a scalar still yields na, exactly like
+     those two.
+     Direction sign follows the reference: -1 = UPTREND (line below price),
+     +1 = DOWNTREND. This is the opposite of the internal `site.dir` flag, so
+     it is negated on the way out — the internal convention is kept as-is
+     because the built-in SuperTrend indicator shares this kernel. */
   supertrend(site, factor, atrLen) {
     const L = intLen(atrLen, 10);
     const f = (factor == null || isNA(factor)) ? 3 : num(factor);
     const b = site.env.bar;
-    if (!b) return NA;
+    if (!b) return [NA, NA];
     const av = taFns.atr(sub(site, 'atr'), L);
-    if (isNA(av)) return NA;
+    if (isNA(av)) return [NA, NA];
     const mid = (b.high + b.low) / 2;
     let upper = mid + f * av, lower = mid - f * av;
     if (site.prevUpper != null) upper = b.close > site.prevUpper ? upper : Math.min(upper, site.prevUpper);
@@ -452,7 +474,7 @@ const taFns = {
       else if (dir === -1 && b.close > lower) dir = 1;
     }
     site.dir = dir; site.prevUpper = upper; site.prevLower = lower;
-    return dir === 1 ? pineNum(lower) : pineNum(upper);
+    return [dir === 1 ? pineNum(lower) : pineNum(upper), pineNum(dir === 1 ? -1 : 1)];
   },
 
   cci(site, src, len) {
@@ -465,16 +487,28 @@ const taFns = {
     return pineNum(dv === 0 ? 0 : (v - basis) / (0.015 * dv));
   },
 
+  /* ROUND298 (na rules, TV parity): TV defines ta.stoch as
+       100 * (source - ta.lowest(low,length)) /
+             (ta.highest(high,length) - ta.lowest(low,length))
+     A zero denominator (a perfectly flat window, or a window whose extremes
+     have not warmed up yet) is na in Pine, not a fabricated 50. The old
+     `return 50` invented a reading for the first `length` bars of any series
+     that itself starts with na (StochRSI fed ta.rsi's na prefix), painting a
+     flat 50 line before the indicator had any data. */
   stoch(site, src, high, low, len) {
     const L = intLen(len, 14);
     const hh = taFns.highest(sub(site, 'h'), high, L);
     const ll = taFns.lowest(site.l || (site.l = {}), low, L);
     const v = num(src);
     if (isNA(hh) || isNA(ll) || !isFinite(v)) return NA;
-    if (hh === ll) return 50;
+    if (hh === ll) return NA;
     return pineNum(((v - ll) / (hh - ll)) * 100);
   },
 
+  /* ROUND298 (na rules, TV parity): same zero-denominator rule as ta.stoch —
+     TV's ta.wpr is 100 * (highest - close) / (highest - lowest), na when the
+     range collapses. It used to return -50, i.e. a "neutral" reading that
+     does not exist in the language. */
   wpr(site, len) {
     const L = intLen(len, 14);
     const b = site.env.bar;
@@ -482,25 +516,39 @@ const taFns = {
     const hh = taFns.highest(sub(site, 'h'), b.high, L);
     const ll = taFns.lowest(site.l || (site.l = {}), b.low, L);
     if (isNA(hh) || isNA(ll)) return NA;
-    if (hh === ll) return -50;
+    if (hh === ll) return NA;
     return pineNum(((hh - b.close) / (hh - ll)) * -100);
   },
 
-  mfi(site, vol, len) {
+  /* ROUND298 (TV parity + argument bug). The documented signature is
+       ta.mfi(series, length)
+     where `series` is the SOURCE (normally hlc3) and volume comes from the
+     bar. The kernel named that parameter `vol` and multiplied
+     `typicalPrice * source`, so `ta.mfi(hlc3, 14)` computed
+     `hlc3 * hlc3 * volume` — every reading was wrong from the first full
+     window (92.77 vs the correct 91.29 on EURUSD). The source is now used as
+     the price series it is, and volume is read from the bar.
+
+     na rules (TV): an unchanged source feeds neither sum; a window with no
+     directional flow at all has no ratio to report -> na. */
+  mfi(site, src, len) {
     const L = intLen(len, 14);
     const b = site.env.bar;
     if (!b) return NA;
-    const tpv = (b.high + b.low + b.close) / 3;
-    const flow = tpv * num(vol);
-    if (site.prevTp == null) { site.prevTp = tpv; return NA; }
-    const pos = tpv > site.prevTp;
-    site.prevTp = tpv;
+    const price = (src == null || isNA(src)) ? (b.high + b.low + b.close) / 3 : num(src);
+    if (!isFinite(price)) return NA;
+    const v = isFinite(b.volume) && b.volume > 0 ? b.volume : 1;
+    const flow = price * v;
+    if (site.prevTp == null) { site.prevTp = price; return NA; }
+    const dir = price > site.prevTp ? 1 : (price < site.prevTp ? -1 : 0);
+    site.prevTp = price;
     site.win = site.win || [];
-    site.win.push({ flow, pos });
-    let posSum = 0, negSum = 0;
-    if (site.win.length > L) site.win.shift();
-    for (const w of site.win) { if (w.pos) posSum += w.flow; else negSum += w.flow; }
+    site.win.push({ flow, dir });
+    while (site.win.length > L) site.win.shift();
     if (site.win.length < L) return NA;
+    let posSum = 0, negSum = 0;
+    for (const w of site.win) { if (w.dir > 0) posSum += w.flow; else if (w.dir < 0) negSum += w.flow; }
+    if (posSum === 0 && negSum === 0) return NA;
     return pineNum(negSum === 0 ? 100 : 100 - 100 / (1 + posSum / negSum));
   },
 
@@ -1192,6 +1240,25 @@ const taVars = {
       site.acc += ((c - o) / (h - l)) * (isFinite(v) ? v : 0);
     }
     return pineNum(site.acc);
+  },
+  /* ROUND298 (TV parity): ta.vwap and ta.accdist are BOTH a function
+     (ta.vwap(source)) and a series variable (ta.vwap, no call). The member
+     READ path resolves `ta.<name>` through taVars first and taFns second, so
+     without this entry a bare `plot(ta.vwap)` handed back the FUNCTION OBJECT
+     — plot() then stored NA on every bar and the indicator drew nothing at
+     all. vwap is registered here as the same session-anchored series the
+     call form produces with its default source (hlc3). */
+  vwap(site) {
+    const b = site.env.bar;
+    if (!b) return NA;
+    const t = site.env.barTimeMs;
+    const off = (site.env.serverOffSec || 0) * 1000;
+    const day = Math.floor((t + off) / 86400000);
+    if (day !== site.day) { site.day = day; site.pv = 0; site.v = 0; }
+    const price = (b.high + b.low + b.close) / 3;
+    const v = isFinite(b.volume) && b.volume > 0 ? b.volume : 1;
+    if (isFinite(price)) { site.pv += price * v; site.v += v; }
+    return pineNum(site.v ? site.pv / site.v : NA);
   },
   accdist(site) {
     // Chaikin A/D: cum(money-flow-multiplier * volume), flat bar adds 0
