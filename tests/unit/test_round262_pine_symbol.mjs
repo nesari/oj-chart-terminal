@@ -11,8 +11,7 @@
  * Pins:
  *  1. the runtime really reads its symbol from opts (the value that would
  *     go stale), so the rebuild is the only correct recovery;
- *  2. the instance state records the symbol it was built for;
- *  3. recomputePine checks that symbol BEFORE the "fresh skip" fast path.
+ *  2. the instance state records the symbol it was built for; *  3. recomputePine checks that symbol BEFORE the "fresh skip" fast path.
  *
  * Run: node tests/unit/test_round262_pine_symbol.mjs
  */
@@ -54,10 +53,14 @@ console.log('\n[2] instance state remembers the build symbol');
   ok(panel.includes("else if (st.symbol !== pane.symbol) { rebuild(pane, inst); }"),
     'recomputePine() rebuilds on a symbol change');
   const iSym = panel.indexOf('st.symbol !== pane.symbol');
-  const iFresh = panel.indexOf('const fresh = st.lastRunAt');
-  ok(iSym > 0 && iFresh > 0 && iSym < iFresh,
+  /* ROUND298: the skip is now a DATA-SIGNATURE comparison (st.ranSig) rather
+     than a 1.5 s wall-clock window, but the invariant this check exists for is
+     unchanged: the symbol guard must be evaluated BEFORE the "nothing to do"
+     skip, so a same-length reload can never bypass the rebuild. */
+  const iSkip = panel.indexOf('st.ranSig !== barSig(pane.bars)');
+  ok(iSym > 0 && iSkip > 0 && iSym < iSkip,
     'symbol check precedes the freshness fast path (a same-length reload cannot skip the rebuild)',
-    { iSym, iFresh });
+    { iSym, iSkip });
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

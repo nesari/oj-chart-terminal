@@ -27,6 +27,16 @@ import { openSettingsDialog } from './templates.js';
 /* ------------------------------ instance lifecycle -------------------- */
 
 /**
+ * ROUND298: identity of a bar history — length plus the first and last bar
+ * time. Used to decide "did this state already run THIS history?" without a
+ * wall-clock window (see recomputePine). A reload changes the length or an
+ * endpoint; an in-place appended live bar changes the length. */
+function barSig(bars) {
+  if (!bars || !bars.length) return '0';
+  return bars.length + ':' + (bars[0] && bars[0].time) + ':' + (bars[bars.length - 1] && bars[bars.length - 1].time);
+}
+
+/**
  * One full (re)build of a script instance: compile -> runtime -> adapter ->
  * history run. Async because of the M1 fetch; safe to call repeatedly.
  */
@@ -93,6 +103,13 @@ async function rebuild(pane, inst, opts) {
   }
   // fresh adapter + runtime every rebuild (inputs/script/pane may have changed)
   if (prev && prev.adapter) prev.adapter.detach();
+  /* ROUND298: the replaced state is DEAD. add() starts a pass without awaiting
+     it, so a caller that then awaits rebuild() leaves that first state with a
+     queued pendingRerun — which would fire after rebuild() resolved and run a
+     second full pass over the same history. Every full pass clears the live
+     alert tape (_resetForFullRun), so the rerun erased alerts raised in
+     between. Cancel whatever a superseded state still has queued. */
+  if (prev) { prev.superseded = true; prev.pendingRerun = false; }
   /* ROUND143: Defaults menu "Save as default" — a fresh instance with no
      explicit style inherits the saved one (explicit per-instance style wins) */
   if (!inst.style) {
@@ -261,6 +278,22 @@ async function runFull(pane, inst) {
      the runtime exclusively; concurrent runFull calls re-queue once. */
   if (st.running) { st.pendingRerun = true; return; }
   st.running = true;
+  /* ROUND298 (the round283 flake, three linked defects):
+      1. add() starts a pass WITHOUT awaiting it, so a caller that then awaits
+         rebuild() installs a NEW state while the first pass is still suspended
+         at its yield point. Each state carries a pass token now, and a
+         superseded pass returns after its await instead of publishing output.
+      2. A queued rerun exists to pick up data that arrived DURING the pass.
+         It used to run unconditionally, so a recompute that landed mid-pass
+         re-ran the same history for nothing — and every full pass CLEARS the
+         live alert tape (_resetForFullRun). That is how the round283 e2e lost
+         its tape: tape=0 while cursor/seq read 2. The rerun now requires the
+         history to have actually moved.
+      3. recomputePine's "already ran this" skip was a 1500 ms wall-clock
+         window (see there). */
+  const myPass = st.passToken = (st.passToken || 0) + 1;
+  const stillMine = () => rtMap(pane).get(inst.id) === st && st.passToken === myPass;
+  const sigAtStart = barSig(pane.bars);
   /* ROUND160 (user report: adding SMC wiped every OTHER indicator until it
      finished, and its own lines visibly "grew" across the chart): the chunked
      pass yields to the event loop, and each 400-bar chunk changes barIndex +
@@ -313,6 +346,11 @@ async function runFull(pane, inst) {
       try { Log.debug('pine', 'full pass start: ' + ((st.script && st.script.name) || 'script') + ' over ' + (rb.bars ? rb.bars.length : 0) + ' bars', { script: (st.script && st.script.name) || '' }); } catch (e) {}
       // chunked full pass: heavy scripts (786 Zones) yield to the event loop
       await st.rt.runChunked(rb.bars, 400);
+      /* ROUND298: a rebuild during the chunked pass superseded this state, so
+         this run's output must not be published — the new state has already
+         run (or is running) the same history. Publishing here is what reset
+         _alertCursor/output for the WRONG instance and doubled the work. */
+      if (!stillMine()) return;
       st.status = 'ok';
       st.errors = [];
       /* ROUND143+144b: style overrides mutate the RUN-frame output, so they
@@ -334,6 +372,9 @@ async function runFull(pane, inst) {
     st.lastRunMs = Math.round(performance.now() - t0);
     st.lastRunBars = pane.bars.length;
     st.lastRunAt = Date.now();
+    /* ROUND298: the history this pass consumed, for recomputePine's skip (see
+       barSig at the top of this function). */
+    st.ranSig = barSig(rb && rb.bars ? rb.bars : pane.bars);
     /* ROUND279: a full pass replays history, so its alert tape is never live.
        Advance the cursor past everything that pass produced; only events from
        updateForming/pushNewBar (real ticks / new bars) reach the panel.
@@ -373,7 +414,15 @@ async function runFull(pane, inst) {
        repaint the chart trade markers (closed trades only, so ticks which
        use updateForming never need this). */
     try { if (Manager.applyPaneMarkers) Manager.applyPaneMarkers(pane); } catch (e) {}
-    if (st.pendingRerun) { st.pendingRerun = false; runFull(pane, inst); }
+    /* ROUND298: a queued rerun belongs to THIS state, and only matters when the
+       history moved while the pass was running (see the three-defect note at
+       the top of this function). */
+    const stillCurrent = rtMap(pane).get(inst.id) === st;
+    if (st.pendingRerun) {
+      st.pendingRerun = false;
+      const dataMoved = barSig(pane.bars) !== sigAtStart;
+      if (stillCurrent && !st.superseded && dataMoved) runFull(pane, inst);
+    }
     /* ROUND160: completion ends with one forced full-set repaint — without
        it the siblings (key-skipped through the whole run) would stay erased
        until the next tick, and the newcomer would show nothing on a quiet chart.
@@ -496,10 +545,16 @@ function recomputePine(pane) {
         /* ROUND78 perf: rebuild()/add()/the settings-Ok path ALREADY ran a
            full pass a moment ago; recomputePine fires right after on the SAME
            data and used to repeat the entire history run back-to-back (2x the
-           heavy work per add/Ok). Skip when the state is fresh and the bar
-           count is unchanged — a genuine history reload changes the length. */
-        const fresh = st.lastRunAt && st.lastRunBars === pane.bars.length && Date.now() - st.lastRunAt < 1500;
-        if (!fresh) runFull(pane, inst); // history reloaded
+           heavy work per add/Ok).
+           ROUND298: "a moment ago" was a 1500 ms WALL-CLOCK window. One
+           history pass can take longer than that on a loaded machine, so the
+           next recompute looked stale and re-ran the same data — and a full
+           pass CLEARS the live alert tape. The guard is now the DATA SIGNATURE
+           (length + first/last bar time), which is what "the same history"
+           actually means. Not the array identity: the feed appends live bars
+           into the same array in place, so identity would wrongly skip a real
+           new bar. No clock, nothing to tune. */
+        if (st.ranSig !== barSig(pane.bars)) runFull(pane, inst); // history reloaded
       }
     }
   }
