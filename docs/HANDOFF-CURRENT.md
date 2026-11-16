@@ -1,6 +1,6 @@
 # وضعیت پروژه — نقطهٔ شروع چت جدید
 
-> آخرین به‌روزرسانی: ۲۰۲۶-۱۱-۱۴ | نسخه: **1.9.230** | HEAD: `ac07f4d`
+> آخرین به‌روزرسانی: ۲۰۲۶-۱۱-۱۶ | نسخه: **1.9.231** | HEAD: `814da54`
 
 ---
 
@@ -78,7 +78,7 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 | `npm run verify` | ✅ 180/180 + mt5 + smoke |
 | E2E gate | ✅ 22/22 |
 | CI (main + tag) | ✅ Linux · Windows · macOS |
-| Release v1.9.230 | ✅ ۱۹/۱۹ |
+| Release v1.9.231 | ✅ ۲۲/۲۲ |
 | کانال آپدیت | ✅ با کلاینت ناشناس |
 | visibility | public |
 
