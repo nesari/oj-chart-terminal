@@ -593,9 +593,20 @@ class PineRenderAdapter {
     const pane = this.pane;
     const ts = pane.chart.timeScale();
     const tSec = tMs / 1000 + ((this.rt && this.rt.env && this.rt.env.serverOffSec) || 0);
-    const hook = App.sessionHook;
-    const times = (hook && hook.active && hook.active() && pane._sessWithGapTimes)
-      ? pane._sessWithGapTimes : pane.barTimes;
+    /* ROUND300 (BUG: every Pine plot drawn ~12 bars left of its candle):
+       the chart's own series can be fed on the GAP-INCLUSIVE time axis —
+       "Session breaks" (ROUND288) inserts whitespace slots at day boundaries,
+       and Custom Session does the same. In that mode a bar's LOGICAL index is
+       its index in `_sessWithGapTimes`, NOT in `barTimes`: the two differ by
+       one slot per gap, so looking the time up in `barTimes` returned a
+       logical 12 slots too small (86 px at 7.17 px/bar) and every line,
+       label, box and shape sat to the left of its candle.
+       The axis choice must match what the SERIES was actually given, which is
+       exactly what `_sessGapIdx` records — the Custom Session hook is only one
+       of the two ways that axis becomes live. */
+    const onGapAxis = !!(pane._sessWithGapTimes && pane._sessGapIdx &&
+      pane._sessGapIdx.length === pane._sessWithGapTimes.length);
+    const times = onGapAxis ? pane._sessWithGapTimes : pane.barTimes;
     const l = U.timeToLogical(times, tSec);
     const i0 = Math.floor(l);
     const a = ts.logicalToCoordinate(i0);

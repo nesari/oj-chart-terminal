@@ -70,9 +70,10 @@ function netText(d) {
    same axis the drawing engine uses (engine._timeArr) — one time axis for
    the whole app. */
 function timeAxis(pane) {
-  const hook = App.sessionHook;
-  if (hook && hook.active && hook.active() && pane._sessWithGapTimes &&
-      pane._sessGapIdx && pane._sessGapIdx.length === pane._sessWithGapTimes.length) {
+  /* ROUND300: gate on the axis the SERIES actually has (`_sessGapIdx`), not on
+     the Custom Session hook — session breaks enable the gap axis too. */
+  if (pane._sessWithGapTimes && pane._sessGapIdx &&
+      pane._sessGapIdx.length === pane._sessWithGapTimes.length) {
     return pane._sessWithGapTimes;
   }
   /* ROUND128 belt+braces (the "marks on the wrong candle" report): the live

@@ -8,11 +8,16 @@
  * normal data path behind a Settings toggle.
  *
  * Pins:
- *  1. the setting exists with a true default and a dialog control
- *  2. the plain data path inserts the gap rows when the setting is on
- *  3. a single-day window degrades gracefully (no gaps, plain data)
- *  4. Custom Session still wins when it is active
- *  5. toggling the setting re-applies the series
+ *  1. the setting exists with an OFF default and a dialog control
+ *     (ROUND299: it shipped ON, which put every chart on a gap-inclusive time
+ *     axis — 5000 bars became 5012 slots — so charts showed holes between days
+ *     and zoom looked jumpy. It stays available, it is just not the default.)
+ *  2. a saved `true` from an older build is migrated ONCE, so changing the
+ *     default actually reaches existing installs
+ *  3. the plain data path inserts the gap rows when the setting is on
+ *  4. a single-day window degrades gracefully (no gaps, plain data)
+ *  5. Custom Session still wins when it is active
+ *  6. toggling the setting re-applies the series
  *
  * Run: node tests/unit/test_round288b_session_breaks.mjs
  */
@@ -29,9 +34,14 @@ const ok = (cond, label, extra) => {
 /* ---------- 1. the setting + control ---------- */
 {
   const st = readSource('src/renderer/js/chart/settings.js');
-  ok(/sessionBreaks: true,/.test(st), 'sessionBreaks defaults to ON');
+  ok(/sessionBreaks: false,/.test(st), 'sessionBreaks defaults to OFF (a continuous chart)');
   ok(/rowCheckbox\('Session breaks', 'sessionBreaks'/.test(st), 'the Canvas tab has a Session breaks checkbox');
   ok(/if \(key === 'sessionBreaks'\)/.test(st), 'changing it triggers a series refresh');
+  /* the migration: a stored `true` from the R288 default must flip once, but a
+     deliberate re-enable (marked) must survive the next load */
+  ok(/saved\.sessionBreaks === true && !saved\.sessionBreaksDefaultOff/.test(st),
+    'a legacy saved ON is flipped once');
+  ok(/sessionBreaksDefaultOff = true/.test(st), 'and the flip is marked so it never repeats');
 }
 
 /* ---------- 2. the data path ---------- */

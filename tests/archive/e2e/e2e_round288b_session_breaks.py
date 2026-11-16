@@ -111,17 +111,24 @@ def main():
             print('    ' + json.dumps(st)[:300])
             if st.get('error'):
                 check('series readable', False, st['error'])
-            check('Session breaks defaults ON', st.get('setting') is True, st.get('setting'))
+            # ROUND299: the default is now OFF (a continuous chart, as 1.9.197
+            # shipped). The feature is exercised by TURNING IT ON below.
+            check('Session breaks defaults OFF', st.get('setting') is False, st.get('setting'))
             check('the hook exposes refreshBreaks', st.get('hookHasRefresh') is True, st)
 
-            print('  -- 2. gap slots are in the published axis --')
+            print('  -- 2. turning it ON puts gap slots in the published axis --')
+            page.evaluate(TOGGLE_JS, True)
+            page.wait_for_timeout(1500)
+            on = page.evaluate(STATE_JS)
+            print('    ' + json.dumps(on)[:300])
+            check('the setting is on', on.get('setting') is True, on.get('setting'))
             check('the axis is LONGER than the bars (whitespace gaps present)',
-                  (st.get('axisLen') or 0) > (st.get('bars') or 0),
-                  str(st.get('axisLen')) + ' axis vs ' + str(st.get('bars')) + ' bars')
-            check('the axis carries real gap slots', (st.get('gapSlots') or 0) > 0, st.get('gapSlots'))
+                  (on.get('axisLen') or 0) > (on.get('bars') or 0),
+                  str(on.get('axisLen')) + ' axis vs ' + str(on.get('bars')) + ' bars')
+            check('the axis carries real gap slots', (on.get('gapSlots') or 0) > 0, on.get('gapSlots'))
             check('the gap count is a multiple of 3 (TV gap width)',
-                  (st.get('gapSlots') or 0) % 3 == 0, st.get('gapSlots'))
-            check('the pane is marked as breaks-only', st.get('breaksOnly') is True, st.get('breaksOnly'))
+                  (on.get('gapSlots') or 0) % 3 == 0, on.get('gapSlots'))
+            check('the pane is marked as breaks-only', on.get('breaksOnly') is True, on.get('breaksOnly'))
 
             print('  -- 3. turning it OFF removes the gaps --')
             page.evaluate(TOGGLE_JS, False)

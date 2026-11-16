@@ -58,8 +58,15 @@ const DEFAULTS = {
     dayOfWeek: true,             // day-of-week on time-scale labels
     /* --- Canvas --- */
     bgMode: 'solid', bg1: '#0f0f0f', bg2: '#0a0a0a', /* round 44: TV dark */
-    /* ROUND288 (TV parity): draw a small gap between trading days */
-    sessionBreaks: true,
+    /* ROUND300: OFF by default. Session breaks insert 3 whitespace slots
+       between trading days, which puts the chart on a gap-inclusive time axis
+       (5000 bars -> 5012 slots). That is TradingView's behaviour, but it
+       surprised every existing user of this app: the chart suddenly had holes
+       in it, the time scale read as broken, and zooming appeared to jump
+       because the gap slots sit between real bars. The feature still exists
+       (Settings > Canvas > Session breaks) for anyone who wants the TV look;
+       the default keeps the chart continuous, exactly as 1.9.197 shipped. */
+    sessionBreaks: false,
     vGrid: true, hGrid: true, gridColor: 'rgba(42,46,57,.55)',
     crosshair: true, crossColor: '#758696', crossStyle: 'largedashed',
     watermark: true, wmSymbol: true, wmTf: true, wmSize: 44, wmOpacity: 0.12,
@@ -87,6 +94,17 @@ const DEFAULTS = {
     const c = Object.assign({}, DEFAULTS, saved);
     if (saved.vGrid === undefined && saved.grid !== undefined) c.vGrid = saved.grid !== false;
     if (saved.hGrid === undefined && saved.grid !== undefined) c.hGrid = saved.grid !== false;
+    /* ROUND300: `sessionBreaks` shipped defaulting to TRUE (R288) and was
+       written to storage on the first settings change of every install. Simply
+       changing the default would therefore never reach anyone who had already
+       run such a build — they would keep the gapped axis forever. Flip it ONCE
+       for those saves; after that the user's own choice wins (the marker keeps
+       this from re-flipping a deliberate re-enable). */
+    if (saved.sessionBreaks === true && !saved.sessionBreaksDefaultOff) {
+      c.sessionBreaks = false;
+      c.sessionBreaksDefaultOff = true;
+      try { U.lsSet('mt5_settings', c); } catch (e) {}
+    }
     return c;
   }
 

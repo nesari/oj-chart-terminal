@@ -418,6 +418,13 @@ import { createPane } from './pane.js';
     if (pane.symbol === symbol) return;
     releaseSub(pane.symbol);
     pane.symbol = symbol;
+    /* ROUND300: same rule as the timeframe switch below — clearing pane.bars
+       without clearing the SERIES leaves the previous symbol's candles on
+       screen while every consumer maps an empty bar array (LWC "Value is null"
+       + the indicator pinned to stale coordinates). Blank both together so the
+       pane is honestly empty until the new history lands. */
+    try { if (PineUI) PineUI.dropPane(pane); } catch (e) { try { Log.debug('chart', 'pine drop on symbol switch failed', e); } catch (e2) {} }
+    try { if (typeof pane.series.setData === 'function') pane.series.setData([]); } catch (e) {}
     pane.bars = []; pane.barTimes = [];
     pane._renkoSize = null;
     /* round 29: the truth state belongs to ONE (symbol, tf, source) triple —
@@ -453,6 +460,21 @@ import { createPane } from './pane.js';
     }
     if (pane.tf === tfId) return;
     pane.tf = tfId;
+    /* ROUND300 (reported: "switch timeframe with an indicator on the chart and
+       the chart jumps, the indicator stays behind, then after some scrolling the
+       candles come back" + 129x "Value is null" from inside LWC's candlestick
+       renderer):
+       Clearing `pane.bars` does NOT clear the series — the PREVIOUS interval's
+       rows stay on screen until the new history arrives (~20 frames later).
+       During that window the pane had bars=[] while its series still held 5000
+       rows of a DIFFERENT timeframe, so every Pine painter mapped an empty bar
+       array onto a live chart (the stale drawing) and LWC rendered the series
+       against an axis it no longer shared with any consumer.
+       Drop the drawings and blank the series BEFORE the swap: the pane then
+       shows an honest empty chart while loading, exactly like TradingView, and
+       nothing can paint against a mismatched (bars vs series) state. */
+    try { if (PineUI) PineUI.dropPane(pane); } catch (e) { try { Log.debug('chart', 'pine drop on tf switch failed', e); } catch (e2) {} }
+    try { if (typeof pane.series.setData === 'function') pane.series.setData([]); } catch (e) {}
     pane.bars = []; pane.barTimes = [];
     pane._renkoSize = null;
     pane._histStrike = 0; pane._histMismatch = null; pane._histPoisonedAt = 0; // round 29: new source

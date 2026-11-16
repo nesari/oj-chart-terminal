@@ -28,6 +28,8 @@
  *   round290  version row + auto-update degraded mode in a browser build  (new)
  *   round294  About/version popup on the toolbar: version + manual check  (new)
  *   round299  every built-in indicator runs as a Pine script           (new)
+ *   round300  Pine drawings sit exactly on their bar (pan/zoom/TF)     (new)
+ *   round301  TF/symbol switch leaves no stale series rows             (new)
  *   audit_left_toolbar  every drawing tool paints, no orphans             (new)
  *   audit_core_chart_tv  chart API surface, styles, context menus          (new)
  *   audit_app_sweep     every panel/toolbar entry opens real content       (new)
@@ -81,6 +83,10 @@ const CURATED = [
   'audit_app_deep.py',
   /* ROUND298: channel band fills + histogram color modes must really paint. */
   'e2e_round299_builtin_pine.py',
+  /* ROUND300: a Pine drawing must sit exactly on its bar (pan/zoom/timeframes). */
+  'e2e_round300_pine_alignment.py',
+  /* ROUND301: switching TF/symbol must never leave stale rows in the series. */
+  'e2e_round301_tf_switch.py',
 ];
 
 /* Per attempt. A cold Windows runner needs ~30s for a heavy suite; the retry

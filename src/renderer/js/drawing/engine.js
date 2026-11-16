@@ -80,10 +80,14 @@ const HIT = 7;
        session mode this returns pane.barTimes and every path stays
        byte-identical to before. */
     _timeArr() {
-      const hook = App.sessionHook;
+      /* ROUND300: the axis is whatever the SERIES was fed, which `_sessGapIdx`
+         records — session breaks (ROUND288) put the chart on the gap axis
+         without the Custom Session hook being active, so gating on the hook
+         alone mapped every drawing onto the ungapped barTimes (one logical slot
+         per day-gap off, i.e. drawings sat left of their candles). */
       const p = this.pane;
-      return (hook && hook.active && hook.active() && p._sessWithGapTimes &&
-              p._sessGapIdx && p._sessGapIdx.length === p._sessWithGapTimes.length)
+      return (p._sessWithGapTimes && p._sessGapIdx &&
+              p._sessGapIdx.length === p._sessWithGapTimes.length)
         ? p._sessWithGapTimes : p.barTimes;
     }
     _xOf(t) {
