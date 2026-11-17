@@ -226,6 +226,14 @@ class PineRenderAdapter {
       if (lr) chart.timeScale().setVisibleLogicalRange({ from: lr.from, to: lr.to });
     } catch (e) { Log.debug('pine', 'adapter range restore failed', e) }
     Manager.layoutSubPanes(pane);
+    /* ROUND302: the built-in indicators' legend rows live INSIDE their pane
+       (indicators-ui.renderRows routes by sub-pane existence), but this
+       sub-pane is born from the async engine pass — AFTER the rows were
+       rendered on the add path. Without this nudge the row stayed in the
+       price pane's legend forever (user report: "the indicator's settings /
+       name / remove buttons sit on the chart instead of its own window").
+       The manager call is optional so the adapter never depends on it. */
+    try { if (Manager.onPineSubPane) Manager.onPineSubPane(pane, this.inst); } catch (e) {}
     this.sub = sub;
     return sub;
   }
@@ -518,6 +526,42 @@ class PineRenderAdapter {
     try { this._syncTables(); } catch (e) {}
   }
 
+  /* ROUND302 (BUG: the 14 separate-pane indicators painted 0 visible px, and
+     the set was FLAKY — one run fine, the next blank): the paint canvases are
+     SHARED by every script on the pane, and the first painter of a generation
+     clears the WHOLE canvas. The per-adapter key-skip was decided
+     INDEPENDENTLY, so a cycle in which only script A changed ended with A
+     clearing the canvas and drawing itself — while B, C and D were skipped
+     and their pixels were gone for good (nothing marks them dirty until their
+     own key changes, which may be many frames later or never).
+     The question "must this adapter repaint?" is therefore only meaningful for
+     the WHOLE set: a cycle is all-or-nothing. This predicate is the pure,
+     side-effect-free half (framePane() asks everyone, then forces the set). */
+  needsPaint() {
+    const pane = this.pane;
+    if (!pane._pineCanvases || !this.rt) return false;
+    if (this._forcePaint) return true;
+    /* the in-flight full pass rule (see _paintIfKeyChanged) */
+    if ((pane._pineRunning || 0) > 0) return false;
+    return this._cycleKey() !== this._lastPaintKey;
+  }
+
+  /* ROUND79/R302: the visible-window fingerprint this adapter would paint
+     with right now. Shared by needsPaint() and _paintIfKeyChanged(). */
+  _cycleKey() {
+    const pane = this.pane;
+    let from = 0, to = 0, frKey = '';
+    try {
+      const lr = pane.chart.timeScale().getVisibleLogicalRange();
+      if (lr) {
+        from = Math.floor(lr.from); to = Math.ceil(lr.to);
+        /* ROUND79: exact fractional scroll — see the _paintKey note */
+        frKey = Math.round(lr.from * 1000) + '|' + Math.round(lr.to * 1000);
+      }
+    } catch (e) {}
+    return this._paintKey(from, to, frKey);
+  }
+
   /* ROUND79: shared key-check + paint. Returns true when pixels changed.
      ROUND141: `force` (forced full-set cycles) bypasses the key — the
      generation clear already wiped the canvas, so a key-skip here would
@@ -532,16 +576,7 @@ class PineRenderAdapter {
        (growing lines) nor clear away the siblings (vanishing indicators).
        The run's finally ends with one forced full-set repaint. */
     if (!force && (pane._pineRunning || 0) > 0) return false;
-    let from = 0, to = 0, frKey = '';
-    try {
-      const lr = pane.chart.timeScale().getVisibleLogicalRange();
-      if (lr) {
-        from = Math.floor(lr.from); to = Math.ceil(lr.to);
-        /* ROUND79: exact fractional scroll — see the _paintKey note */
-        frKey = Math.round(lr.from * 1000) + '|' + Math.round(lr.to * 1000);
-      }
-    } catch (e) {}
-    const key = this._paintKey(from, to, frKey);
+    const key = this._cycleKey();
     if (!this._forcePaint && !force && key === this._lastPaintKey) return false;
     this._lastPaintKey = key;
     this._forcePaint = false;
@@ -773,9 +808,59 @@ class PineRenderAdapter {
   _visRange() {
     try {
       const lr = this.pane.chart.timeScale().getVisibleLogicalRange();
-      if (lr) return [Math.max(0, Math.floor(lr.from) - 2), Math.min(this.pane.barTimes.length - 1, Math.ceil(lr.to) + 2)];
+      if (lr) return [Math.max(0, Math.floor(lr.from) - 2), Math.min(this._lastSlot(), Math.ceil(lr.to) + 2)];
     } catch (e) {}
-    return [0, this.pane.barTimes.length - 1];
+    return [0, this._lastSlot()];
+  }
+
+  /** the visible window clamped to REAL bars — for painters that index
+   *  `bars[i]` (barcolor, bgcolor, plotshape/plotchar). ROUND302: _visRange()
+   *  may now extend past the last bar (offset plots), which those cannot use. */
+  _barRange() {
+    const n = this.pane.bars ? this.pane.bars.length : 0;
+    const last = Math.max(0, n - 1);
+    try {
+      const lr = this.pane.chart.timeScale().getVisibleLogicalRange();
+      if (lr) return [Math.max(0, Math.floor(lr.from) - 2), Math.min(last, Math.ceil(lr.to) + 2)];
+    } catch (e) {}
+    return [0, last];
+  }
+
+  /* ROUND302 (BUG: Ichimoku's cloud stopped at the last candle; TV draws 26
+     bars of it into the future): plot(series, offset=n) stores its value at
+     slot bar+n, so the FARTHEST slot a script can occupy is the last bar plus
+     the largest positive offset. Clamping the visible window to
+     `barTimes.length - 1` threw that projection away. */
+  _lastSlot() {
+    const n = this.pane.barTimes ? this.pane.barTimes.length : 0;
+    let last = Math.max(0, n - 1);
+    try {
+      const o = this._out();
+      for (const k of o.plotsOrder) {
+        const p = o.plots.get(k);
+        if (!p) continue;
+        if (typeof p.offset === 'number' && p.offset > 0) last = Math.max(last, n - 1 + p.offset);
+        const vl = p.values ? p.values.length : 0;
+        if (vl > last + 1) last = vl - 1;
+      }
+    } catch (e) {}
+    return last;
+  }
+
+  /** x for a SLOT index (bar index or an offset plot's projected slot).
+   *  ROUND302: slots past the last bar have no bar object to look a time up
+   *  in — they are extrapolated from the last bar at the chart's bar spacing,
+   *  which is exactly where LWC places its forward margin. */
+  _xAtSlot(i) {
+    const bars = this.pane.bars;
+    const n = bars ? bars.length : 0;
+    if (i >= 0 && i < n) return this._xOf(this._barMs(bars[i].time));
+    if (!n) return null;
+    const lastX = this._xOf(this._barMs(bars[n - 1].time));
+    if (lastX == null) return null;
+    let sp = 8;
+    try { sp = this.pane.chart.timeScale().options().barSpacing || 8; } catch (e) {}
+    return lastX + (i - (n - 1)) * sp;
   }
 
   /* ---- bgcolor: under-candle wash on the bg canvas ---- */
@@ -789,7 +874,7 @@ class PineRenderAdapter {
     const pane = this.pane;
     const bars = pane.bars;
     if (!bars.length) return;
-    const [from, to] = this._visRange();
+    const [from, to] = this._barRange();
     const r = this._paintRect(); // ROUND 74: wash stays inside the script's pane
     /* ROUND80: the wash is clipped to the plot area too — the rightmost bar's
        cell would otherwise run past the candles onto the price scale */
@@ -941,7 +1026,8 @@ class PineRenderAdapter {
           runColor = null;
           continue;
         }
-        const x = this._xOf(this._barMs(bars[i].time));
+        /* ROUND302: slot-based x — an offset plot's projected tail has no bar */
+        const x = this._xAtSlot(i);
         const y1 = this._yOf(v1), y2 = this._yOf(v2);
         if (x == null || y1 == null || y2 == null) { flushRun(); runColor = null; continue; }
         const col = norm(c);
@@ -1207,7 +1293,7 @@ class PineRenderAdapter {
         for (let i = from; i <= to; i++) {
           const v = val(i);
           if (v == null || hidden(i)) continue;
-          const x = this._xOf(this._barMs(bars[i].time)), y = this._yOf(v, forcedOnly);
+          const x = this._xAtSlot(i), y = this._yOf(v, forcedOnly);
           if (x == null || y == null) continue;
           if (prev) { ctx.strokeStyle = colAt(i); ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(x, y); ctx.stroke(); }
           prev = [x, y];
@@ -1225,7 +1311,7 @@ class PineRenderAdapter {
       for (let i = from; i <= to; i++) {
         const v = val(i);
         if (v == null) { if (breaks) pts.push(null); continue; }
-        const x = this._xOf(this._barMs(bars[i].time)), y = this._yOf(v, forcedOnly);
+        const x = this._xAtSlot(i), y = this._yOf(v, forcedOnly);
         if (x == null || y == null) { pts.push(null); continue; }
         pts.push({ x, y, col: colAt(i), hide: hidden(i) });
       }
@@ -1292,7 +1378,7 @@ class PineRenderAdapter {
     const ovLoc = sty && sty.shapes && sty.shapes[sh.key] && sty.shapes[sh.key].loc;
     const loc = ovLoc || scriptLoc;
     const relocated = ovLoc && ovLoc !== scriptLoc;
-    const [from, to] = this._visRange();
+    const [from, to] = this._barRange();
     const size = SIZE_PX[sh.size] || 10;
     const r = this._paintRect(force); // ROUND 74: top/bottom anchors live in the script's pane (ROUND227: forced on main)
     /* ROUND149: arrow height normalizes over the series' full-run magnitude

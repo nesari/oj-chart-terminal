@@ -453,9 +453,21 @@ const taFns = {
      decl destructures); reading it as a scalar still yields na, exactly like
      those two.
      Direction sign follows the reference: -1 = UPTREND (line below price),
-     +1 = DOWNTREND. This is the opposite of the internal `site.dir` flag, so
-     it is negated on the way out — the internal convention is kept as-is
-     because the built-in SuperTrend indicator shares this kernel. */
+     +1 = DOWNTREND. This is the opposite of the internal flag, so it is negated
+     on the way out.
+     ROUND302 (BUG: SuperTrend painted nothing at all, and its plots alternated
+     na/value on EVERY bar): the ratchet and the flip test used the CURRENT
+     bar's close, while TradingView's reference implementation uses close[1]:
+         up := close[1] > up1 ? max(up, up1) : up
+         dn := close[1] < dn1 ? min(dn, dn1) : dn
+         trend := trend == -1 and close > dn1 ? 1
+                : trend == 1  and close < up1 ? -1 : trend
+     With the current close the band was recomputed from a level it had just
+     been compared against, so `close < up1` / `close > dn1` fired on nearly
+     every bar: direction alternated bar-by-bar, each plot held a single bar of
+     value surrounded by na, and a 1-bar linebr run paints nothing. The
+     comparison levels (up1/dn1) are the PREVIOUS bars' bands, not the ones
+     computed for this bar. */
   supertrend(site, factor, atrLen) {
     const L = intLen(atrLen, 10);
     const f = (factor == null || isNA(factor)) ? 3 : num(factor);
@@ -464,16 +476,27 @@ const taFns = {
     const av = taFns.atr(sub(site, 'atr'), L);
     if (isNA(av)) return [NA, NA];
     const mid = (b.high + b.low) / 2;
+    /* the comparison levels are LAST bar's bands (TV's up1 / dn1) */
+    const up1 = site.prevUp != null ? site.prevUp : null;
+    const dn1 = site.prevDn != null ? site.prevDn : null;
     let upper = mid + f * av, lower = mid - f * av;
-    if (site.prevUpper != null) upper = b.close > site.prevUpper ? upper : Math.min(upper, site.prevUpper);
-    if (site.prevLower != null) lower = b.close < site.prevLower ? lower : Math.max(lower, site.prevLower);
+    /* close[1] (not close) drives the ratchet — see the ROUND302 note */
+    const prevClose = site.prevClose;
+    if (up1 != null && prevClose != null) {
+      lower = prevClose > up1 ? Math.max(lower, up1) : lower;
+    }
+    if (dn1 != null && prevClose != null) {
+      upper = prevClose < dn1 ? Math.min(upper, dn1) : upper;
+    }
     let dir = site.dir;
     if (dir == null) dir = 1;
-    if (site.prevUpper != null) {
-      if (dir === 1 && b.close < upper) dir = -1;
-      else if (dir === -1 && b.close > lower) dir = 1;
-    }
-    site.dir = dir; site.prevUpper = upper; site.prevLower = lower;
+    /* nz(up[1], up) / nz(dn[1], dn): before warm-up the bands are their own */
+    const cmpUp = up1 != null ? up1 : lower;
+    const cmpDn = dn1 != null ? dn1 : upper;
+    if (dir === 1 && b.close < cmpUp) dir = -1;
+    else if (dir === -1 && b.close > cmpDn) dir = 1;
+    site.dir = dir;
+    site.prevUp = lower; site.prevDn = upper; site.prevClose = b.close;
     return [dir === 1 ? pineNum(lower) : pineNum(upper), pineNum(dir === 1 ? -1 : 1)];
   },
 

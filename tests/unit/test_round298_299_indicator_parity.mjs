@@ -191,6 +191,22 @@ console.log('\n[7] SuperTrend direction split');
   ok(!up.some((v, i) => v != null && dn[i] != null), 'up and down never overlap on the same bar');
   const covered = up.filter((v) => v != null).length + dn.filter((v) => v != null).length;
   ok(covered > 350, 'nearly every warmed-up bar has a trend line', covered);
+  /* ROUND302 (BUG: SuperTrend painted NOTHING): the kernel ratcheted the bands
+     and tested the flip with the CURRENT bar's close instead of close[1], so
+     the direction alternated every single bar. Each plot then held a 1-bar run
+     surrounded by na, and a 1-bar linebr run paints zero pixels. The trend is a
+     state that must PERSIST across bars — assert that directly. */
+  const runLen = (arr) => {
+    let best = 0, cur = 0, runs = 0;
+    for (const v of arr) { if (v == null) { if (cur) runs++; if (cur > best) best = cur; cur = 0; } else cur++; }
+    if (cur) { runs++; if (cur > best) best = cur; }
+    return { best, runs };
+  };
+  const ru = runLen(up), rd = runLen(dn);
+  ok(ru.best > 8 && rd.best > 8, 'each trend segment holds for many bars (not one bar)',
+    { up: ru, dn: rd });
+  ok(ru.runs + rd.runs < 120, 'the direction flips a sane number of times, not every bar',
+    ru.runs + rd.runs);
   /* the line satisfies the defining property: below price in an uptrend */
   let bad = 0;
   for (let i = 0; i < BARS.length; i++) {

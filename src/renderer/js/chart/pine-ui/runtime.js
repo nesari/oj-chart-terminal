@@ -42,6 +42,24 @@ function dropPane(pane) {
 function framePane(pane, force) {
   const map = RT.get(pane);
   if (!map || !map.size) return;
+  /* ROUND302 (BUG: sub-pane indicators blanked, intermittently per run):
+     the shared pine canvases are cleared by the FIRST painter of a
+     generation, so a per-adapter "my key did not change, skip" decision could
+     end a cycle with A cleared + drawn while B/C/D were skipped — their pixels
+     were erased and never came back (nothing dirties them until their own key
+     changes, which for an oscillator is only on a new bar).
+     A paint cycle is therefore ALL-OR-NOTHING: ask every adapter first, and
+     force the whole set when any one of them needs it. Cost is unchanged in
+     the common idle case (nobody needs it -> zero work) and on a real change
+     (everybody repaints, exactly as the forced path already did). */
+  if (!force) {
+    let any = false;
+    for (const [, st] of map) {
+      try { if (st.adapter && st.rt && st.adapter.needsPaint()) { any = true; break; } } catch (e) {}
+    }
+    if (!any) return;
+    force = true;
+  }
   /* ROUND141: one generation per full paint cycle — the first painter of
      each shared canvas clears it, siblings overpaint (see adapter). */
   pane._pineGen = (pane._pineGen || 0) + 1;

@@ -110,6 +110,12 @@ import { applySymbol, lastTickAt, onTick, resetPriceZoom, scheduleStaleReload, t
      event (vertical pan/zoom touches the price scale only) */
   Manager.settlePine = function (pane) { return PineUI.settlePane(pane); };
   Manager.updatePineRows = function (pane, hoverTime) { return PineUI.updateHover(pane, hoverTime); };
+  /* ROUND302: a non-overlay script's sub-pane is created from the async engine
+     pass, i.e. AFTER the legend rows were rendered. indicators-ui owns those
+     rows (built-ins are Pine now), so re-render them once the pane exists —
+     the row belongs INSIDE the indicator's own pane (TV), not in the price
+     legend. */
+  Manager.onPineSubPane = function (pane) { return indRecompute(pane); };
   Manager.serializePine = function (pane) { return PineUI.serialize(pane); };
   Manager.restorePine = function (pane, recs) { return PineUI.restoreInto(pane, recs); };
   /* ROUND84 (My scripts in the Indicators dialog): same delegation pattern —

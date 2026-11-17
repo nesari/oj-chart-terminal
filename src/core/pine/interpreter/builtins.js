@@ -1732,6 +1732,9 @@ const builtins = {
       f = { p1, p2, colors: [], title: '' };
       this.out.fills.push(f);
     }
+    /* ROUND302: the two endpoint plots' `offset` (see the colour write below) */
+    const p1Rec = this.out.plots.get(p1);
+    const p2Rec = this.out.plots.get(p2);
     /* ROUND138: TV's extended/"gradient" fill() overload —
        fill(plot1, plot2, top_value, bottom_value, top_color, bottom_color,
        title, display). Distinguished from the flat form by having a 3rd
@@ -1754,7 +1757,10 @@ const builtins = {
           t = Math.min(1, Math.max(0, t));
         }
         const lerp = (a, b) => a + (b - a) * t;
-        f.colors[this.barIndex] = new PineColor(
+        const offP1g = (p1Rec && typeof p1Rec.offset === 'number' && isFinite(p1Rec.offset)) ? p1Rec.offset : 0;
+        const offP2g = (p2Rec && typeof p2Rec.offset === 'number' && isFinite(p2Rec.offset)) ? p2Rec.offset : 0;
+        const gi = this.barIndex + (offP1g === offP2g ? offP1g : 0); // ROUND302: colour rides the plots' slot
+        if (gi >= 0) f.colors[gi] = new PineColor(
           lerp(bottomColor.r, topColor.r),
           lerp(bottomColor.g, topColor.g),
           lerp(bottomColor.b, topColor.b),
@@ -1772,7 +1778,19 @@ const builtins = {
     let c = colorArg ? colorArg.value : positional[2];
     if (c === NA || isNA(c)) c = new PineColor(0, 0, 0, 0); // explicit na colour = hidden fill
     c = this._transp(c, transpArg ? transpArg.value : undefined); // ROUND154: v4 transp=
-    f.colors[this.barIndex] = c instanceof PineColor ? c : null;
+    /* ROUND302 (BUG: Ichimoku's cloud was ONE colour and its red/green
+       switches sat ~26 bars off): plot values are stored at the OFFSET slot
+       (`plot(series, offset=n)` writes value[bar+n]) while this fill wrote its
+       colour at the plain bar index. The painter paints slot i from
+       values[i], so a shifted plot was coloured by the bar 26 slots away —
+       and the projected region (slots past the last bar) had NO colour at all,
+       which made the whole forward cloud fall back to the last colour.
+       A fill's colour belongs to the same slot as the points it joins. */
+    const offP1 = (p1Rec && typeof p1Rec.offset === 'number' && isFinite(p1Rec.offset)) ? p1Rec.offset : 0;
+    const offP2 = (p2Rec && typeof p2Rec.offset === 'number' && isFinite(p2Rec.offset)) ? p2Rec.offset : 0;
+    const fOff = offP1 === offP2 ? offP1 : 0; // mixed offsets: keep TV's per-bar form
+    const ci = this.barIndex + fOff;
+    if (ci >= 0) f.colors[ci] = c instanceof PineColor ? c : null;
     this.out._pushed.add('fill:' + p1 + ':' + p2);
     return undefined;
   },

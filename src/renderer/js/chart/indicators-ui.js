@@ -283,6 +283,17 @@ function renderRows(pane) {
   U.clear(box);
   /* sub-pane headers are owned by the Pine adapter; clear the ones we made */
   if (pane._subs) for (const [, sub] of pane._subs) if (sub._rows) U.clear(sub._rows);
+  /* ROUND302 (BUG: RSI/MACD/... kept their legend row — name, gear, eye, x —
+     in the PRICE pane's legend, TV shows it inside the indicator's own pane):
+     the row used to be placed by looking the sub-pane up in `pane._subs` at
+     RENDER time. On the add path the row is rendered BEFORE the Pine runtime
+     has built its sub-pane (the engine pass is async), so the lookup missed
+     and the row fell back to the main legend — and nothing re-renders rows
+     when the sub-pane finally appears, so it stayed there forever (TF switch,
+     settings Ok and tick updates all kept it).
+     Now the placement is decided per row on every render AND the adapter tells
+     us when its sub-pane is born (see PineRenderAdapter._ensureSub), so the
+     row lands in the right pane no matter which happened first. */
   for (const rec of pane.indicators || []) {
     const def = Indicators.def(rec.type);
     if (!def) continue;

@@ -1,116 +1,196 @@
-# اندیکاتورهای خراب — تشخیص راند ۳۰۲ (برای چت بعدی)
+# اندیکاتورهای خراب — تشخیص و رفع راند ۳۰۲
 
-> **خلاصه:** از ۲۷ اندیکاتور داخلی، **۱۴ مورد به‌طور کامل رسم نمی‌شوند** (زیرپنل
-> ساخته می‌شود ولی صفر پیکسل روی چارت می‌نشیند) و **۲ مورد ناپایدارند**. علت در
-> زیرساخت **زیرپنل Pine** است، نه در فرمول‌ها.
+> **خلاصه:** گزارش اولیه می‌گفت ۱۴ اندیکاتور زیرپنلی «صفر پیکسل» رسم می‌کنند و
+> علت را لایه‌بندی (z-index) حدس زده بود. **آن حدس غلط بود.** بازتولید زندهٔ
+> همین راند سه باگ واقعی و مستقل را نشان داد:
+>
+> 1. **چرخهٔ رنگ‌آمیزی، همه‌یا‌هیچ نبود** → زیرپنل‌ها نامنظم خالی می‌شدند.
+> 2. **ردیف لِجند زیرپنل در لِجند چارت می‌ماند** → همان چیزی که کاربر دیده بود
+>    («تنظیمات و اسم اندیکاتور و دکمهٔ حذفش روی چارت است، نه در پنجرهٔ خودش»).
+> 3. **`ta.supertrend` هر کندل جهت را عوض می‌کرد** → Supertrend هیچ‌چیز رسم نمی‌کرد.
+>
+> به‌علاوه دو نقص دیگر که کاربر در همین پیام گزارش داد:
+>
+> 4. **ابر ایچیموکو یک‌رنگ بود، سوئیچ سبز/قرمز ۲۵ کندل جابه‌جا بود، و ۲۶ کندل
+>    آینده رسم نمی‌شد** — دو علت: رنگ `fill()` در جای اندیس کندل نوشته می‌شد
+>    نه جای slot آفست‌خورده، و رنگ‌آمیز پنجرهٔ دید را به «آخرین کندل» می‌بُرید.
+> 5. **با زیادشدن اندیکاتورهای زیرپنلی، پنل‌های آخر از پایین host بیرون می‌زدند**
+>    و کلاً دیده نمی‌شدند (۱۵ پنل × ۴۰px + ۷۲px قیمت در ۵۳۸px جا نمی‌شد).
 
-## روش اندازه‌گیری
+---
 
-یک هارنس زنده (`tests/archive/e2e/_tmp_r302.py` در working tree، پاک‌شدنی) هر
-اندیکاتور را **۳ بار** اضافه می‌کند و هر بار می‌سنجد:
+## ۱) چرخهٔ رنگ‌آمیزی همه‌یا‌هیچ نبود — علت اصلی «۱۴ اندیکاتور نامرئی»
 
-1. `changedPx` — تعداد پیکسل‌هایی که روی canvasهای چارت واقعاً تغییر کرده‌اند
-   (پیش از افزودن vs پس از افزودن).
-2. `hasSub` / `subH` — آیا زیرپنل ساخته شد و ارتفاعش چقدر است.
-3. `rects` — طول `pane._subRects` (آنچه رنگ‌آمیز برای کلیپ‌کردن استفاده می‌کند).
+### چرا حدس z-index غلط بود
 
-## نتیجهٔ اندازه‌گیری (۳ اجرای هر اندیکاتور)
+با `.sub-pine { z-index: 20 }` تزریق‌شده هیچ‌چیز عوض نشد: پیکسل‌های
+`pine-fg-canvas` داخل باند زیرپنل (۴۶۳۲ پیکسل برای RSI) همان‌قدر ماند و
+`elementFromPoint` هم همان `pane-overlay` را برگرداند. تجزیه و تحلیل لایه‌ها
+مشکل را نشان نمی‌داد.
 
-| اندیکاتور | subH | rects | changedPx | وضعیت |
-|---|---|---|---|---|
-| sma, ema, wma, hma | 0 | 0 | ۲۶۰۰–۴۵۷۶ | ✅ (ema یک اجرا از سه: **۰**) |
-| bollinger, donchian, keltner | 0 | 0 | ۲۶۰۰–۶۳۴۷۳ | ✅ |
-| envelopes, vwap, supertrend, ichimoku | 0 | 0 | ۶۵۰۰۰–۷۹۰۰۰ | ✅ |
-| sar | 0 | 0 | ۳۱۸۰ / **۴۱** / ۳۴۴۰ | ⚠️ ناپایدار |
-| **rsi, macd, stochastic, stochrsi, willr, cci, momentum, roc, awesome, volume, obv, mfi, adline, atr, stddev** | **۱۶۶** | **۱** | **۰** | ❌ **نامرئی** |
+### علت واقعی
 
-## دو یافتهٔ قطعی
+`pane._pineCanvases.fg/bg` بین **همهٔ** اسکریپت‌های یک پنل مشترک است و
+**اولین نقاش هر نسل** کل canvas را `clearRect` می‌کند (قاعدهٔ ROUND141). اما
+هر آداپتور **مستقل** تصمیم می‌گرفت که «کلید من عوض نشده، پس نقاشی نکن».
 
-### ۱) زیرپنل ساخته و چیده می‌شود، ولی پیکسلی رسم نمی‌شود
+نتیجه: در هر چرخه‌ای که فقط کلید یک اسکریپت عوض می‌شد، همان یکی canvas را پاک
+می‌کرد و خودش را می‌کشید، و بقیه skip می‌شدند. **پیکسل‌های آن‌ها پاک شده بود و
+هیچ‌چیز دوباره dirty نمی‌کردشان** تا کلید خودشان حرکت کند (یعنی کندل جدید یا
+پن). با یک اندیکاتور روی چارت این باگ دیده نمی‌شود؛ با دو تا یا بیشتر، پنل‌های
+خالی که می‌آیند و می‌روند.
 
-برای RSI اندازه‌گیری شد:
+اندازه‌گیری با ۴ اندیکاتور، همان لحظه:
 
 ```
-sub.host         : .sub-pane.sub-pine   top:448px  h:166px  (در DOM، چیده‌شده)
-pane._subRects   : 1  (در یک اجرا)  /  0  (در اجرای دیگر)
-ad._paintRect()  : { top: 448, h: 140 }        ← درست
-ad._yOf(86.26)   : 465.8                        ← داخل زیرپنل، درست
-ad._xOf(...)     : 1041.9                       ← درست
-pine-fg-canvas   : 1215×614، ۴۴۶۴ پیکسل غیرشفاف در باند y=440..560
+== rest    rsi px=0      macd px=5159   atr px=3361   volume px=0
+== idle-frames (۶ فریم بعد) → همه پر شدند
 ```
 
-یعنی **خط RSI روی `pine-fg-canvas` کشیده می‌شود** (۴۴۶۴ پیکسل، دقیقاً داخل
-باند زیرپنل). ولی در اسکرین‌شات دیده نمی‌شود.
+`clearRect` instrument شد و معلوم شد پاک‌کننده خودِ `_ctxFor` آداپتور اول است.
 
-**مشکوک اصلی: لایه‌بندی.** `document.elementFromPoint()` در ناحیهٔ زیرپنل
-`pane-overlay` را برمی‌گرداند:
+### رفع
 
-| لایه | z-index | یادداشت |
-|---|---|---|
-| `.sub-pane.sub-pine` | `auto` | **بدون z-index** — در DOM آخر است ولی درون stacking context والد |
-| `canvas.pane-overlay` | **۱۰** | canvas نقشهٔ ترسیم (روی همه) |
-| `canvas.pine-fg-canvas` | **۸** | زیر `pane-overlay` |
-| `canvas.pine-tables` | ۹ | |
+تصمیم به **مجموعه** تعلق دارد، نه به آداپتور:
 
-`.pane-overlay` یک canvas با `z-index:10` است که روی `pine-fg-canvas`(۸)
-می‌نشیند. اگر خالی/شفاف باشد RSI باید دیده شود — پس یا اندازه‌اش کل پنل است و
-با `clearRect` مبهم می‌شود، یا `pine-fg-canvas` زیر `.sub-pane` (که خودش
-`z-index:auto` دارد) قرار می‌گیرد و **LWC زیرپنل رویش رنگ می‌کشد**.
+- `PineRenderAdapter.needsPaint()` — محاسبهٔ خالص و بدون عارضهٔ جانبی.
+- `PineUI.framePane()` اول از همه می‌پرسد؛ اگر **یکی** نیاز داشت، کل مجموعه
+  force می‌شود.
 
-گام بعدی پیشنهادی: `getComputedStyle` روی `.sub-pane` و ترتیب
-`stacking context` را با یک تست ساده بررسی کن (`.sub-pine` را موقتاً
-`z-index:20` کن و ببین RSI ظاهر می‌شود).
+هزینهٔ فریم‌های بیکار صفر ماند (کسی نیاز ندارد → هیچ کاری).
 
-### ۲) race در `_subRects`
+---
 
-در اجرای اول `pane._subRects.length === 1` بود، در اجرای بعد `0` — با اینکه
-`subH=166` در هر دو. یعنی `layoutSubPanes` بعد از ساخت زیرپنل فراخوانی
-می‌شود ولی **گهگاهی بعد از آن دوباره با `subs=0` اجرا می‌شود** و
-`_subRects` را خالی می‌کند (یا اصلاً فراخوانی نمی‌شود).
+## ۲) ردیف لِجند در پنل اشتباه
 
-- تنها نویسندهٔ `_subRects` در کل کد: `pane.js:455` (`layoutSubPanes`) و
-  `pane.js:635` (`destroyPanes`).
-- `_ensureSub` در `pine-render-adapter.js:228` آن را صدا می‌زند.
-- برای اثبات: `Manager.layoutSubPanes` را در `add_init_script` بپوشان و
-  `subsBefore/rectsAfter` را لاگ کن (الگوی
-  `tests/archive/e2e/_tmp_lay.py`).
+`indicators-ui.renderRows()` جای ردیف را از روی وجود زیرپنل در `pane._subs`
+انتخاب می‌کرد، اما در مسیر add ردیف **قبل** از ساخته‌شدن زیرپنل (پاس async
+موتور) رندر می‌شد → fallback به لِجند قیمت، و هیچ‌چیز بعداً دوباره ردیف‌ها را
+رندر نمی‌کرد. اندازه‌گیری: `rowInSub: false`, `y=44` در حالی که زیرپنل در
+`y=410` بود.
 
-### ۳) SAR: `pointMarkersRadius: undefined` → `null`
+رفع: `PineRenderAdapter._ensureSub()` رویداد `Manager.onPineSubPane` را صدا
+می‌زند تا ردیف‌ها دوباره رندر شوند، و `renderRows` هم در هر بار رندر جای هر
+ردیف را از نو تصمیم می‌گیرد.
 
-اسکریپت SAR با `style = plot.style_circles` تعریف شده. آداپتور
-(`pine-render-adapter.js` ساخت سری) این را می‌فرستد:
+---
 
-```js
-pointMarkersRadius: dots ? 1 : undefined,
+## ۳) `ta.supertrend` هر کندل جهت را عوض می‌کرد
+
+کرنل، نوارها را با **close فعلی** ratchet می‌کرد و شرط flip را هم با close فعلی
+می‌سنجید. الگوریتم مرجع TradingView از `close[1]` استفاده می‌کند:
+
+```
+up := close[1] > up1 ? max(up, up1) : up
+dn := close[1] < dn1 ? min(dn, dn1) : dn
+trend := trend == -1 and close > dn1 ? 1 : trend == 1 and close < up1 ? -1 : trend
 ```
 
-با `r: None` در LWC → رادیوس پیش‌فرض اعمال نمی‌شود. اندازه‌گیری زنده:
+با close فعلی، جهت تقریباً هر کندل عوض می‌شد: هر پلات یک کندل مقدار داشت و
+اطرافش `na`. اجرای `plot.style_linebr` با run یک‌کندلی **صفر پیکسل** می‌کشد —
+یعنی دقیقاً «Supertrend چیزی رسم نمی‌کند».
 
-| تنظیم | پیکسل غیرشبکه‌ای |
+اثبات عددی (تست واحد، قبل از رفع):
+`{"up":{"best":1,"runs":196},"dn":{"best":1,"runs":195}}` — بلندترین run یک
+کندل، ۳۹۱ flip در ۴۰۰ کندل.
+
+---
+
+## ۴) ایچیموکو: ابر یک‌رنگ + سوئیچ جابه‌جا + نبودِ ۲۶ کندل آینده
+
+### الف) رنگ `fill()` در جای اشتباه نوشته می‌شد
+
+`plot(series, offset = n)` مقدار را در slot `bar+n` می‌نویسد، اما
+`fill(p1, p2, color)` رنگ را در اندیس خام کندل می‌نوشت. برای ایچیموکو
+(offset = 25) هر کندل با رنگِ کندلِ ۲۵ خانه آن‌طرف‌تر رنگ می‌شد، و ناحیهٔ
+پیش‌بینی‌شده (۲۶ خانهٔ آینده که مقدار دارند) **هیچ رنگی نداشت** → رنگ‌آمیز به
+«آخرین رنگ» fallback می‌کرد و ابر یک‌رنگ می‌شد.
+
+اندازه‌گیری قبل از رفع: `{"greenBars": 500, "redBars": 0}` و
+`wrong: 216` از ۴۲۳ مقایسه.
+
+### ب) رنگ‌آمیز پنجرهٔ دید را به آخرین کندل می‌بُرید
+
+`_visRange()` سقف `barTimes.length - 1` داشت، پس ۲۵ خانهٔ آیندهٔ پلات اصلاً
+دیده نمی‌شد:
+
+```
+maxInkX = 977  (آخرین کندل: 978)      →  pxRightOfLastBar = 0
+```
+
+### ج) اسکریپت داخلی هم TV parity نبود
+
+`offset = displace` (۲۶) به‌جای `displace - 1` (۲۵)، رنگ Base Line اشتباه، و
+`fill` با یک رنگ ثابت.
+
+رفع: رنگ fill در فضای slot خودِ پلات‌ها، `_lastSlot()`/`_xAtSlot()` برای
+پیش‌بینی آینده با `barSpacing` چارت، و بازنویسی اسکریپت داخلی با نسخهٔ
+TradingView. بعد از رفع:
+
+```
+maxInkX = 1054  (آخرین کندل: 978)      →  pxRightOfLastBar = 7073
+fills: greenBars=2553 redBars=2447  firstIdx=25 lastIdx=5024
+```
+
+---
+
+## ۵) با زیادشدن زیرپنل‌ها، پنل‌های آخر بیرون می‌زدند
+
+`computeSubHeights` دو کف ثابت داشت (`SUB_MIN_H=40`, `MAIN_MIN_H=72`). با ۱۵
+اندیکاتور زیرپنلی: `15×40 + 72 = 672px` در host ۵۳۸px → stack سرریز می‌کرد و
+`overflow: hidden` هرچه پایین‌تر بود می‌بُرید. اندازه‌گیری: `panes=13 of 15`.
+
+رفع: کف‌ها **نرم** شدند؛ فقط وقتی `n * SUB_MIN_H + MAIN_MIN_H` واقعاً از ارتفاع
+موجود بیشتر باشد پایین می‌آیند، و یک پاس trim باقی‌ماندهٔ گردکردن را هم می‌گیرد.
+بعد از رفع: `panes=15 of 15`.
+
+---
+
+## وضعیت بعد از رفع — هر ۲۷ اندیکاتور
+
+```
+sma/ema/wma/hma/bollinger/donchian/keltner/envelopes/vwap/sar/supertrend/ichimoku  → main ✅
+rsi/macd/stochastic/stochrsi/willr/cci/momentum/roc/awesome/volume/obv/mfi/adline/atr/stddev → sub ✅
+```
+
+و همهٔ ۱۵ زیرپنل **هم‌زمان** با ارتفاع متناسب و ردیف لِجند در پنل خودشان.
+
+> نکتهٔ روش‌شناسی: «پیکسل روی canvas» معیار غلطی است. دو اندیکاتور
+> (`sar` با `style_circles` و `awesome` با `style_columns`) از سری‌های
+> **بومی LWC** رسم می‌کنند، نه از canvas دست‌نقاشی؛ شمارش آلفای canvas آن‌ها را
+> «نامرئی» گزارش می‌کرد در حالی که روی صفحه دیده می‌شوند. گیت جدید
+> (`e2e_round302_subpane_paint.py`) پیکسل **اسکرین‌شات واقعی** را می‌شمارد و
+> فقط پیکسل‌های **رنگی** را (اشباع کانال ≥ ۴۰) تا شبکه و متن خاکستری شمرده
+> نشوند.
+
+---
+
+## گیت‌ها
+
+| گیت | چه چیزی را می‌گیرد |
 |---|---|
-| پیش‌فرض (`pmr=null`) | ۱۵۹۶ |
-| `pointMarkersRadius: 2.5` | ۱۶۰۴ |
-| `lineVisible: true, lineWidth: 2` | **۳۷۵۸** |
+| `tests/unit/test_round302_offset_fill.mjs` (۱۹ چک) | رنگ fill روی slot آفست، سوئیچ سبز/قرمز، ۲۵ خانهٔ آینده، displacement = ۲۵، Lagging Span |
+| `tests/unit/test_round298_299_indicator_parity.mjs` §۷ | SuperTrend: بلندترین run > ۸ کندل، flip < ۱۲۰ بار |
+| `tests/archive/e2e/e2e_round302_subpane_paint.py` | ۶ اندیکاتور × ۴ حالت چارت (rest/zoom/scroll/live) روی اسکرین‌شات واقعی؛ ردیف لِجند در پنل خودش؛ **بازتولید قطعی race**: خراب‌کردن کلید یک آداپتور و یک چرخه رنگ‌آمیزی |
 
-یعنی نقاط ۱ پیکسلی تقریباً نامرئی‌اند. رفع: `pointMarkersRadius: dots ? 3 : undefined`
-و برای SAR بهتر است `style = plot.style_circles, linewidth = 2` با رادیوس ۳
-باشد (TV همین را می‌کند).
+هر سه با برگرداندن رفع، قرمز می‌شوند (اثبات شکستن، طبق قاعدهٔ پروژه).
+
+## شاهد تصویری
+
+| فایل | چه چیزی را نشان می‌دهد |
+|---|---|
+| [`shots-round302/subpanes-four.png`](archive/screenshots/shots-round302/subpanes-four.png) | RSI + MACD + ATR + Volume هم‌زمان: هر چهار خط رسم شده و ردیف لِجند هر کدام داخل پنل خودش است |
+| [`shots-round302/ichimoku-user-script.png`](archive/screenshots/shots-round302/ichimoku-user-script.png) | اسکریپت ایچیموکوی خود کاربر: ابر با هر دو رنگ (سبز/قرمز) و ۲۶ کندل جلوتر از آخرین کندل |
 
 ## فایل‌های کلیدی
 
 | فایل | نقش |
 |---|---|
-| `src/renderer/js/chart/pine-render-adapter.js` | `_ensureSub` (۲۱۰)، `_buildSeries` (۲۵۴)، `_yOf` (۷۰۳)، `_paintRect` (۷۳۳)، `_paintPlotLines` (۱۱۶۱)، `paintPaneForced` |
-| `src/renderer/js/chart/manager/pane.js` | `layoutSubPanes` (۴۲۷)، `computeSubHeights` (۳۸۷)، `sortedSubs` (۴۱۴) |
-| `src/renderer/css/app.css` | `.sub-pane` (۶۹۴، **بدون z-index**)، `.pine-fg-canvas` (۲۰۲۴، z=8)، `.pane-overlay` (۸۲۱، z=10) |
-| `src/core/pine/builtins-catalog.js` | ۲۷ اسکریپت (SAR در `builtin:sar`، `style=plot.style_circles`) |
-
-## اسکریپت‌های بازتولید (در working tree، هنوز commit نشده)
-
-```
-python tests/archive/e2e/_tmp_r302.py     # جدول کامل ۲۷ اندیکاتور × ۳ اجرا
-python tests/archive/e2e/_tmp_sub.py      # زیرپنل RSI: sub/rects/paint/y
-python tests/archive/e2e/_tmp_bands.py    # کدام y-band پیکسل دارد
-python tests/archive/e2e/_tmp_vis.py      # elementFromPoint + z-order + stack
-python tests/archive/e2e/_tmp_sar.py      # SAR radius experiment
-```
+| `src/renderer/js/chart/pine-ui/runtime.js` | `framePane` — چرخهٔ همه‌یا‌هیچ |
+| `src/renderer/js/chart/pine-render-adapter.js` | `needsPaint`، `_cycleKey`، `_lastSlot`، `_xAtSlot`، `_barRange` |
+| `src/renderer/js/chart/indicators-ui.js` | جای ردیف لِجند زیرپنل |
+| `src/renderer/js/chart/manager/history.js` | `Manager.onPineSubPane` |
+| `src/renderer/js/chart/manager/pane.js` | `computeSubHeights` — کف‌های نرم |
+| `src/core/pine/interpreter/builtins.js` | رنگ `fill()` در فضای slot پلات‌ها |
+| `src/core/pine/stdlib/ta.js` | `supertrend` با `close[1]` و نوارهای `up1/dn1` |
+| `src/core/pine/builtins-catalog.js` | اسکریپت ایچیموکو مطابق TradingView |

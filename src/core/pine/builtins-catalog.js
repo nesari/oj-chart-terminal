@@ -198,13 +198,18 @@ base  = mid(baseLen)
 spanA = (conv + base) / 2
 spanB = mid(spanBLen)
 
-// TV projects both spans forward by the displacement, so the cloud drawn at
-// the right edge is the CURRENT one, not a lagging one.
+// TradingView: the leading spans are plotted at displacement - 1 and the
+// lagging span at -(displacement - 1), so the cloud that ends at the current
+// candle is the one the script computed 26 bars ago. (It used to shift by the
+// full displacement, putting every line one bar off TV.)
 plot(conv, "Conversion", color = #2962ff, linewidth = 1)
-plot(base, "Base", color = #ef5350, linewidth = 1)
-pA = plot(spanA, "Span A", color = color.new(#26a69a, 30), linewidth = 1, offset = displace)
-pB = plot(spanB, "Span B", color = color.new(#ef5350, 30), linewidth = 1, offset = displace)
-fill(pA, pB, color.new(#26a69a, 92), "Cloud")
+plot(base, "Base", color = #b71c1c, linewidth = 1)
+plot(close, "Lagging Span", color = #43a047, linewidth = 1, offset = -displace + 1)
+pA = plot(spanA, "Span A", color = #a5d6a7, linewidth = 1, offset = displace - 1)
+pB = plot(spanB, "Span B", color = #ef9a9a, linewidth = 1, offset = displace - 1)
+// TV's cloud is GREEN when Span A is above Span B and RED when it is below —
+// one conditional fill colour per bar, not one colour for the whole band.
+fill(pA, pB, color = spanA > spanB ? color.rgb(67, 160, 71, 90) : color.rgb(244, 67, 54, 90), title = "Cloud")
 `),
   },
 

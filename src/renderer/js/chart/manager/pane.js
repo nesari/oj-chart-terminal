@@ -386,7 +386,20 @@ import { loadBars, loadOlder } from './history.js';
 
   function computeSubHeights(pane, subs, plotTotal) {
     const n = subs.length;
-    const defH = () => U.clamp(Math.round(plotTotal / (n + 3.2)), 56, 220);
+    if (!n) return { subHs: [], mainH: plotTotal };
+    /* ROUND302 (BUG: with many separate indicators the last panes fell off the
+       bottom of the host and simply never appeared — "some indicators are
+       missing"): the fixed minimums cannot fit a tall stack. 15 panes at
+       SUB_MIN_H (40) plus a MAIN_MIN_H (72) price pane need 672 px in a 538 px
+       host, so the layout overflowed and clipped whatever came last. The
+       per-pane minimum is therefore SOFT: it drops to whatever the remaining
+       height can actually give every pane, and the price pane's floor gives
+       way only on a host too short for it.
+       With few indicators nothing changes — a minimum is only lowered when
+       `n * SUB_MIN_H + MAIN_MIN_H` genuinely exceeds the available height. */
+    const mainMin = Math.min(MAIN_MIN_H, Math.max(24, Math.round(plotTotal * 0.35)));
+    const subMin = Math.min(SUB_MIN_H, Math.max(10, Math.floor((plotTotal - mainMin) / n)));
+    const defH = () => U.clamp(Math.round(plotTotal / (n + 3.2)), subMin, 220);
     /* ROUND 74: pine script instances carry `frac` too (their sub-panes are
        first-class residents of the stack since round-74 sub-pane parity)
        ROUND299: built-in indicators ARE Pine instances now, so a sub-pane id is
@@ -400,17 +413,29 @@ import { loadBars, loadOlder } from './history.js';
     };
     const subHs = subs.map((sub) => {
       const f = instFrac(sub.instId);
-      return (f && isFinite(f) && f > 0) ? U.clamp(Math.round(f * plotTotal), SUB_MIN_H, plotTotal - MAIN_MIN_H) : defH();
+      return (f && isFinite(f) && f > 0) ? U.clamp(Math.round(f * plotTotal), subMin, plotTotal - mainMin) : defH();
     });
     let mainH = plotTotal - subHs.reduce((a, b) => a + b, 0);
-    if (n && mainH < MAIN_MIN_H) {
+    if (mainH < mainMin) {
       /* keep the price pane usable: shrink the subs proportionally */
       const sum = subHs.reduce((a, b) => a + b, 0);
-      const target = sum - (MAIN_MIN_H - mainH);
-      for (let k = 0; k < n; k++) subHs[k] = Math.max(SUB_MIN_H, Math.floor(subHs[k] * target / sum));
+      const target = Math.max(subMin * n, sum - (mainMin - mainH));
+      for (let k = 0; k < n; k++) {
+        subHs[k] = Math.max(subMin, Math.floor(subHs[k] * target / (sum || 1)));
+      }
+      mainH = plotTotal - subHs.reduce((a, b) => a + b, 0);
+      /* ROUND302: a proportional pass can still leave the sum above what the
+         host has (integer flooring on many panes). Trim the last panes by the
+         remainder so the stack never overflows — a pane pushed below the host's
+         bottom edge is invisible, which is worse than one fewer pixel. */
+      let over = subHs.reduce((a, b) => a + b, 0) + mainMin - plotTotal;
+      for (let k = n - 1; k >= 0 && over > 0; k--) {
+        const take = Math.min(over, Math.max(0, subHs[k] - subMin));
+        subHs[k] -= take; over -= take;
+      }
       mainH = plotTotal - subHs.reduce((a, b) => a + b, 0);
     }
-    return { subHs, mainH: Math.max(MAIN_MIN_H, mainH) };
+    return { subHs, mainH: Math.max(1, mainH) };
   }
 
   /* sorted sub-pane list — DOM + geometry order follows the indicator list (TV) */
