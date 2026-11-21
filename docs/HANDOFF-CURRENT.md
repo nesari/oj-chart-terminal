@@ -10,8 +10,8 @@
 مخزن: `github.com/nesari/oj-chart-terminal` — **public** (از راند ۲۹۳).
 
 ```bash
-npm run verify      # دروازهٔ کامل: 181/181 unit + mt5 + smoke
-npm run check:e2e   # ۲۳ سوئیت Playwright زنده
+npm run verify      # دروازهٔ کامل: 182/182 unit + mt5 + smoke
+npm run check:e2e   # ۲۴ سوئیت Playwright زنده
 npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با هم
 ```
 
@@ -47,7 +47,7 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 - **تنظیمات:** همان دیالوگ Pine (Inputs/Style/Visibility + انتخابگر رنگ + plot-style)؛ Ok مستقیم روی `input.*` می‌نشیند و در رکورد قدیمی mirror می‌شود.
 - **TV parity:** Momentum اختلاف قیمت، A/D با کندل اول، SAR با کسرهای شتاب و clamp دو‌کندلی، Keltner با پایهٔ EMA، Ichimoku با displacement، MACD بر اساس علامت، Volume بر اساس جهت کندل، باندها با `fill()`.
 - **باگ موتور:** `input.int` مقدار کسری را گرد/محدود می‌کند (قبلاً `20.5` به `ta.sma` می‌رسید و پنجرهٔ کسری می‌خواند).
-- **گیت:** `test_round298_299_indicator_parity` (۵۹ چک) + `e2e_round299_builtin_pine` (هر ۲۷ زنده + باند + دیالوگ) → **181/181** و **23/23**.
+- **گیت:** `test_round298_299_indicator_parity` (۵۹ چک) + `e2e_round299_builtin_pine` (هر ۲۷ زنده + باند + دیالوگ) → **182/182** و **24/24**.
 - **تاریخچه (راند ۲۹۸):** آدیت دیفرانسیال همان‌جا ۹ باگ واقعی پیدا کرد (۶ در موتور: `ta.wma`، `ta.stoch`/`ta.wpr`، `ta.mfi`، `ta.vwap`، `ta.supertrend`) و همان آدیت دلیل حذف پیاده‌سازی تکراری شد.
 - **فلیک `round283`:** روی `main` کامیت‌شده هم ۳ از ۸ اجرا قرمز می‌شد — باگ محصول بود: (۱) `add()` pass را بدون `await` شروع می‌کرد و `rebuild()` state تازه می‌ساخت → توکن pass؛ (۲) rerun صف‌شده بی‌قید اجرا می‌شد و تیپ هشدار را پاک می‌کرد (`tape=0` با `cursor=2`) → فقط با تغییر واقعی داده؛ (۳) پنجرهٔ ۱۵۰۰ms → امضای داده. نتیجه: ۱۸ اجرای متوالی سبز.
 
@@ -61,6 +61,15 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 - **سرریز با تعداد زیاد:** ۱۵ زیرپنل × ۴۰px + ۷۲px > host → پنل‌های آخر بیرون می‌زدند (`13 of 15`). کف‌ها نرم شدند → `15 of 15`.
 - **گیت:** `test_round302_offset_fill` (۱۹) + `test_round298_299_indicator_parity` §۷ + `e2e_round302_subpane_paint` (اسکرین‌شات واقعی + بازتولید قطعی race). هر سه با برگرداندن رفع قرمز می‌شوند.
 - **جزئیات کامل:** [`INDICATOR-BUGS-R302.md`](INDICATOR-BUGS-R302.md).
+
+### ✅ حل‌شده — SAR خوانا + آدیت عددی (راند ۳۰۳)
+- **SAR «تقریباً نامرئی»:** علت اندازه نبود. رادیوس LWC از قبل `lineWidth/2+2` = ۳px بود؛ A/B روی اسکرین‌شات واقعی با `radius=3/5` فقط +۱۲٪ داد. رنگ از **روند** می‌آمد (`#26a69a`/`#ef5350`) که تقریباً همان سبز/قرمز کندل است. SAR ایچ‌تی‌وی یک پلات **آبی** است → `color = #2962ff`.
+- **آدیت تازه با زاویهٔ متفاوت:** چهار هارنس قبلی فقط می‌پرسیدند «باز می‌شود بدون خطا؟». `audit_r303_indicator_math.py` می‌پرسد «آیا **عدد** درست است؟» — ۷۱ چک روی ۲۷ اندیکاتور با فید زنده.
+- **باگی که پیدا کرد — تصادم شناسهٔ نمونه:** `Date.now() + random(999)` فقط ۹۹۹ فضا در یک میلی‌ثانیه داشت؛ افزودن ۱۵ اندیکاتور یک‌جا ~۶٪ احتمال تصادم داشت. هر دو `pane._subs` و `rtMap` با همین id کلید می‌خورند → یکی از اندیکاتورها بی‌صدا گم می‌شد. رفع: `src/core/instance-id.js` (شمارندهٔ یکنوا + نگهبان per-pane).
+- **درس تکراری (دو بار):** «پیکسل روی canvas» معیار غلطی است — `columns` از سری بومی LWC رسم می‌شود. و جمع دو منبع، باگ R302 را پنهان می‌کند. نسخهٔ نهایی: بیشینهٔ دو منبع با کف ۱۴۰۰px.
+- **درس تکراری (سه بار):** مقایسه با کندل در حال تشکیل، تست را فلیک می‌کند. همهٔ مقایسه‌های عددی به آخرین کندل **بسته** منتقل شدند. سه «یافته» هم خطای خود آزمون بود (طول پیش‌فرض ROC=۹، تفریق HMA، پنجرهٔ سشن VWAP).
+- **گیت:** `test_round303_instance_ids` (۱۱) + `test_round166_sar_style` §۳ + `audit_r303_indicator_math` (۷۱) → **182/182** و **24/24**.
+- **جزئیات کامل:** [`ROUND303-SAR-AND-MATH-AUDIT.md`](ROUND303-SAR-AND-MATH-AUDIT.md).
 
 ### بازگشت تراز اندیکاتورها (راند ۳۰۰)
 - **علامت کاربر:** «کل چارت به‌هم ریخته، کندل‌ها گپ افتاده، تایم‌لاین بهم خورده، با زوم می‌پرد».
@@ -86,10 +95,10 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 
 | مورد | وضعیت |
 |---|---|
-| `npm run verify` | ✅ 181/181 + mt5 + smoke |
-| E2E gate | ✅ 23/23 |
+| `npm run verify` | ✅ 182/182 + mt5 + smoke |
+| E2E gate | ✅ 24/24 |
 | CI (main + tag) | ✅ Linux · Windows · macOS |
-| Release v1.9.232 | ✅ ۱۹/۱۹ گیت انتشار |
+| Release v1.9.233 | ✅ ۱۹/۱۹ گیت انتشار |
 | کانال آپدیت | ✅ با کلاینت ناشناس |
 | visibility | public |
 
@@ -153,7 +162,7 @@ npm run release -- --version X.Y.Z   # نسخه + changelog + تگ، همه با
 | فایل | نقش |
 |---|---|
 | `scripts/checks/run-unit.mjs` | کشف خودکار `tests/unit/*.mjs` (SERIAL: `verify_pine80`, `test_round266`, `test_round281`) |
-| `scripts/checks/e2e-gate.mjs` | ۲۳ سوئیت منتخب (۱۵ رگرسیون + ۴ هارنس آدیت + ۴ e2e اندیکاتور/تراز/تعویض TF/زیرپنل)، tree-kill روی timeout |
+| `scripts/checks/e2e-gate.mjs` | ۲۴ سوئیت منتخب (۱۵ رگرسیون + ۴ هارنس آدیت + ۴ e2e اندیکاتور/تراز/تعویض TF/زیرپنل)، tree-kill روی timeout |
 | `.github/workflows/ci.yml` | سه پلتفرم |
 | `.github/workflows/package.yml` | بیلد + Release + گیت صحت |
 

@@ -17,6 +17,7 @@ import { brokerStats, downsample, tradeMarkers } from '../../../../core/pine/std
 import { buildHtfBars, remapOut, lowerWindowForChart } from '../../../../core/pine/mtf.js';
 import { tfSeconds } from '../../../../core/pine/stdlib/request.js';
 import { PineRenderAdapter } from '../pine-render-adapter.js';
+import { nextInstanceId } from '../../../../core/instance-id.js';
 import { PineScriptsStore } from '../../panels/pine-scripts-store.js';
 import { buildIntrabars, compiledFor, ensureLowerBars, ensureM1Cache, htfSpec, lowerCacheFresh, lowerRunFor, patchLowerForming, refreshLastIntrabar, resolveDeclTf, rtMap, runBarsFor, state } from './data.js';
 import { applyInstanceStyle, effServerOffSec, fetchXSym, hookXSymTicks, loadDefaultStyle, refreshXSymTicks, scanXSymPairs, tfIdForSec } from './inputs.js';
@@ -571,7 +572,11 @@ function recomputePine(pane) {
 function add(pane, scriptId, inputs) {
   if (!pane || !scriptId) return null;
   pane.pineScripts = pane.pineScripts || [];
-  const inst = { id: Date.now() + Math.floor(Math.random() * 999), scriptId, inputs: inputs || {}, visible: true };
+  /* ROUND303: collision-free id (see core/instance-id.js). The old
+     `Date.now() + random(999)` collided when several scripts were added in the
+     same millisecond (restoring a layout, "add all" flows), and a collision
+     makes two instances share ONE sub-pane and ONE runtime slot. */
+  const inst = { id: nextInstanceId(pane), scriptId, inputs: inputs || {}, visible: true };
   pane.pineScripts.push(inst);
   Manager.persistPanes();
   rebuild(pane, inst);

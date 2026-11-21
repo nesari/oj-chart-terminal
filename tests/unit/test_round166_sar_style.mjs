@@ -13,6 +13,7 @@
 
 import { compile } from '../../src/core/pine/compile.js';
 import { drawKindOn } from '../../src/core/pine/stdlib/objects.js';
+import { BUILTIN_BY_TYPE } from '../../src/core/pine/builtins-catalog.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, label) => {
@@ -104,6 +105,41 @@ plot(out2, title="s2")
     const V = rt.out.plots.get(rt.out.plotsOrder[0]).values;
     ok(V[0] == null || typeof V[0] === 'object', 'bar 0 sar is na');
   }
+}
+
+/* ROUND303: the BUILT-IN Parabolic SAR must be readable on the chart.
+   User report: "the SAR dots are practically invisible". The cause was never
+   the marker size (the LWC default is already lineWidth/2+2 = 3px, and forcing
+   radius 3/5 changed a real screenshot by only +7/+62 saturated pixels) — it
+   was the COLOUR: the plot encoded trend with #26a69a / #ef5350, almost exactly
+   the app's candle up/down colours, so every dot sat on a same-coloured wick.
+   TradingView's built-in is ONE plot in the default blue, which cannot merge
+   with either candle colour. Pinned here on the SHIPPED script. */
+console.log('\n[3] built-in Parabolic SAR is readable on the candles');
+{
+  const def = BUILTIN_BY_TYPE.get('sar');
+  ok(!!def, 'the built-in exists');
+  const c = compile(def.source);
+  ok(c.ok, 'the shipped script compiles');
+  const bars = gen(200, 5, 'flip');
+  const rt = c.createInstance({ tfSec: 900, symbol: 'T' });
+  rt.runAll(bars);
+  const o = rt.out;
+  ok(o.plotsOrder.length === 1, 'ONE plot (TV parity — trend is not encoded in the dot colour)', o.plotsOrder.length);
+  const p = o.plots.get(o.plotsOrder[0]);
+  ok(p && p.style === 'circles', 'circles style', p && p.style);
+  const seen = new Set();
+  for (const col of p.colors || []) if (col && col.css) seen.add(col.css());
+  ok(seen.size === 1, 'a single constant colour (no per-bar green/red switching)', [...seen]);
+  const css = [...seen][0] || '';
+  /* the candle colours the dots must NOT be confused with */
+  const CANDLE = ['rgba(8,153,129', 'rgba(38,166,154', 'rgba(242,54,69', 'rgba(239,83,80'];
+  ok(!CANDLE.some((c2) => css.startsWith(c2)), 'not a candle green/red', css);
+  /* and it must be the default plot blue, which reads on both candle colours */
+  ok(/^rgba\(41,98,255/.test(css), 'uses the default plot blue #2962ff', css);
+  /* the dots must still be present on nearly every warmed-up bar */
+  const fin = (p.values || []).filter((v) => v != null).length;
+  ok(fin > 180, 'dots exist on nearly every bar', fin);
 }
 
 /* plotcandle descriptor + hline titles */

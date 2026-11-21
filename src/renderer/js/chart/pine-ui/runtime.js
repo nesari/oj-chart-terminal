@@ -12,6 +12,7 @@ import { Log } from '../../../../core/logger.js';
 import { Manager } from '../manager.js';
 import { compile } from '../../../../core/pine/compile.js';
 import { toColor } from '../../../../core/pine/types.js';
+import { nextInstanceId } from '../../../../core/instance-id.js';
 import { drawingCensus } from '../../../../core/pine/stdlib/objects.js';
 import { brokerStats, downsample, tradeMarkers } from '../../../../core/pine/stdlib/strategy.js';
 import { buildHtfBars, remapOut, lowerWindowForChart } from '../../../../core/pine/mtf.js';
@@ -166,7 +167,10 @@ const PineUI = {
     const store = PineScriptsStore;
     pane.pineScripts = recs
       .filter((r) => r && r.scriptId && store.get(r.scriptId))
-      .map((r, k) => ({ id: Date.now() + k + Math.floor(Math.random() * 999), scriptId: String(r.scriptId),
+      /* ROUND303: restore mints through the shared counter too — a restored
+         layout adds every instance in one tick, which is precisely the
+         same-millisecond case that made the old expression collide. */
+      .map((r) => ({ id: nextInstanceId(pane), scriptId: String(r.scriptId),
         inputs: (r.inputs && typeof r.inputs === 'object') ? r.inputs : {}, visible: r.visible !== false,
         /* ROUND78 (timezone): restored broker-offset override */
         ...(r.tzOffH != null && isFinite(Number(r.tzOffH)) ? { tzOffH: Number(r.tzOffH) } : {}),

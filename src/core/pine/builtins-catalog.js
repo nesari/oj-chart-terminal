@@ -155,6 +155,16 @@ plot(ta.vwap, "VWAP", color = #ff9800, linewidth = 2)
        match TV exactly. */
     type: 'sar', id: 'builtin:sar', label: 'Parabolic SAR', group: 'Trend', overlay: true,
     params: { start: 'Start', inc: 'Increment', max: 'Max' },
+    /* ROUND303 (user report: "SAR dots are practically invisible"): the plot
+       was coloured by TREND (#26a69a / #ef5350) — i.e. almost exactly the app's
+       candle up/down colours — so a 3px dot landed on top of a same-coloured
+       wick and disappeared. Measured on a real screenshot: 518 saturated pixels
+       for ~180 dots, and growing the marker radius only reached 580 (+12%),
+       so this was never a size problem.
+       TradingView's built-in Parabolic SAR is ONE plot in the default plot
+       colour (#2962ff, blue) — it does not encode trend in the dot colour. Blue
+       also stays distinguishable from both the green and the red candles, which
+       is the property the old colours did not have. */
     source: SRC(`
 //@version=6
 indicator("Parabolic SAR", overlay = true)
@@ -162,7 +172,7 @@ start = input.float(0.02, "Start", minval = 0.001, maxval = 0.1, step = 0.001)
 inc   = input.float(0.02, "Increment", minval = 0.001, maxval = 0.1, step = 0.001)
 maxv  = input.float(0.2, "Max", minval = 0.01, maxval = 0.5, step = 0.01)
 sar = ta.sar(start, inc, maxv)
-plot(sar, "Parabolic SAR", style = plot.style_circles, linewidth = 2, color = sar < close ? #26a69a : #ef5350)
+plot(sar, "Parabolic SAR", style = plot.style_circles, linewidth = 2, color = #2962ff)
 `),
   },
   {

@@ -31,6 +31,7 @@
  *   round300  Pine drawings sit exactly on their bar (pan/zoom/TF)     (new)
  *   round301  TF/symbol switch leaves no stale series rows             (new)
  *   round302  separate-pane indicators really paint + row in own pane  (new)
+ *   audit_r303_indicator_math  every built-in's NUMBER, not just its DOM (new)
  *   audit_left_toolbar  every drawing tool paints, no orphans             (new)
  *   audit_core_chart_tv  chart API surface, styles, context menus          (new)
  *   audit_app_sweep     every panel/toolbar entry opens real content       (new)
@@ -92,6 +93,11 @@ const CURATED = [
      pane (the shared pine canvas made a paint cycle all-or-nothing) and its
      legend row must live in that pane, not in the price legend. */
   'e2e_round302_subpane_paint.py',
+  /* ROUND303: differential NUMERIC audit — every built-in's printed number is
+     checked against an independent recomputation, plus the identity invariant
+     (records == instances == sub-panes) that caught the instance-id collision.
+     The other four harnesses only ask "does this open without throwing". */
+  'audit_r303_indicator_math.py',
 ];
 
 /* Per attempt. A cold Windows runner needs ~30s for a heavy suite; the retry

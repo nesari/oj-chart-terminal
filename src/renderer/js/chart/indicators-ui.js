@@ -30,6 +30,7 @@ import { App } from '../../../core/state.js';
 import { Manager } from './manager.js';
 import { Indicators } from '../../../core/indicators.js';
 import { BUILTIN_BY_TYPE, BUILTIN_INDICATORS } from '../../../core/pine/builtins-catalog.js';
+import { nextInstanceId, dropInstanceIds } from '../../../core/instance-id.js';
 import { PineScriptsStore } from '../panels/pine-scripts-store.js';
 import { PineEditor } from '../panels/pine-editor.js';
 import { compile } from '../../../core/pine/compile.js';
@@ -111,7 +112,8 @@ function syncPine(pane) {
       /* create from the legacy record */
       const migrated = Indicators.migrate(rec, inputDefsFor(rec.type));
       inst = {
-        id: Date.now() + Math.floor(Math.random() * 999),
+        /* ROUND303: collision-free id (see core/instance-id.js) */
+        id: nextInstanceId(pane),
         scriptId,
         inputs: (migrated && migrated.inputs) || {},
         visible: rec.visible !== false,
@@ -211,7 +213,12 @@ function add(pane, type) {
   if (!pane || !Indicators.def(type)) return null;
   pane.indicators = pane.indicators || [];
   const rec = {
-    id: Date.now() + Math.floor(Math.random() * 999),
+    /* ROUND303: the LEGACY record id is minted here and the Pine twin is minted
+       moments later in syncPine() — both live in the same millisecond, and the
+       legacy id keys `pineMap` (legacy -> pine) plus every `.ind-row[data-iid]`
+       lookup. A collision made two indicators share one row and one mapping, so
+       removing one removed both. Same counter, same guarantee. */
+    id: nextInstanceId(pane),
     type, params: {}, colors: {}, visible: true,
   };
   pane.indicators.push(rec);
@@ -545,6 +552,8 @@ UI.migrateLegacy = function (pane, recs) {
     if (!pane) return;
     PINE_OF.delete(pane);
     PENDING.delete(pane);
+    /* ROUND303: release the per-pane id guard with the pane */
+    try { dropInstanceIds(pane); } catch (e) {}
   }
   UI.dropPane = dropPane;
   UI.wirePine = wirePine;
