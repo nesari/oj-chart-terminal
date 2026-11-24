@@ -304,5 +304,80 @@ function num(s) {
   ok(/کد مرجع است/.test(ROADMAP), 'the "code is the reference" rule is written down');
 }
 
+/* ---------- I. version drift between the three sources of truth ---------- */
+{
+  /* docs/HANDOFF-CURRENT.md §4.1 says "the version lives in three places" and
+     release.mjs updates all three. Both were true, but the handoff's own header
+     still said 1.9.233 while package.json said 1.9.234 — a stale handoff is how
+     the next chat starts from the wrong baseline. */
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+  const logger = readSource('src/core/logger.js');
+  const appVer = /const APP_VERSION = '([^']+)';/.exec(logger);
+  ok(!!appVer, 'src/core/logger.js declares APP_VERSION');
+  ok(appVer && appVer[1] === pkg,
+    'APP_VERSION equals package.json',
+    appVer ? `logger ${appVer[1]}, package ${pkg}` : '');
+
+  const index = readSource('CHANGELOG.md');
+  const idxVer = /Current version: \*\*([0-9.]+)\*\*/.exec(index);
+  ok(!!idxVer, 'CHANGELOG.md declares the current version');
+  ok(idxVer && idxVer[1] === pkg,
+    'the CHANGELOG index version equals package.json',
+    idxVer ? `index ${idxVer[1]}, package ${pkg}` : '');
+
+  /* The changelog for the current minor line must contain an entry for the
+     running version, or a release shipped without notes. */
+  const line = pkg.split('.').slice(0, 2).join('.');
+  const clPath = `changelog/v${line}.md`;
+  const cl = fs.existsSync(path.join(ROOT, clPath)) ? readSource(clPath) : '';
+  ok(new RegExp(`^## ${pkg.replace(/\./g, '\\.')} `, 'm').test(cl),
+    `the ${line}.x changelog has an entry for ${pkg}`);
+
+  /* The handoff header is the first thing a new chat reads. */
+  const handoffHeader = /نسخه: \*\*([0-9.]+)\*\*/.exec(readSource('docs/HANDOFF-CURRENT.md'));
+  ok(!!handoffHeader, 'the handoff header states the version');
+  ok(handoffHeader && handoffHeader[1] === pkg,
+    'the handoff header version equals package.json',
+    handoffHeader ? `handoff ${handoffHeader[1]}, package ${pkg}` : '');
+
+  /* The roadmap header pins the unit-gate size; it must be the CURRENT number,
+     not the one from the chat that wrote the doc. */
+  const head = ROADMAP.slice(0, ROADMAP.indexOf('## 1'));
+  const u = /verify (\d+)\/(\d+)/.exec(head);
+  const unitSuites = fs.readdirSync(path.join(ROOT, 'tests/unit'))
+    .filter((f) => f.endsWith('.mjs') && f !== 'source-utils.mjs').length;
+  ok(u && num(u[1]) === unitSuites,
+    'the roadmap header tracks the current unit-gate size',
+    u ? `roadmap ${u[1]}, dir ${unitSuites}` : '');
+}
+
+/* ---------- J. the phase count is not a slogan ---------- */
+{
+  /* Three documents say "13 phases" (the roadmap, the handoff, the roadmap's
+     own §1 intro). When phase 14 is added, all three must be updated in the same
+     commit — this is the check that notices. */
+  const budgetRows = [...ROADMAP.matchAll(/^\| (\d+(?:[^|]*?)) \| [^|]+ \| \d+(?:\.\d+)? \|/gm)]
+    .map((m) => m[1].trim())
+    .filter((p) => p !== 'فاز');
+  /* Sub-phases are 12الف..12د: they belong to phase 12, not four new phases. */
+  const phases = new Set(budgetRows.map((p) => String(p).replace(/[الفبجد]+$/, '')));
+  /* `\b` is useless between a digit and a Persian letter (both are non-ASCII
+     word chars in this sense), so the boundary is written as "digit, space,
+     then فاز" and the terminator is the next non-word character. */
+  const declared = /(\d+)\s+فاز(?![ا-ی])/.exec(ROADMAP);
+  ok(!!declared, 'the roadmap declares its phase count in prose');
+  ok(declared && num(declared[1]) === phases.size,
+    'the declared phase count equals the distinct budget rows',
+    declared ? `declared ${declared[1]}, rows ${phases.size} (${[...phases].join(',')})` : '');
+
+  const handoff = normalize(readSource('docs/HANDOFF-CURRENT.md')).replace(/\n/g, ' ');
+  const h = /(\d+)\s+فاز(?![ا-ی])/.exec(handoff);
+  ok(h && num(h[1]) === phases.size,
+    'the handoff states the same phase count',
+    h ? `handoff ${h[1]}, roadmap ${phases.size}` : 'no count in the handoff');
+
+  ok(phases.size >= 13, 'no phase row has been lost', [...phases].join(','));
+}
+
 console.log(`\nROADMAP consistency: ${pass} passed, ${fail} failed.`);
 process.exit(fail ? 1 : 0);
