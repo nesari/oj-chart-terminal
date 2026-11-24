@@ -9,7 +9,10 @@ part of the product surface.
 | File | Purpose |
 |---|---|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Module boundaries, data flow, test seams |
-| [`HANDOFF-ROADMAP.md`](HANDOFF-ROADMAP.md) | Engineering roadmap F0–F7 and definition of done |
+| [`HANDOFF-CURRENT.md`](HANDOFF-CURRENT.md) | Where the project stands right now; read this first |
+| [`ROADMAP-PANELS.md`](ROADMAP-PANELS.md) | Phase-by-phase panel roadmap (R305) — the execution plan for new chats |
+| [`TV-PARITY-AUDIT-R304.md`](TV-PARITY-AUDIT-R304.md) | TradingView parity audit: the gap analysis the roadmap is built on |
+| [`HANDOFF-ROADMAP.md`](HANDOFF-ROADMAP.md) | Engineering roadmap F0-F7 and definition of done |
 | [`PINE-ENGINE-PLAN.md`](PINE-ENGINE-PLAN.md) | Pine Script v6 engine design |
 | [`PINE-COMPLIANCE-PLAN.md`](PINE-COMPLIANCE-PLAN.md) | Pine v6 compatibility matrix |
 | [`SECURITY-ROUND81.md`](SECURITY-ROUND81.md) | Security model and hardening notes |

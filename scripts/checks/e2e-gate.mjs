@@ -53,6 +53,20 @@
  *   node scripts/checks/e2e-gate.mjs              # curated set
  *   node scripts/checks/e2e-gate.mjs --all        # every archived suite
  *   node scripts/checks/e2e-gate.mjs round252     # name substring filter
+ *   node scripts/checks/e2e-gate.mjs --shard 1/2  # deterministic half
+ *   node scripts/checks/e2e-gate.mjs --shard 2/2 --list   # show the split
+ *
+ * ROUND305: `--shard N/M` exists because the curated list was at the edge of
+ * its 20-minute CI budget and the roadmap adds ~13 more suites. The suites are
+ * sorted by a stable hash of the file name and dealt out round-robin, so every
+ * shard gets the same number of suites (±1), the union of all shards is exactly
+ * the full list, and no suite runs twice. Add `--list` to see the assignment
+ * without booting anything.
+ *
+ * The roadmap's panel suites live in PANEL_SUITES and are gated by
+ * `check:e2e:panels` (a separate CI job), so `check:e2e` keeps its own budget
+ * even after all 13 phases land. A suite listed there but not written yet is
+ * skipped with a notice; `--require-panels` turns that notice into a failure.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -98,6 +112,34 @@ const CURATED = [
      (records == instances == sub-panes) that caught the instance-id collision.
      The other four harnesses only ask "does this open without throwing". */
   'audit_r303_indicator_math.py',
+];
+
+/**
+ * ROUND305: suites produced by `docs/ROADMAP-PANELS.md`.
+ *
+ * Kept apart from CURATED on purpose. CURATED is what must run on every push in
+ * ~10 minutes; this list grows to 13 suites (one per phase) and would double
+ * that. `npm run check:e2e:panels` runs it in its own CI job.
+ *
+ * Entries that do not exist yet are skipped — the phase they belong to is not
+ * implemented, so there is nothing to test. Adding a suite requires adding the
+ * file here, otherwise it is "runnable but never run", the exact trap ROUND297
+ * closed for the audit harnesses.
+ */
+const PANEL_SUITES = [
+  'e2e_round305_command_palette.py',   /* P0-01 */
+  'e2e_round305_menu_keys.py',         /* P0-02/03 */
+  'e2e_round306_watchlist.py',         /* P1 */
+  'e2e_round307_datawindow_objects.py',/* P2 */
+  'e2e_round308_alerts.py',            /* P3 */
+  'e2e_round309_trading.py',           /* P4 */
+  'e2e_round310_tester.py',            /* P5 */
+  'e2e_round311_pine_editor.py',       /* P6 */
+  'e2e_round312_ts_news.py',           /* P7 */
+  'e2e_round313_chart_core.py',        /* P8 */
+  'e2e_round314_drawing_extra.py',     /* P10 */
+  'e2e_round315_screener.py',          /* P11 */
+  'e2e_round316_nontime.py',           /* P12 */
 ];
 
 /* Per attempt. A cold Windows runner needs ~30s for a heavy suite; the retry
@@ -199,6 +241,23 @@ function looksLikeBootTimeout(r) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Deterministic partition key for `--shard N/M` (ROUND305).
+ *
+ * FNV-1a over the file name. The requirements are unusual for a hash: the
+ * mapping must be STABLE (a suite never changes shard because an unrelated
+ * suite was added), SPREAD (24 suites over 2 shards must not be 23/1) and
+ * CHEAP. FNV-1a satisfies all three and needs no dependency.
+ */
+function fnv1a(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h;
+}
+
 async function runWithRetry(py, file) {
   let last = null;
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -220,12 +279,94 @@ async function runWithRetry(py, file) {
 async function main() {
   const argv = process.argv.slice(2);
   const all = argv.includes('--all');
-  const filters = argv.filter((a) => !a.startsWith('-'));
+  const panels = argv.includes('--panels');
+  const requirePanels = argv.includes('--require-panels');
+  const wantList = argv.includes('--list');
+  const shardArg = (() => {
+    const i = argv.indexOf('--shard');
+    if (i < 0) return null;
+    const raw = argv[i + 1];
+    const m = /^(\d+)\/(\d+)$/.exec(String(raw || ''));
+    if (!m) {
+      console.error('[e2e] --shard needs N/M, e.g. --shard 1/2');
+      process.exit(2);
+    }
+    const index = Number(m[1]), total = Number(m[2]);
+    if (index < 1 || total < 1 || index > total) {
+      console.error(`[e2e] --shard ${raw}: N must be 1..M`);
+      process.exit(2);
+    }
+    return { index, total };
+  })();
+  /* `--shard 1/2` also carries positional args; strip the flag and its value so
+     the substring filter below does not treat "1/2" as a suite name. */
+  const filters = argv.filter((a, i) => !a.startsWith('-') && !(shardArg && i === argv.indexOf('--shard') + 1));
 
   if (!fs.existsSync(DIR)) {
     console.error('[e2e] no archived suites at ' + DIR);
     process.exit(1);
   }
+
+  let files;
+  if (all) files = fs.readdirSync(DIR).filter((f) => f.endsWith('.py')).sort();
+  else if (filters.length) files = fs.readdirSync(DIR).filter((f) => f.endsWith('.py') && filters.some((s) => f.includes(s))).sort();
+  else if (panels) {
+    const present = PANEL_SUITES.filter((f) => fs.existsSync(path.join(DIR, f)));
+    const missing = PANEL_SUITES.filter((f) => !fs.existsSync(path.join(DIR, f)));
+    if (missing.length) {
+      /* An unimplemented phase has nothing to test, so a missing file is a
+         notice, not a failure — but silence would let a whole phase ship with
+         no gate, which is how the four R297 harnesses went unrun for months. */
+      const msg = `[e2e] ${missing.length}/${PANEL_SUITES.length} panel suite(s) not written yet:`;
+      if (requirePanels) {
+        console.error(msg);
+        for (const f of missing) console.error('  ' + f);
+        console.error('[e2e] --require-panels: every phase suite must exist');
+        process.exit(1);
+      }
+      console.log(msg);
+      for (const f of missing) console.log('  ' + f + '  (pending its roadmap phase)');
+    }
+    files = present;
+    if (!files.length) {
+      console.log('[e2e] no panel suites yet — nothing to run (see docs/ROADMAP-PANELS.md)');
+      return;
+    }
+  } else files = CURATED.filter((f) => fs.existsSync(path.join(DIR, f)));
+
+  if (!files.length) {
+    console.error('[e2e] no suite matched');
+    process.exit(1);
+  }
+
+  /* ROUND305 (roadmap P0-00): deterministic sharding.
+     Sort the suites by a stable hash of the file name, then hand them out
+     round-robin. That gives two properties the CI depends on:
+       - the union of every shard is exactly the full list, never a duplicate;
+       - the sizes differ by at most one (24 suites over 2 shards is 12/12, not
+         23/1 as `hash % M` produced — a 15/9 split spends 70% of the budget in
+         one job while the other half idles).
+     Hashing first (instead of trusting the alphabetical order) keeps the split
+     unrelated to suite names, so a batch of `round3xx` additions does not all
+     land in the same shard. */
+  if (shardArg) {
+    const ranked = files
+      .map((f) => ({ f, k: fnv1a(f) }))
+      .sort((a, b) => (a.k - b.k) || a.f.localeCompare(b.f))
+      .map((x) => x.f);
+    files = ranked.filter((_, i) => (i % shardArg.total) === shardArg.index - 1);
+    if (!files.length) {
+      console.error(`[e2e] shard ${shardArg.index}/${shardArg.total} is empty`);
+      process.exit(1);
+    }
+  }
+
+  if (wantList) {
+    console.log(`[e2e] ${files.length} suite(s)${shardArg ? ` in shard ${shardArg.index}/${shardArg.total}` : ''}:`);
+    for (const f of files) console.log('  ' + f);
+    return;
+  }
+
   const py = findPython();
   if (!py) {
     console.error('[e2e] no Python 3 interpreter found');
@@ -241,17 +382,7 @@ async function main() {
     process.exit(0);
   }
 
-  let files;
-  if (all) files = fs.readdirSync(DIR).filter((f) => f.endsWith('.py')).sort();
-  else if (filters.length) files = fs.readdirSync(DIR).filter((f) => f.endsWith('.py') && filters.some((s) => f.includes(s))).sort();
-  else files = CURATED.filter((f) => fs.existsSync(path.join(DIR, f)));
-
-  if (!files.length) {
-    console.error('[e2e] no suite matched');
-    process.exit(1);
-  }
-
-  console.log(`[e2e] running ${files.length} suite(s)`);
+  console.log(`[e2e] running ${files.length} suite(s)${shardArg ? ` (shard ${shardArg.index}/${shardArg.total})` : ''}`);
   const results = [];
   for (const f of files) {
     process.stdout.write(`[e2e] ${f} ... `);
