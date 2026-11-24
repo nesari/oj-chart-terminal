@@ -8,8 +8,14 @@
  *   2. bump `package.json` + `src/core/logger.js` APP_VERSION together
  *   3. add the entry to the split changelog (changelog/v<major>.<minor>.md)
  *   4. refresh the CHANGELOG.md index
- *   5. commit `Release x.y.z` and create tag `vx.y.z`
- *   6. build the installer for the current OS
+ *   5. refresh the docs/HANDOFF-CURRENT.md header (version + date + HEAD-SHA)
+ *      — ROUND305: the handoff is the first file a new chat reads, and it
+ *      drifted two releases behind because nothing owned it. The version is
+ *      written at release time; the HEAD SHA is the PARENT commit (the tree the
+ *      release describes), not the release commit itself, which is only created
+ *      after this write.
+ *   6. commit `Release x.y.z` and create tag `vx.y.z`
+ *   7. build the installer for the current OS
  *
  * Usage:
  *   node scripts/release.mjs                  # patch bump + verify + build
@@ -97,6 +103,34 @@ export function sh(cmd, args, opts = {}) {
   if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')} failed (${r.status})`);
 }
 
+/**
+ * ROUND305: rewrite the handoff header.
+ *
+ * `docs/HANDOFF-CURRENT.md` line 3 carries the date, the version and the HEAD
+ * SHA. It is the first thing a new chat reads, and before this it was updated
+ * by hand -- so it sat at 1.9.233 while two releases shipped. The unit gate now
+ * fails on that drift, which surfaced the real design flaw: a release must not
+ * require a manual follow-up to keep its own baseline true.
+ *
+ * The SHA is the PARENT commit (the tree the release describes). The release
+ * commit does not exist yet at this point and cannot be named in its own
+ * content.
+ */
+export function handoffHeader(text, version, date, sha) {
+  /* The document is Persian, so the date keeps Persian digits like every other
+     date in it (`۲۰۲۶-۱۱-۲۴`); an ASCII date would be the only Latin numeral in
+     the file. */
+  const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+  const faDate = String(date).replace(/\d/g, (d) => FA_DIGITS[Number(d)]);
+  const line = `> آخرین به‌روزرسانی: ${faDate} | نسخه: **${version}** | HEAD: \`${sha}\``;
+  /* Replace an existing header line; otherwise insert one after the H1.
+     `[^\r\n]*` (not `[^\n]*`) because these documents use CRLF and a `\r`
+     left behind would become a stray blank line on the next `\n`. */
+  const HEADER_RE = /^> آخرین به‌روزرسانی:[^\r\n]*/m;
+  if (HEADER_RE.test(text)) return text.replace(HEADER_RE, line);
+  return text.replace(/^(# .*)$/m, `$1\n\n${line}`);
+}
+
 function gitOut(args) {
   const r = spawnSync('git', args, { encoding: 'utf8' });
   if (r.error) throw new Error('git ' + args.join(' ') + ' failed to start: ' + r.error.message);
@@ -146,6 +180,7 @@ function main(argv) {
     console.log('[release] would prepend to', clFile + ':');
     console.log(entry);
     console.log('[release] would update CHANGELOG.md index');
+    console.log('[release] would refresh the docs/HANDOFF-CURRENT.md header');
     console.log('[release] would commit "Release ' + version + '" and tag ' + tag);
     if (!has('--no-build')) console.log('[release] would run the platform build');
     return;
@@ -162,7 +197,17 @@ function main(argv) {
   const idxPath = 'CHANGELOG.md';
   fs.writeFileSync(idxPath, updateIndex(fs.readFileSync(idxPath, 'utf8'), version, clFile), 'utf8');
 
-  sh('git', ['add', pkgPath, logPath, clFile, idxPath]);
+  /* ROUND305: the handoff header is part of the release, not a follow-up chore.
+     `HEAD~0` would be the previous release; the tree about to be tagged is the
+     one HEAD points at right now. */
+  const handoffPath = 'docs/HANDOFF-CURRENT.md';
+  const sha = gitOut(['rev-parse', '--short', 'HEAD']);
+  if (fs.existsSync(path.join(root, handoffPath))) {
+    fs.writeFileSync(handoffPath,
+      handoffHeader(fs.readFileSync(handoffPath, 'utf8'), version, date, sha), 'utf8');
+  }
+
+  sh('git', ['add', pkgPath, logPath, clFile, idxPath, handoffPath]);
   sh('git', ['commit', '-m', 'Release ' + version]);
   sh('git', ['tag', tag]);
 

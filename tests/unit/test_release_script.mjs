@@ -5,7 +5,7 @@
  */
 
 import {
-  nextVersion, validateVersion, changelogFile, renderEntry, insertEntry, updateIndex, sh,
+  nextVersion, validateVersion, changelogFile, renderEntry, insertEntry, updateIndex, handoffHeader, sh,
 } from '../../scripts/release.mjs';
 
 let pass = 0, fail = 0;
@@ -63,6 +63,41 @@ let shBad = false;
 try { sh(process.execPath, ['-e', 'process.exit(7)'], { stdio: 'ignore' }); }
 catch (e) { shBad = /\(7\)/.test(e.message); }
 ok(shBad, 'non-zero child status still throws with the code');
+
+console.log('[7] handoff header (ROUND305 — releases may not leave a stale baseline)');
+{
+  const doc = '# وضعیت پروژه\n\n> آخرین به‌روزرسانی: ۲۰۲۶-۱۱-۲۳ | نسخه: **1.9.233** | HEAD: `dd3896e`\n\n---\n\nbody\n';
+  const out = handoffHeader(doc, '1.9.236', '2026-11-24', 'abc1234');
+  ok(/\*\*1\.9\.236\*\*/.test(out), 'writes the new version');
+  ok(/HEAD: `abc1234`/.test(out), 'writes the new SHA');
+  ok(/۲۰۲۶-۱۱-۲۴/.test(out), 'writes the release date');
+  ok(!/1\.9\.233/.test(out), 'the old version is gone');
+  ok(out.split('\n').filter((l) => l.startsWith('> آخرین')).length === 1,
+    'exactly one header line, never appended twice');
+  ok(out.includes('\n\n---\n\nbody'), 'the rest of the document is untouched');
+  /* idempotent: running it again with the same args changes nothing */
+  ok(handoffHeader(out, '1.9.236', '2026-11-24', 'abc1234') === out, 'idempotent');
+
+  /* a document without a header gets one, right under the H1 */
+  const bare = handoffHeader('# Only a title\n\nbody\n', '1.9.236', '2026-11-24', 'abc1234');
+  ok(/^# Only a title\n\n> آخرین به‌روزرسانی:/.test(bare), 'inserts a header after the H1');
+
+  /* ROUND305: these documents are CRLF. Matching `[^\n]*` swallowed the `\r`
+     and left a stray blank line after every release (found on the real file,
+     not in the synthetic one above, which is why this case exists). */
+  const crlf = '# T\r\n\r\n> آخرین به‌روزرسانی: ۲۰۲۶-۱۱-۲۳ | نسخه: **1.9.233** | HEAD: `d`\r\n\r\nbody\r\n';
+  const crlfOut = handoffHeader(crlf, '1.9.236', '2026-11-24', 'abc1234');
+  /* The header line must end with exactly one CR before the LF. A leftover `\r`
+     shows up as a DOUBLED carriage return, which the line count cannot see. */
+  ok(!/\r\r/.test(crlfOut), 'CRLF: no doubled carriage return', JSON.stringify(crlfOut.slice(0, 90)));
+  ok(crlfOut.includes('HEAD: `abc1234`\r\n'), 'CRLF: the header ends with a single CRLF',
+    JSON.stringify(crlfOut.slice(0, 90)));
+  ok(crlfOut.split('\n').length === crlf.split('\n').length,
+    'CRLF: the line count is unchanged (no stray blank line)',
+    `${crlf.split('\n').length} -> ${crlfOut.split('\n').length}`);
+  ok(crlfOut.includes('\r\n'), 'CRLF: line endings are preserved');
+  ok(crlfOut.includes('body\r\n'), 'CRLF: the body still ends the file correctly');
+}
 
 console.log(`\nRESULT: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
