@@ -14,9 +14,19 @@ name: CI
 # while the repository is private.
 #
 # Changes:
-#   1. a push touching only prose cannot break the build, so it is skipped;
+#   1. a push touching only prose skips the FULL gate, because prose cannot
+#      break the build;
 #   2. pull_request still runs the full gate for review;
 #   3. workflow_dispatch remains for a deliberate full run.
+#
+# ROUND305: exception to (1), implemented as a SEPARATE workflow
+# (`docs-consistency.yml`). `paths-ignore` skips the whole workflow, so a job
+# added here would never run on a docs-only push — and a docs-only push is
+# exactly the change that can make `test_roadmap_consistency.mjs` fail, since
+# that suite compares the documents to the code. The separate workflow triggers
+# on the ignored paths, runs only that suite (~2s, no Playwright, no build), and
+# closes the hole: the one gate written to catch stale documentation now runs on
+# documentation changes.
 on:
   push:
     paths-ignore:

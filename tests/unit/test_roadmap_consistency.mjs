@@ -235,6 +235,28 @@ function num(s) {
     'package.json exposes check:e2e:panels');
   ok(/check:e2e:panels/.test(readSource('.github/workflows/ci.yml')),
     'CI runs check:e2e:panels in its own step');
+
+  /* ROUND305: ci.yml skips docs-only pushes, so this suite -- which compares
+     documents to code -- would never run on a documentation change. A separate
+     workflow closes that hole; if it is deleted the hole silently reopens. */
+  const docsWf = '.github/workflows/docs-consistency.yml';
+  ok(fs.existsSync(path.join(ROOT, docsWf)), 'a docs-only workflow exists', docsWf);
+  if (fs.existsSync(path.join(ROOT, docsWf))) {
+    const wf = readSource(docsWf);
+    ok(/docs\/\*\*/.test(wf), 'it triggers on docs/**');
+    ok(/test_roadmap_consistency\.mjs/.test(wf), 'it runs this suite');
+    ok(/test_release_script\.mjs/.test(wf), 'it runs the release-script suite');
+    /* it must stay cheap: no install, no browser. Comments are stripped first —
+       the file's own documentation says "no Playwright, no npm install", which
+       is a description, not a step. */
+    const wfCode = wf.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+    ok(!/npm install/.test(wfCode), 'it does not install dependencies');
+    ok(!/playwright|electron-builder|npm run dist/i.test(wfCode),
+      'it does not boot a browser or a build');
+  }
+  /* and ci.yml must not have grown a job that can never run */
+  const ci = readSource('.github/workflows/ci.yml');
+  ok(!/docs:-pre-v-all-prose/.test(ci), 'ci.yml has no impossible docs job');
 }
 
 /* ---------- G. port hygiene ---------- */

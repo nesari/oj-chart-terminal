@@ -1,0 +1,54 @@
+name: Docs consistency
+
+# ROUND305 — closes the hole `ci.yml` opens on purpose.
+#
+# `ci.yml` skips every docs-only push (`paths-ignore: docs/**, **.md`) because
+# prose cannot break a build. That was true until `docs/ROADMAP-PANELS.md`
+# became the work order for every new chat and
+# `tests/unit/test_roadmap_consistency.mjs` started asserting that its numbers
+# match the code. Now a docs-only push is exactly the change that can turn that
+# gate red — and it was the one change CI never checked.
+#
+# This workflow triggers on the paths `ci.yml` ignores and runs only the
+# consistency suites: no Playwright, no Electron, no build, ~2 seconds.
+#
+# What it does NOT duplicate: the full `verify` still runs on every code change
+# and on every pull request, and it includes these suites already.
+on:
+  push:
+    paths:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    paths:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  docs:
+    name: Roadmap + release docs match the code
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # No `npm install`: both suites are dependency-free on purpose, so this
+      # job stays fast enough to run on every documentation edit.
+      - name: Roadmap consistency (numbers vs code)
+        run: node tests/unit/test_roadmap_consistency.mjs
+
+      - name: Release script helpers (handoff header, changelog)
+        run: node tests/unit/test_release_script.mjs
+
+      - name: Roadmap links resolve
+        run: |
+          # The consistency suite already checks links; this makes the failure
+          # readable in the workflow log when it happens.
+          node tests/unit/test_roadmap_consistency.mjs 2>&1 | grep -E 'FAIL|passed' || true
