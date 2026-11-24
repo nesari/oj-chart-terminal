@@ -3,7 +3,7 @@
 This index keeps the release history split by major line. Each file contains the same entries
 that were previously in this single document, newest first.
 
-Current version: **1.9.235** (`package.json`).
+Current version: **1.9.236** (`package.json`).
 
 | File | Versions |
 |---|---|
