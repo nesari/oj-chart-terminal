@@ -13,9 +13,22 @@ import { Settings } from '../chart/settings.js';
 import { DrawSettings } from './settings.js';
 import { CTX_LAYOUT, TOOLS } from './tools.js';
 import { Manager } from '../chart/manager.js';
-import { Toolbar } from '../chart/toolbar.js';
+import { Toolbar, Snapshot } from '../chart/toolbar.js';
 import { Alerts } from '../panels/alerts.js';
 import { ObjectTree } from '../panels/objects.js';
+import { IndicatorsUI } from '../chart/indicators-ui.js';
+
+/* `gotodate.js` and `compare.js` both import `UI` from THIS module (for the
+ * toast), so importing them back at module scope would close an import cycle and
+ * risk a TDZ error on whichever side evaluates second. The menu only needs
+ * `openDialog` / `openMenu` at click time, so both resolve lazily through the app
+ * facade instead — same trick, one helper. */
+function appModule(name) {
+  try {
+    const A = (typeof window !== 'undefined' && window.__app) ? window.__app : null;
+    return (A && A[name]) || null;
+  } catch (e) { return null; }
+}
 
 const UI = {};
 
@@ -968,27 +981,52 @@ UI.closeActiveSettings = function (commit) {
     } catch (e) {}
   };
 
-  /* ---------- chart right-click menu (TV) ---------- */
+  /* ---------- chart right-click menu (TV) ----------
+     ROUND306 (roadmap P0-02): the menu had SEVEN reachable items in the best
+     case (three of the eight `mk(` calls are conditional on where the click
+     landed). TradingView has twenty-odd. Every item below is wired to a real
+     API — the palette lesson (R305) was that a menu row which "looks fine" and
+     does nothing is the most expensive kind of bug here, so each `mk` maps to
+     an existing function and the E2E asserts the EFFECT where it can.
+
+     Sections follow TV's order: alerts (position-dependent) / chart / draw /
+     visibility / view / panel. */
   UI.openChartMenu = function (x, y, info) {
     if (typeof Toolbar === 'undefined' || !Toolbar.popupAt) return;
     Toolbar.popupAt(x, y, (p) => {
-      const mk = (label, ic, fn) => {
+      const mk = (label, ic, fn, keys) => {
         const it = U.el('button', 'pu-item', p);
-        it.innerHTML = `<span class="ic">${icon(ic)}</span><span>${label}</span>`;
+        it.innerHTML = `<span class="ic">${icon(ic)}</span><span>${label}</span>`
+          + (keys ? `<span class="pu-keys">${keys}</span>` : '');
         it.addEventListener('click', () => { Toolbar.closePopup(); fn(); });
+        return it;
       };
-      /* ROUND39: alert actions anchored to the right-clicked chart position —
-         price from the cursor Y, time from the cursor X (bar), plus one-click
-         management when the click sits on an existing alert mark */
+      /* a submenu row: clicking opens a second popup beside this one. TV nests
+         the drawing tools this way instead of listing 86 rows flat. Hover is
+         NOT wired — the popup layer is a single element, so opening on
+         mouseenter would replace the parent menu and the user could never move
+         the pointer across the gap. One deliberate click is predictable. */
+      const sub = (label, ic, build) => {
+        const it = U.el('button', 'pu-item pu-has-sub', p);
+        it.innerHTML = `<span class="ic">${icon(ic)}</span><span>${label}</span><span class="pu-arrow">\u203A</span>`;
+        it.addEventListener('click', () => {
+          const r = it.getBoundingClientRect();
+          Toolbar.popupAt(r.right + 2, r.top, build);
+        });
+        return it;
+      };
+      const sep = () => U.el('div', 'pu-sep', p);
+      const pane = (info && info.pane) || App.activePane;
+
+      /* ---- alerts: anchored to the clicked price/time ---- */
       if (info && info.pane) {
         try {
-          const pane = info.pane;
           const digits = pane.digits != null ? pane.digits : 5;
           const fmtP = (v) => Number(v).toFixed(digits);
           const near = Alerts.alertAt ? Alerts.alertAt(pane, info.x, info.y) : null;
           if (near) {
             mk('Manage alert\u2026', 'bell', () => Alerts.openManageDialog(near, pane));
-            U.el('div', 'pu-sep', p);
+            sep();
           }
           if (info.price != null) {
             mk(`Add alert at ${fmtP(info.price)}\u2026`, 'bell', () => Toolbar.openAlertDialog(pane.symbol, info.price));
@@ -997,32 +1035,117 @@ UI.closeActiveSettings = function (commit) {
             const tp = TZ.parts(App.tz, info.t);
             mk(`Add time alert at ${tp.hour}:${tp.minute}\u2026`, 'clock', () => Alerts.openTimeDialog(pane, info.t));
           }
-          if ((info.price != null) || (isFinite(info.t) && near == null)) U.el('div', 'pu-sep', p);
+          if ((info.price != null) || (isFinite(info.t) && near == null)) sep();
         } catch (e) {}
       }
-      /* ROUND98 (user request): MT5-style chart trade history — persisted
-         on/off flip (trade/history.js owns the flag), markers re-apply
-         immediately on toggle */
+
+      /* ---- indicators ---- */
+      mk('Add indicator\u2026', 'indicators', () => {
+        if (typeof IndicatorsUI !== 'undefined' && IndicatorsUI.openDialog) IndicatorsUI.openDialog();
+      }, '/');
+
+      /* ---- drawing: a real submenu built from UI.GROUPS ---- */
+      sub('Add drawing', 'pencil', (sp) => {
+        /* Five tools (the four pitchforks and Arrow) are deliberately listed in
+           two flyouts, so UI.GROUPS names 91 entries for 86 tools. The menu must
+           show each tool ONCE — a duplicated row looks like a bug and doubles the
+           scrolling. */
+        const seen = new Set();
+        const gmk = (label, toolId) => {
+          if (seen.has(toolId)) return;
+          seen.add(toolId);
+          const it = U.el('button', 'pu-item', sp);
+          it.innerHTML = `<span class="ic">${icon('pencil')}</span><span>${label}</span>`;
+          it.addEventListener('click', () => { Toolbar.closePopup(); UI.activateTool(toolId); });
+        };
+        const title = (t) => { const d = U.el('div', 'pu-title', sp); d.textContent = t; return d; };
+        for (const g of (UI.GROUPS || [])) {
+          if (g.id === 'cursor' || g.id === 'zoom' || g.id === 'measure') continue;
+          if (g.sections) {
+            for (const sec of g.sections) {
+              title(sec.title);
+              for (const id of sec.tools || []) gmk((TOOLS[id] && TOOLS[id].name) || id, id);
+            }
+          } else {
+            title(g.id === 'lines' ? 'Lines' : g.id);
+            for (const id of g.tools || []) gmk((TOOLS[id] && TOOLS[id].name) || id, id);
+          }
+        }
+      });
+
+      /* ---- selection + text ---- */
+      if (App.selection) {
+        mk('Delete selected', 'trash', () => {
+          if (App.undo) App.undo.remove(App.selection.pane, App.selection.d);
+          else App.drawings.remove(App.selection.pane.symbol, App.selection.d.id);
+          App.selection = null;
+          UI.onSelectionChanged();
+        }, 'Del');
+      }
+      sep();
+
+      /* ---- visibility / lock ---- */
+      mk((App.hideAll ? 'Show' : 'Hide') + ' all drawings', App.hideAll ? 'eyeoff' : 'eye', () => {
+        App.hideAll = !App.hideAll;
+        if (App.hideAll && App.selection) { App.selection = null; UI.onSelectionChanged(); }
+        U.toast(App.hideAll ? 'Drawings hidden' : 'Drawings visible', 'ok');
+      });
+      mk((App.lockAll ? 'Unlock' : 'Lock') + ' all drawings', App.lockAll ? 'unlock' : 'lock', () => {
+        App.lockAll = !App.lockAll;
+        U.toast(App.lockAll ? 'Drawings locked' : 'Drawings unlocked', 'ok');
+      });
+      mk('Remove all drawings', 'trash', () => {
+        if (!pane) return;
+        const n = (App.drawings.list(pane.symbol) || []).length;
+        if (!n) { U.toast('No drawings to remove'); return; }
+        if (App.undo) App.undo.removeAll(pane);
+        else App.drawings.removeAll(pane.symbol);
+        App.selection = null;
+        UI.onSelectionChanged();
+        U.toast(`Removed ${n} drawing${n === 1 ? '' : 's'}`, 'ok');
+      });
+      sep();
+
+      /* ---- view ---- */
       if (Manager.tradeHistoryOn) {
-        U.el('div', 'pu-sep', p);
         mk((Manager.tradeHistoryOn() ? 'Hide' : 'Show') + ' trade history', 'positions', () => {
           if (Manager.tradeHistoryToggle) Manager.tradeHistoryToggle();
         });
       }
-      mk('Object tree&hellip;', 'tree', () => { if (typeof ObjectTree !== 'undefined') ObjectTree.open(); });
-      mk('Save layout&hellip;', 'save', () => { Toolbar.openSaveLayoutDialog(); });
       mk('Reset chart', 'fit', () => {
-        for (const pane of App.panes) {
+        for (const q of App.panes) {
           try {
-            pane.chart.timeScale().resetTimeScale();
+            q.chart.timeScale().resetTimeScale();
             const dm = (Manager.defaultPriceMargins)
               ? Manager.defaultPriceMargins() : { top: 0.2, bottom: 0.15 };
-            pane.chart.priceScale('right').applyOptions({ autoScale: true, scaleMargins: dm });
+            q.chart.priceScale('right').applyOptions({ autoScale: true, scaleMargins: dm });
           } catch (e) {}
         }
       });
-      U.el('div', 'pu-sep', p);
-      mk('Settings&hellip;', 'gear', () => { if (typeof Settings !== 'undefined') Settings.open(); });
+      mk('Go to date\u2026', 'calendar', () => {
+        const G = appModule('GoToDate');
+        if (G) (G.openDialog || G.open)();
+      });
+      mk('Timezone\u2026', 'clock', () => {
+        const b = document.getElementById('settings-btn');
+        const r = b ? b.getBoundingClientRect() : { left: 40, bottom: 40 };
+        Toolbar.openTzMenu(r.left, r.bottom + 4);
+      });
+      sep();
+
+      /* ---- snapshot ---- */
+      mk('Copy image', 'camera', () => Snapshot.copy(), 'Ctrl+Shift+S');
+      mk('Download image', 'camera', () => Snapshot.download(), 'Ctrl+Alt+S');
+      sep();
+
+      /* ---- panels / settings ---- */
+      mk('Compare symbol\u2026', 'compare', () => {
+        const C = appModule('Compare');
+        if (C && C.openMenu) C.openMenu();
+      });
+      mk('Object tree\u2026', 'tree', () => { if (typeof ObjectTree !== 'undefined') ObjectTree.open(); });
+      mk('Save layout\u2026', 'save', () => { Toolbar.openSaveLayoutDialog(); }, 'Ctrl+S');
+      mk('Settings\u2026', 'gear', () => { if (typeof Settings !== 'undefined') Settings.open(); });
     });
   };
 

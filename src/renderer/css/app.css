@@ -2344,3 +2344,20 @@ body.theme-light .pn-kw { color: #1e53e5; }
   font-family: ui-monospace, Consolas, monospace;
 }
 .cmd-empty { padding: 22px 16px; color: var(--text-dim); font-size: 13px; text-align: center; }
+
+/* ---------- context-menu additions (ROUND306 / roadmap P0-02) ----------
+   The chart right-click menu grew from 7 reachable rows to 20+, and TV nests
+   its 86 drawing tools instead of listing them flat. These three classes are
+   the whole visual delta: a shortcut hint on the right, a submenu arrow, and
+   the hover cue that says "this opens another panel". */
+.popup .pu-item .pu-keys {
+  margin-left: auto; padding-left: 14px;
+  color: var(--text-dim); font-size: 11px;
+  font-family: ui-monospace, Consolas, monospace;
+}
+.popup .pu-item.pu-has-sub { position: relative; }
+.popup .pu-item .pu-arrow {
+  margin-left: auto; padding-left: 14px; color: var(--text-dim);
+  font-size: 15px; line-height: 1;
+}
+.popup .pu-item.pu-has-sub:hover .pu-arrow { color: var(--text); }
