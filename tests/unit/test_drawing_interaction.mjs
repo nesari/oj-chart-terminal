@@ -324,8 +324,18 @@ console.log('\n-- source contracts for interaction paths --');
   ok(/getElementById\('obj-trash'\)[\s\S]{0,420}?App\.undo\.removeAll/.test(objects) &&
      /mkAct\('trash', 'Delete'[\s\S]{0,160}?App\.undo\.remove\(pane, d\)/.test(objects),
     'Object Tree delete and trash-all are undoable');
-  ok(/const modalOpen = !!document\.querySelector\('\.dialog-backdrop, \.ds-dialog'\);[\s\S]{0,120}?e\.key !== 'Escape'[\s\S]{0,40}?return;/.test(app),
-    'chart shortcuts do not fire behind an open dialog');
+  /* ROUND307: this used to pin the exact source text
+     `.dialog-backdrop, .ds-dialog` — which is precisely the BUG. A dialog that
+     is built at boot and merely HIDDEN lives in the DOM, so that selector was
+     true forever and every chart shortcut was dead. The suite was asserting the
+     broken string, so it would have blocked the fix.
+
+     What matters is the BEHAVIOUR: a shortcut must not fire while a dialog is
+     really open, and `:not(.hidden)` is what makes that distinction. */
+  ok(/const modalOpen = !!document\.querySelector\('\.dialog-backdrop:not\(\.hidden\), \.ds-dialog:not\(\.hidden\)'\)/.test(app),
+    'chart shortcuts ignore only VISIBLE dialogs (hidden ones must not count)');
+  ok(/:not\(\.hidden\)[\s\S]{0,120}?e\.key !== 'Escape'[\s\S]{0,40}?return;/.test(app),
+    'an open dialog still swallows the chart shortcuts');
   ok(/beforeunload[\s\S]{0,300}?App\.drawings\.saveNow\(\)/.test(app),
     'closing the app flushes pending drawing saves');
   ok(/r\.panes\.every\(\(p\) => p && typeof p === 'object' && p\.symbol\)/.test(tabs),
@@ -334,8 +344,8 @@ console.log('\n-- source contracts for interaction paths --');
     'tab restore filters invalid panes before rebuilding the layout');
   ok(/_restore\(rec\) \{[\s\S]{0,260}?UI\.closeActiveSettings\(true\)/.test(tabs),
     'switching tabs closes the floating drawing settings dialog');
-  ok(/if \(e\.repeat\) return;[\s\S]{0,520}?querySelector\('\.dialog-backdrop, \.ds-dialog'\)/.test(tabs),
-    'held Ctrl+W and open dialogs cannot close tabs');
+  ok(/if \(e\.repeat\) return;[\s\S]{0,900}?querySelector\('\.dialog-backdrop:not\(\.hidden\)/.test(tabs),
+    'held Ctrl+W and OPEN dialogs cannot close tabs (hidden dialogs must not count)');
   ok(/d\.hidden = !d\.hidden;[\s\S]{0,320}?App\.selection = null/.test(objects),
     'hiding a drawing clears its selection');
 }

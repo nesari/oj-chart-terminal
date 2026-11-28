@@ -56,6 +56,7 @@ import { LoginUI } from './ui/login.js';
 import { RightPanel } from './ui/rightpanel.js';
 import { Command } from './ui/command.js';
 import { wireSources, registerAll } from './ui/command-sources.js';
+import { Shortcuts, bindDefaultHandlers } from './ui/shortcuts.js';
 import { DataWindow } from './panels/datawindow.js';
 /* ROUND85 (user request): trading bridge — order execution straight to
    MetaTrader from the app, live risk/volume management, live account +
@@ -158,10 +159,28 @@ function boot() {
         panelTabs: () => [...document.querySelectorAll('#right-tabs .rt-btn[data-tab]')].map((b) => b.dataset.tab),
         drawGroups: () => UI.GROUPS || [],
         toolName: (id) => (DrawTools[id] && DrawTools[id].name) || id,
+        /* ROUND307: lets the palette open the shortcut editor */
+        shortcuts: Shortcuts,
       });
       Command.init();
       registerAll();
     } catch (e) { Log.warn('app', 'command palette failed to initialise', e) }
+
+    /* ROUND307 (roadmap P0-03): the shortcut registry. Initialised BEFORE the
+       keydown handler above needs it, and bound to the same buttons the old
+       inline code called — so the ten existing shortcuts keep working, but are
+       now listed in a dialog (`?`) and rebindable. */
+    try {
+      Shortcuts.init();
+      bindDefaultHandlers({ Toolbar, IndicatorsUI, UI });
+    } catch (e) { Log.warn('app', 'shortcut registry failed to initialise', e) }
+
+    /* the fine print for CI: an unbound action is a shortcut that does nothing */
+    try {
+      for (const a of Shortcuts.actions()) {
+        if (!Shortcuts._handlers.has(a.id)) Log.warn('app', 'shortcut has no handler: ' + a.id);
+      }
+    } catch (e) {}
     if (TimeSales) TimeSales.init();
     if (Compare) Compare.init();
     Manager.init();
@@ -308,64 +327,20 @@ function boot() {
       /* ROUND260: a modal/floating dialog is a text-edit surface too. Chart
          shortcuts (Delete / Ctrl+Z / Ctrl+S / timeframe digits) must not act on
          the chart behind it just because focus sits on a button instead of an
-         input. Escape is left to the dialog's own handler. */
-      const modalOpen = !!document.querySelector('.dialog-backdrop, .ds-dialog');
+         input. Escape is left to the dialog's own handler.
+         ROUND307 BUGFIX: `:not(.hidden)` was missing. Every dialog that is built
+         at boot and merely hidden (the shortcut editor, among others) counted as
+         "open", so this line returned for EVERY key press and the whole shortcut
+         registry — including the ten that used to work — became dead. Caught by
+         the E2E: "the NEW chord arms Rectangle - None". */
+      const modalOpen = !!document.querySelector('.dialog-backdrop:not(.hidden), .ds-dialog:not(.hidden)');
       if (modalOpen && e.key !== 'Escape') return;
-      // round 27: "/" opens the Indicators dialog (TV shortcut, parity)
-      if (e.key === '/' && !e.ctrlKey && !e.altKey && !e.metaKey) {
-        const tag = (e.target.tagName || '').toLowerCase();
-        if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
-          e.preventDefault();
-          if (IndicatorsUI) IndicatorsUI.openDialog();
-          return;
-        }
-      }
-      // Ctrl+S: Save Layout (TV)
-      if (!typing && e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'KeyS') {
-        e.preventDefault();
-        Toolbar.openSaveLayoutDialog();
-        return;
-      }
-      // chart snapshot shortcuts (TV)
-      if (!typing && e.ctrlKey && !e.shiftKey && e.altKey && e.code === 'KeyS') {
-        e.preventDefault();
-        Toolbar.Snapshot.download();
-        return;
-      }
-      if (!typing && e.ctrlKey && e.shiftKey && !e.altKey && e.code === 'KeyS') {
-        e.preventDefault();
-        Toolbar.Snapshot.copy();
-        return;
-      }
-      // ROUND 69 (TV): Alt+Shift+R arms the Rectangle — the shortcut the
-      // shapes flyout now shows on its row (exactly like TradingView)
-      if (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyR') {
-        const tag69 = (e.target.tagName || '').toLowerCase();
-        if (tag69 !== 'input' && tag69 !== 'textarea' && tag69 !== 'select') {
-          e.preventDefault();
-          UI.activateTool('rect');
-          return;
-        }
-      }
+      /* ROUND307 (roadmap P0-03): the ten shortcuts that used to be inline
+         below are now ONE table in `ui/shortcuts.js`, so they can be listed,
+         rebound and conflict-checked. The guards above still run first — the
+         registry must not become a second path around `typing`/`modalOpen`. */
+      if (!typing && Shortcuts.handle(e)) return;
       if (Toolbar.onKey(e)) return;
-      if (!typing && e.key === 'Delete' && App.selection) {
-        if (App.undo) App.undo.remove(App.selection.pane, App.selection.d);
-        else App.drawings.remove(App.selection.pane.symbol, App.selection.d.id);
-        App.selection = null;
-        UI.onSelectionChanged();
-        return;
-      }
-      /* Undo / Redo (TV): Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z */
-      if (!typing && (e.ctrlKey || e.metaKey) && !e.altKey && e.code === 'KeyZ' && App.undo) {
-        e.preventDefault();
-        if (e.shiftKey) App.undo.redo(); else App.undo.undo();
-        return;
-      }
-      if (!typing && (e.ctrlKey || e.metaKey) && !e.altKey && e.code === 'KeyY' && App.undo) {
-        e.preventDefault();
-        App.undo.redo();
-        return;
-      }
     });
 
     // reconnect on provider loss — single-flight, indefinite retry with a
@@ -478,6 +453,9 @@ function boot() {
          E2E can assert which commands exist and that running one changed the
          app, instead of clicking through a popup blindly. */
       Command,
+      /* ROUND307: the shortcut table — lets the E2E read the live bindings and
+         assert that an override really applies, instead of guessing at keys. */
+      Shortcuts,
     };
   }
 

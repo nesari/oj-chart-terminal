@@ -290,6 +290,20 @@ export function registerAll() {
   add('panel', panelCommands());
   add('tool', toolCommands());
   add('action', actionCommands());
+
+  /* ROUND307: the shortcut editor is reachable from the palette as well as from
+     `?` — the palette is where a user looks for "how do I change that?". */
+  if (deps.shortcuts && deps.shortcuts.open) {
+    report.action += Command.addAll([{
+      id: 'action:shortcuts',
+      title: 'Keyboard shortcuts…',
+      group: 'Actions',
+      keywords: 'shortcut key binding hotkey keyboard editor',
+      icon: 'gear',
+      keys: '?',
+      run: () => deps.shortcuts.open(),
+    }]);
+  }
   return report;
 }
 

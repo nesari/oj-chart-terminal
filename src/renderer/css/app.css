@@ -2361,3 +2361,53 @@ body.theme-light .pn-kw { color: #1e53e5; }
   font-size: 15px; line-height: 1;
 }
 .popup .pu-item.pu-has-sub:hover .pu-arrow { color: var(--text); }
+
+/* ---------- Keyboard shortcuts editor (ROUND307 / roadmap P0-03) ---------- */
+.sc-dialog { width: 520px; }
+.sc-search { margin-bottom: 10px; }
+.sc-search input {
+  width: 100%; box-sizing: border-box; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+  font-family: inherit; font-size: 13px; padding: 7px 10px; outline: 0;
+}
+.sc-search input:focus { border-color: var(--blue); }
+.sc-list { max-height: 46vh; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
+.sc-group {
+  font-size: 11px; color: var(--text-dim); font-weight: 700; letter-spacing: .3px;
+  padding: 10px 4px 5px; text-transform: uppercase;
+}
+.sc-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 4px; border-radius: 5px;
+}
+.sc-row:hover { background: var(--panel); }
+.sc-title { flex: 1 1 auto; color: var(--text); font-size: 13px; }
+.sc-mod {
+  font-size: 10px; color: var(--text-dim); border: 1px solid var(--border2);
+  border-radius: 3px; padding: 0 4px; margin-right: 2px;
+}
+.sc-key {
+  min-width: 92px; text-align: center; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--border2); border-radius: 5px;
+  color: var(--text); font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+  padding: 4px 8px;
+}
+.sc-key:hover { border-color: var(--blue); }
+.sc-key.recording {
+  border-color: var(--blue); color: var(--blue);
+  animation: sc-pulse 1.1s ease-in-out infinite;
+}
+@keyframes sc-pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+.sc-reset {
+  background: transparent; border: 0; color: var(--text-dim); cursor: pointer;
+  display: flex; padding: 3px;
+}
+.sc-reset:hover { color: var(--text); }
+.sc-reset svg { width: 15px; height: 15px; }
+.sc-foot {
+  display: flex; align-items: center; gap: 10px;
+  border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px;
+}
+.sc-hint { flex: 1 1 auto; font-size: 12px; color: var(--text-dim); }
+.sc-hint.sc-err { color: var(--red); }
+.sc-hint.sc-ok { color: var(--green); }

@@ -339,7 +339,7 @@ Command.init = function () {
     const isK = mod && !e.shiftKey && !e.altKey && key === 'k';
     const isP = mod && e.shiftKey && !e.altKey && key === 'p';
     if (!isK && !isP) return;
-    const modal = document.querySelector('.dialog-backdrop:not(.hidden), .ds-dialog');
+    const modal = document.querySelector('.dialog-backdrop:not(.hidden), .ds-dialog:not(.hidden)');
     /* the palette's own backdrop is a .cmd-back, not a .dialog-backdrop */
     if (modal && !Command._open) return;
     e.preventDefault();

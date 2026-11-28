@@ -107,10 +107,14 @@ check('closeToRight safely LEAVES a dying active tab first (activate before slic
 check('drag reorder: HTML5 DnD with a before/after drop edge',
   /el\.addEventListener\('dragstart'/.test(tabs) && /el\.addEventListener\('dragover'/.test(tabs) &&
   /el\.addEventListener\('drop'/.test(tabs) && /this\._reorder\(this\._dragId, t\.id, before\)/.test(tabs));
-check('keyboard: Ctrl+T new tab / Ctrl+W close, guarded against typing + ANY open dialog',
+check('keyboard: Ctrl+T new tab / Ctrl+W close, guarded against typing + ANY OPEN dialog',
   /e\.code !== 'KeyT' && e\.code !== 'KeyW'/.test(tabs) &&
   /U\.isTyping\(e\.target\)/.test(tabs) &&
-  /querySelector\('\.dialog-backdrop, \.ds-dialog'\)/.test(tabs) && /sym-dialog/.test(tabs));
+  /* ROUND307: `:not(.hidden)` is the whole point — a dialog built at boot and
+     merely hidden is in the DOM, and the old selector treated it as open, which
+     killed Ctrl+T/Ctrl+W forever. Pinning the selector without it was pinning
+     the bug. */
+  /querySelector\('\.dialog-backdrop:not\(\.hidden\), \.ds-dialog:not\(\.hidden\)'\)/.test(tabs) && /sym-dialog/.test(tabs));
 
 console.log('— ROUND260 · dock handoff edge cases —');
 check('a repeated dock request replaces the matching id instead of pushing a duplicate',

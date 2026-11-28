@@ -128,7 +128,7 @@ const CURATED = [
  */
 const PANEL_SUITES = [
   'e2e_round305_command_palette.py',   /* P0-01 */
-  'e2e_round305_menu_keys.py',         /* P0-03 */
+  'e2e_round307_shortcuts.py',         /* P0-03 */
   'e2e_round306_chart_menu.py',        /* P0-02 */
   'e2e_round306_watchlist.py',         /* P1 */
   'e2e_round307_datawindow_objects.py',/* P2 */

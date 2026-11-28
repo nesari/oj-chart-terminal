@@ -797,8 +797,12 @@ const Tabs = {
     if (e.repeat) return; // holding Ctrl+W must not close tab after tab
     if (U.isTyping(e.target)) return;
     /* Any open dialog owns the keyboard; the old list only knew three ids and
-       let Ctrl+T/Ctrl+W close/open tabs behind the Settings/Alerts dialogs. */
-    if (document.querySelector('.dialog-backdrop, .ds-dialog') ||
+       let Ctrl+T/Ctrl+W close/open tabs behind the Settings/Alerts dialogs.
+       ROUND307 BUGFIX: `:not(.hidden)` matters — a dialog that is built at boot
+       and merely hidden lives in the DOM forever, so without it this line made
+       Ctrl+T / Ctrl+W dead the moment such a dialog existed (the shortcut editor
+       is one). */
+    if (document.querySelector('.dialog-backdrop:not(.hidden), .ds-dialog:not(.hidden)') ||
         document.getElementById('sym-dialog')) return;
     if (e.code === 'KeyT') {
       e.preventDefault();
