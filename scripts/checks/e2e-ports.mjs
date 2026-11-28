@@ -42,9 +42,17 @@ const RESERVED = new Set([8777, 8778]);
 
 function readPair(file) {
   const src = fs.readFileSync(file, 'utf8');
-  /* `PORT_HTTP, PORT_WS = 8989, 8817` is the common shape */
-  const pair = /PORT_HTTP\s*,\s*PORT_WS\s*=\s*(\d+)\s*,\s*(\d+)/.exec(src);
-  if (pair) return { http: Number(pair[1]), ws: Number(pair[2]) };
+  /* Accepted shapes, because both are legitimate:
+       PORT_HTTP, PORT_WS = 8989, 8817                     (literal)
+       PORT_HTTP, PORT_WS = int(os.environ.get(...)), int(os.environ.get(...))
+     The second form is what a shard-safe suite uses, so the auditor must read
+     the DEFAULTS inside it — otherwise it reports a pair as "free" while a
+     suite already holds it. */
+  const pairLine = (/^PORT_HTTP.*$/m.exec(src) || [''])[0];
+  if (pairLine) {
+    const ints = [...pairLine.matchAll(/\b(\d{4})\b/g)].map((m) => Number(m[1]));
+    if (ints.length >= 2) return { http: ints[0], ws: ints[1] };
+  }
   const http = /PORT_HTTP\s*=\s*(\d+)/.exec(src);
   const ws = /PORT_WS\s*=\s*(\d+)/.exec(src);
   return {

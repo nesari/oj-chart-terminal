@@ -2297,3 +2297,50 @@ body.theme-light .pn-kw { color: #1e53e5; }
   #right-panel { min-width: 0; }
   .u-dlg-note { font-size: 11px; }
 }
+
+/* ---------- Command Palette (ROUND305 / roadmap P0-01) ----------
+   One search box over symbols, timeframes, indicators, panels, drawing tools
+   and verbs (Ctrl+K). Visually it follows the dialog language (--menu fill,
+   --border edge) but sits above every other layer: a palette that opens behind
+   a panel is a palette that does not open. */
+.cmd-back {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 12vh;
+}
+.cmd-back.hidden { display: none; }
+.cmd-box {
+  width: 620px; max-width: calc(100vw - 32px);
+  background: var(--menu); border: 1px solid var(--border);
+  border-radius: 10px; box-shadow: 0 24px 70px rgba(0,0,0,.65);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.cmd-input {
+  width: 100%; border: 0; outline: 0; background: transparent;
+  color: var(--text); font-size: 15px; font-family: inherit;
+  padding: 15px 18px; border-bottom: 1px solid var(--border);
+}
+.cmd-input::placeholder { color: var(--text-dim); }
+.cmd-list {
+  max-height: 52vh; overflow-y: auto; padding: 6px;
+}
+.cmd-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  border: 0; background: transparent; color: var(--text);
+  padding: 8px 10px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-family: inherit; text-align: left;
+}
+.cmd-row:hover, .cmd-row.sel { background: var(--panel2); }
+.cmd-row.sel { box-shadow: inset 2px 0 0 var(--blue); }
+.cmd-row .cmd-ic { display: flex; color: var(--text-dim); }
+.cmd-row .cmd-ic svg { width: 16px; height: 16px; }
+.cmd-row.sel .cmd-ic { color: var(--blue); }
+.cmd-title { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmd-kind { flex: 0 0 auto; color: var(--text-dim); font-size: 11px; letter-spacing: .2px; }
+.cmd-key {
+  flex: 0 0 auto; color: var(--text-dim); font-size: 11px;
+  border: 1px solid var(--border2); border-radius: 4px; padding: 1px 6px;
+  font-family: ui-monospace, Consolas, monospace;
+}
+.cmd-empty { padding: 22px 16px; color: var(--text-dim); font-size: 13px; text-align: center; }

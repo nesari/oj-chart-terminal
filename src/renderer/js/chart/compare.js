@@ -213,6 +213,15 @@ const PALETTE = ['#f7c948', '#e91e63', '#9c27b0', '#00bcd4', '#ff9800'];
     },
     add: addCompare,
     remove: removeCompare,
+    /* ROUND305 (roadmap P0-01): the command palette needs a way to OPEN this
+       menu without synthesising a click on the toolbar button. Exposing the
+       same function the button calls keeps one code path. */
+    openMenu(anchor) {
+      const btn = document.getElementById('compare-btn');
+      const r = (anchor && anchor.getBoundingClientRect) ? anchor.getBoundingClientRect()
+        : (btn ? btn.getBoundingClientRect() : { left: 0, bottom: 40 });
+      openMenu(r.left, r.bottom + 4);
+    },
   };
 
   /* auto re-align after every main-data reload (symbol/tf change) */

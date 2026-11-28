@@ -54,6 +54,8 @@ import { AboutUI } from './panels/about-ui.js'; // ROUND294: version + check on 
 import { Replay } from './panels/replay.js';
 import { LoginUI } from './ui/login.js';
 import { RightPanel } from './ui/rightpanel.js';
+import { Command } from './ui/command.js';
+import { wireSources, registerAll } from './ui/command-sources.js';
 import { DataWindow } from './panels/datawindow.js';
 /* ROUND85 (user request): trading bridge — order execution straight to
    MetaTrader from the app, live risk/volume management, live account +
@@ -127,6 +129,39 @@ function boot() {
     if (Diagnostics) Diagnostics.init(); // round 28: logging/monitoring panel
     if (UpdateUI) UpdateUI.init(); // ROUND290: version row + auto-update check
     if (AboutUI) AboutUI.init(); // ROUND294: toolbar button — version + manual check
+
+    /* ROUND305 (roadmap P0-01): the command palette. Wired AFTER every other
+       panel so its sources can read their real state, and re-registered after
+       the chart stack boots so the symbol/timeframe/style lists are populated
+       rather than read from an empty app. */
+    try {
+      wireSources({
+        Manager, Toolbar, Settings, Theme, Undo, Compare, GoToDate,
+        PineEditor, Replay, DrawSettings, RightPanel,
+        /* ROUND305: these two keys are spelled differently on purpose, because
+           the modules are: the FACADE is `Indicators` (the catalog) and the
+           `IndicatorsUI` is the dialog/driver. The source reads
+           `deps.indicators` (lowercase), so passing `Indicators` here silently
+           produced ZERO indicator commands — the palette opened, showed 148
+           commands and none of the 27 indicators. The E2E caught it; the unit
+           suite could not, because it injects its own fakes. */
+        indicators: Indicators,
+        /* `UI` is the drawing facade (drawing/ui.js). It was missing from this
+           call at first, so every one of the 86 "Draw …" commands armed nothing
+           while reporting success — the palette looked complete. */
+        UI,
+        IndicatorsUI,
+        /* `App.tf` is the live timeframe list (core/state.js) — it includes
+           user-created custom intervals, which is the point of reading it
+           instead of a constant. */
+        timeframes: () => App.tf || [],
+        panelTabs: () => [...document.querySelectorAll('#right-tabs .rt-btn[data-tab]')].map((b) => b.dataset.tab),
+        drawGroups: () => UI.GROUPS || [],
+        toolName: (id) => (DrawTools[id] && DrawTools[id].name) || id,
+      });
+      Command.init();
+      registerAll();
+    } catch (e) { Log.warn('app', 'command palette failed to initialise', e) }
     if (TimeSales) TimeSales.init();
     if (Compare) Compare.init();
     Manager.init();
@@ -436,9 +471,13 @@ function boot() {
       /* ROUND290: the auto-update status row is inspectable from the facade so
          a test can assert "no update without a click". */
       UpdateUI,
-      /* ROUND294: the About popup — the user-facing entry point for
+      /* ROUND294: the About popup - the user-facing entry point for
          "what version is this?" and "check now". */
       AboutUI,
+      /* ROUND305: the command palette registry + popup (Ctrl+K). Exposed so the
+         E2E can assert which commands exist and that running one changed the
+         app, instead of clicking through a popup blindly. */
+      Command,
     };
   }
 

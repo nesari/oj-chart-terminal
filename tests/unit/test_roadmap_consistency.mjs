@@ -257,6 +257,46 @@ function num(s) {
   /* and ci.yml must not have grown a job that can never run */
   const ci = readSource('.github/workflows/ci.yml');
   ok(!/docs:-pre-v-all-prose/.test(ci), 'ci.yml has no impossible docs job');
+
+  /* ROUND305: the boot call and the sources must agree on KEY NAMES. This is a
+     silent-zero class of bug: `app.js` passed `Indicators` while the source read
+     `deps.indicators`, so the palette shipped with 148 commands and none of the
+     27 indicators. No unit test could see it (they inject their own keys) and the
+     palette looked fine. The E2E caught it; this check makes the next one a
+     unit-test failure instead of a live-browser discovery. */
+  const appSrc = readSource('src/renderer/js/app.js');
+  const srcSrc = readSource('src/renderer/js/ui/command-sources.js');
+
+  /* keys the source reads off `deps.` — comments stripped first, because the
+     module's own comments NAME keys (`deps.indicators`) and a check that reads
+     prose as code fails on a correct file (the docs-workflow check learned this
+     the same day). */
+  const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  const readKeys = new Set([...stripComments(srcSrc).matchAll(/\bdeps\.([A-Za-z][A-Za-z0-9_]*)/g)].map((m) => m[1]));
+  /* keys the boot call passes (the object literal inside wireSources({ ... })) */
+  const bootCall = /wireSources\(\{([\s\S]*?)\n      \}\);/.exec(appSrc);
+  ok(!!bootCall, 'app.js calls wireSources() with an object literal');
+  if (bootCall) {
+    const passedKeys = new Set();
+    /* bare identifiers (`Manager,`) and `key: value` pairs both count */
+    for (const m of stripComments(bootCall[1]).matchAll(/(?:^|,)\s*([A-Za-z][A-Za-z0-9_]*)\s*(?=[,:])/g)) passedKeys.add(m[1]);
+    /* a passed identifier also satisfies its lowercase form: `Indicators` ->
+       `indicators` is intentional naming, but the check below is what caught the
+       real bug, so it compares EXACT names only. */
+    const missing = [...readKeys].filter((k) => !passedKeys.has(k));
+    ok(missing.length === 0,
+      'every key the sources read is passed at boot (no silent-zero wiring)',
+      missing.join(','));
+  }
+
+  /* the indicator source must read the facade's lowercase key — this is the
+     specific rename that broke it */
+  ok(/deps\.indicators/.test(srcSrc),
+    'the indicator source reads deps.indicators');
+  ok(!/deps\.Indicators\b/.test(srcSrc),
+    'the indicator source must not read deps.Indicators (that key is never passed)');
+  ok(/indicators:\s*Indicators/.test(appSrc),
+    'app.js passes the catalog facade as `indicators:`');
 }
 
 /* ---------- G. port hygiene ---------- */
@@ -280,9 +320,16 @@ function num(s) {
       const p = path.join(dir, f);
       if (!fs.existsSync(p)) continue; /* pending phase */
       const s = fs.readFileSync(p, 'utf8');
-      const pair = /PORT_HTTP\s*,\s*PORT_WS\s*=\s*(\d+)\s*,\s*(\d+)/.exec(s);
-      if (!pair) { problems.push(`${f}: no PORT_HTTP/PORT_WS pair`); continue; }
-      const [h, w] = [Number(pair[1]), Number(pair[2])];
+      /* Read the port DEFAULTS, whatever the syntax:
+           PORT_HTTP, PORT_WS = 9080, 8930
+           PORT_HTTP, PORT_WS = int(os.environ.get('MT5_HTTP_PORT','9080')), int(…)
+         The env-overridable form is what makes a suite shard-safe (CI sets the
+         port per shard), so the checker must accept it and validate the default
+         inside it. Taking the first two integers on the line handles both. */
+      const line = (/^PORT_HTTP.*$/m.exec(s) || [''])[0];
+      const ints = [...line.matchAll(/\d{4}/g)].map((m) => Number(m[0]));
+      if (ints.length < 2) { problems.push(`${f}: no PORT_HTTP/PORT_WS pair`); continue; }
+      const [h, w] = ints;
       if (h < hLo || h > hHi) problems.push(`${f}: HTTP ${h} outside ${hLo}-${hHi}`);
       if (w < wLo || w > wHi) problems.push(`${f}: WS ${w} outside ${wLo}-${wHi}`);
       const key = `${h}/${w}`;
